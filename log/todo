@@ -1,0 +1,79 @@
+
+TODO
+2012/03/01 
+
+DONE
+* Extensional flow:  rerun two vesicle experiments
+  . No upsampling for standard code;
+  . First order in time: N=32, N=64, Time Horizon Large, different dt's  with
+		and without nearly singular
+  . Explicit and Implicit.
+
+DONE   
+* Explit + near sinuglar, Taylor green ,implicit-explicit treatment
+  Time horizon: 200
+  volume fraction: (for stability tests) 9 vesicles A=1/3.2 
+
+DONE
+ just one run: explicit, first  Increase volume fraction to 45\% 
+    dt =1e-4, 
+ 
+GOING TO TRY SPECTRAL DEFERRED CORRECTION
+* Adaptive time stepping
+  - first order; either adapt so that you avoid collisions, or just
+	using standard truncation error (or both). Bryan to prepare
+	write-up for different options
+  Some references on newer work:
+  http://www.amath.unc.edu/Faculty/minion/pubs/PDF/mesdc.pdf
+  - detecting possibility for collision requires Walid's scheme
+	needs to be incorporated in the main code.
+
+
+* Walid: 
+  . Tracer velocity becomes discontinuous
+  . Latex: write-up for nearly singular integration
+  . Matlab:
+    - Documentation of nearly singular integrals
+       (input, output, function description)
+    - FMM for nearly singular, you need it for particle evaluation
+    - Arbitrary target points (for tracers)
+    - Tracer tracking using time steps. (no need to couple with the
+  solver, this should be 
+
+* George: projecting shape to specified area length
+
+* Computing stresses
+
+DONE
+* Integrate viscosity and boundaries for couette flow.
+
+* Adhesion/repulsion, near-range forces?
+
+DONE
+* Preconditioners for single and coupled vesicles? (implicit
+  time-stepping 20 times more expensive)
+
+
+
+March 23, 2012
+
+DONE
+Figure out second-order implicit scheme, why do we get first order 
+convergence?  First single vesicle, then extensional flow.
+
+DONE
+Finish tables with extensional flow (after resolving the second-order 
+scheme)
+
+DONE
+For vortex flow, compare explicit first-order with implicit second-order
+
+DONE
+Automate volume fraction: Input: vesicle length, reduced area, volume 
+fraction.
+
+
+/* ************************************************** */
+DONE
+
+

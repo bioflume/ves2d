@@ -1,0 +1,69 @@
+We compute error bounds for the near-singular integration scheme to
+justify our choice of the $N^{3/2}$-point trapezoid rule for points in
+the far zone.  Recall that the far zone is defined as all points that
+are more than distance $h$ from a vesicle.  Consider a vesicle with
+boundary $\gamma \in C^{\infty}$ and a density function $\ff \in
+C^{M}$.  Recall that the single-layer potential is
+\begin{align*}
+  \uu(\xx) = \frac{1}{4\pi} \int_{\gamma} \left(-\log \rho + 
+    \frac{\rr \otimes \rr}{\rho^{2}}\right)\ff(\yy) ds_{\yy}.
+\end{align*}
+Following~\cite{ying-biros-zorin06}, we need to bound the derivatives
+of the kernel.  Bounding the derivatives of the logarithm term is
+immediate, and the derivatives of the second term are bounded by noting
+that
+\begin{align*}
+  \frac{\rr \otimes \rr}{\rho^{2}} = \frac{1}{\rho^{2}}S,
+\end{align*}
+where $S \in C^{\infty}$.  Bounds for the derivatives are
+\begin{align*}
+  |\partial^{\beta}_{\yy} \log \rho| \leq \frac{C}{\rho^{|\beta|+1}},   
+  \hspace{20pt}
+  \left|\partial^{\beta}_{\yy} \frac{\rr \otimes \rr}{\rho^{2}}\right| \leq
+  \frac{C}{\rho^{|\beta|+2}},
+\end{align*}
+where $\beta$ is a multi-index of order $|\beta| \leq M$.  If $\rho >
+\sqrt{h}$, then the $M^{th}$-order derivatives are bounded by
+$Ch^{-M/2-1}$, and the error introduced by the $N$-point trapezoid rule
+satisfies
+\begin{align*}
+  \epsilon_{trap} \leq h^{M} \cdot C h^{-M/2-1} = Ch^{M/2-1}.
+\end{align*}
+We would like to achieve the save accuracy when $\rho \in
+(h,\sqrt{h}]$.  If $\rho \in (h,\sqrt{h}]$, the $M^{th}$-order
+derivatives are bounded by $C h^{-M-2}$, and the error introduced by
+the $N^{3/2}$-point trapezoid rule satisfies
+\begin{align*}
+  \epsilon_{trap} \leq h^{3M/2} \cdot C h^{-M-2} = Ch^{M/2-2}.
+\end{align*}
+Therefore, in what we have defined as the far zone, the error in the
+trapezoid rule is $\bigO(h^{M/2-2})$.
+
+To bound the error in the far zone of the double-layer potential, we note that
+\begin{align*}
+  \left|\partial^{\beta}_{\yy} \frac{\rr \cdot \nn}{\rho^{2}}
+    \frac{\rr \otimes \rr}{\rho^{2}}\right| \leq \frac{C}{\rho^{|\beta|+4}}.
+\end{align*}
+We repeat the same calculation done for the single-layer potential and
+the result is that the error in the far zone of the $N^{3/2}$-point
+trapezoid rule applied to the double-layer potential is
+$\bigO(h^{M/2-4})$.
+
+For the near zone, we find the solution using $m+1$ Lagrange
+interpolation points.  All the interpolation points except for the
+first lie in the far zone and the above error bounds hold at these
+points.  The Lagrange interpolation point on $\gamma$ is computed
+using $N_{\mathrm{int}}$ interpolation points, so its error is
+$\bigO\left(h^{N_{\mathrm{int}}-1}\right)$.  Combining the three
+approximations, the error of our near-singular integration scheme for
+the single-layer potential is
+\begin{align*}
+  \bigO\left(h^{\min\left(N_{\mathrm{int}}-1,m,\frac{M}{2}-2\right)}\right),
+\end{align*}
+and for the double-layer potential is
+\begin{align*}
+  \bigO\left(h^{\min\left(N_{\mathrm{int}}-1,m,\frac{M}{2}-4\right)}\right).
+\end{align*}
+
+
+

@@ -1,0 +1,554 @@
+\documentclass[12pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath,amsfonts,amssymb,stmaryrd}
+\usepackage{color}
+\newcommand{\comment}[1]{{\color{blue} #1}}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\newcommand{\note}[1]{{\color{green} #1}}
+\newcommand{\grad}{{\triangledown}}
+\newcommand{\nn}{{\mathbf{n}}}
+\newcommand{\uu}{{\mathbf{u}}}
+\newcommand{\xx}{{\mathbf{x}}}
+\newcommand{\yy}{{\mathbf{y}}}
+\newcommand{\DD}{{\mathcal{D}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+
+\begin{document}
+
+We would like to thank both reviewers for their careful reading of our
+manuscript and for their constructive feedback. 
+
+\section*{Reviewer 1}
+
+\comment{several parts of the introduction are more or less copied from
+the earlier paper}
+
+\begin{itemize}
+  \item While we agree that some statements are similar or identical,
+  the use of those statements are justified for both papers as they are
+  related to the general problem of vesicle suspension simulations. For
+  example using text diff,  the two instances that we found to be
+  identical or most similar are: 
+  \begin{enumerate}
+    \item Vesicles are deformable capsules filled with a viscous fluid
+    \item For example, they are used experimentally to understand
+    properties of biomembranes [36] and red blood cells [8, 13,
+    24-26] \emph{vs.} Vesicle flows find many applications many biological
+    applications such as the simulation of biomembranes [39] and red
+    blood cells [16, 25, 30, 31, 33].
+  \end{enumerate}
+\end{itemize}
+These are generic statements that motivate the problem and, in our
+opinion, are not related to the novelty of our contribution.
+
+\comment{the paper is hard to read as a stand alone paper, as even the
+system of equations to be solved is not written down}
+\begin{itemize}
+  \item In Section 2.2 we state the governing equations. We agree that
+    the paper is somewhat hard as we have not included the derivation
+    of these equations, but we have tried to make sure that all
+    necessary information is included to replicate our results.
+\end{itemize}
+
+\comment{it is nice to see a statement of limitations of the method,
+however it is not understandable, why several limitations mentioned in
+the earlier paper, should have gone away, e.g.  transient and inertia
+effects}
+
+\begin{itemize}
+  \item The reviewer is correct that not all the limitations from our
+    previous paper have been addressed in this manuscript.  In fact,
+    we have only addressed one of the issues---high-order time
+    discretization and time adaptivity. We have made this clearer in
+    the text.
+\end{itemize}
+
+\comment{what is highlighted here as an innovative criteria for adaptive
+time stepping, is just a phenomenological indicator, it is certainly
+good to control area and interface length, but it does not say anything
+about the quality of the solution (a constant in time solution would do
+the job, but would be wrong for most examples). Here I miss
+computational results, demonstrating that the used error indicators are
+indeed sufficient to control the error of the solution. At least for the
+relaxation flow the stationary shape and the evolution to it are known
+and can be used as a criteria.  Otherwise you could use criteria such as
+circularity or center of mass position to validate your solution. Can
+you show that the energy is decreasing for all the chosen time steps?}
+
+\begin{itemize}
+  \item The new adaptivity is not our only contribution. We present
+  non-trivial SDC approximations that are specific to vesicle flows and
+  we demonstrate their effectiveness. 
+
+  \item We agree that the area and length are phenomenological
+  indicators.  We introduced them because they are \emph{so cheap} to
+  compute.  Our assumption is that the errors in area and length behave
+  similarly as the true error and therefore using them as an estimate
+  of the local truncation error is appropriate. Of course, the reviewer
+  is right to request at least empirical evidence that this is the
+  case.  For the relaxation flow, we have included an additional column
+  that computes the error in the vesicle shape at the time horizon.  We
+  computed an ``exact" solution using 4000 time steps with 4 SDC
+  corrections.  The error in position behaves the same as the errors in
+  length and area, that confirms our assumption.
+
+  \item In our previous paper [34], we showed convergence of the
+  vesicle-wall distance for the stenosis example (Table 9), again
+  providing experimental evidence  that when the error and area errors
+  are small the solution has converged. 
+
+  \item In the current manuscript, we discuss in Section 4 that we can
+  justify using the error in area and length as an indicator for the
+  local truncation error since we do a proper convergence study for the
+  vesicle position in Section 5.
+\end{itemize}
+
+\comment{the comparison in 5.1 remains unclear, is the BDF the second
+order scheme from your previous paper or is it a different method, how
+does SDC compare with the results in the previous paper? As already
+mentioned in the text an improvement of SDC can not really be observed
+for the second order scheme}
+
+\begin{itemize}
+  \item We have mentioned that BDF is the multistep second-order method
+  we introduced in our previous paper. The improvement is not that SDC
+  is faster, but that it is adaptive.  Our goal in this paper is the
+  design of high-order, {\em adaptive} methods.  With BDF one must use a
+  fixed time step size.  BDF has the hidden cost of iterating (running
+  extra simulations) to find out the stable and accurate time step size.
+  This is not the case with adaptive SDC.  We have made this clearer in
+  the text.
+\end{itemize}
+
+\comment{as almost the same examples are used as in the previous paper,
+a follow up paper should at least used the same complexity of the
+examples and demonstrate an improvement in computing time, much better
+would be to show an improvement in complexity of the problem solvable,
+in 5.4 the complexity is even reduced, which is not acceptable}
+
+\begin{itemize}
+  \item The numerical examples that we presented in the previous paper
+  are not robust since they use fixed time stepping.  We had to run many
+  simulations for them to find the right step size.  For instance, in
+  Figures 5, 6, and 8 from our previous paper, [34], we showed that  the
+  error in area and length may behave unpredictably.  However, in the
+  right plots of Figures 4, 7, and 10 from our current manuscript have
+  errors that behave as desired.
+\end{itemize}
+
+\comment{it is the second algorithmic paper of the authors on the
+subject, any meaningful biophysical question, which could be answered by
+the simulations, is not even asked, and should be added and answered in
+a revised version}
+\begin{itemize}
+  \item The goal of this paper is to develop an additional tool, namely
+  high-order adaptive time stepping, for simulating vesicle suspensions.
+  This is a very challenging numerical scheme and we think there is a
+  lot of work that remains to be done (algorithmically).  For this
+  reason, we have chosen to submit the paper the Journal of
+  Computational Physics.  We are now using these methods to study
+  meaningful biophysical questions which will be submitted elsewhere.
+  Note that we (and other groups) have used our code for such
+  investigations, for example see [16,25,30].
+\end{itemize}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Reviewer 2}
+\comment{I think the presentation in this paper generates some
+confusion on the issue of the accuracy of SDC in the stiff regime. The
+paper does report on the early results on order reduction (e.g. [26]),
+but the issue is much better understood now than when [26] was written.
+In [18] for example, the authors show that the order-reduction
+previously observed for SDC for stiff problems is equivalent to the slow
+convergence of the numerical solution to that given by a fully implicit
+Gaussian collocation scheme (or equivalently a fully implicit
+Gauss-Runge-Kutta method). This subtle shift from viewing SDC as a
+method using a fixed number of iterations to achieve a fixed order of
+accuracy to viewing SDC as an iterative procedure that converges to a
+spectrally accurate collocation method is really the key to
+understanding the behavior for stiff problems.}
+\begin{itemize}
+  \item We now mention in the introduction that order reduction is
+  observed in [29] (used to be [26]) and that this order reduction was
+  better understood and resolved in [21] (used to be [18]).  This is
+  now discussed at multiple points locations in the manuscript.
+
+  \item The challenge with using methods described in [21] is that an
+  entire history of the iterates must be saved since SDC is being used
+  as a preconditioner of a GMRES iteration.  Moreover, there is an outer
+  Newton iteration since the governing equations are non-linear.  At
+  this point in our project, we do not want to bring in this additional
+  algorithmic complexity into the method.  We estimate that such a
+  modification will slow down the scheme significantly since a Newton
+  method will require globalization.  In our past work we have compared
+  Newton method with semi-implicit methods (using simple BDF) and we
+  found that the Newton method was excessively slower for the same
+  accuracy.
+\end{itemize}
+
+\comment{Although Thms like the 2.1 cited here show that the formal
+order of accuracy of SDC increases in lock-step with the number of
+correction iterations, these results are only observed asymptotically as
+the time step approaches zero. For stiff problems, the iterations for
+explicit SDC methods will diverge in $k$ for sufficiently large time
+step.  For fully implicit methods the convergence of SDC iterations in
+$k$ will slow down, and order reduction is observed. Hence there are two
+``convergences" going on: the convergence in iteration $k$ where the SDC
+solution approaches the collocations solution and the convergence in
+$\Delta t$ as the numerical solution approaches the exact solution. The
+citation [44] examines the first convergence carefully for linear
+problems. If the simulations are always done with enough SDC iterations
+so that the iterations have converged in $k$ (or some sort of
+acceleration of the convergence is used), then the observed convergence
+rate will be that of the collocation scheme (which is not necessarily
+the order in the non-stiff case. See for example Hairer and Wanner II).
+If a fixed number of iterations are used, the asymptotic rate may not be
+observed until $\Delta t$ is sufficiently small, i.e. order reduction is
+seen.}
+\begin{itemize}
+  \item We agree. We have changed the text and we discuss these issues
+  throughout the text.
+\end{itemize}
+
+\comment{Unfortunately, the numerical results presented here mix these
+issues up.  For the test in 5.1, $p=5$ nodes are used, so that if many
+SDC iterations are used, the observed rate should be 8. For a fixed
+number of iterations, order $k$ convergence should be observed for
+sufficiently small $\Delta t$, but this is obscured because of machine
+precision (and GMRES precision). It is not really clear why one would
+choose $p=5$ nodes and 2, 3 or 4 iterations anyway due to the fact that
+it requires more storage for the same order of accuracy as using fewer
+nodes. Similar issues are appropriate for other tests.}
+\begin{itemize}
+  \item We agree that smaller values of $p$ can be used for many of the
+  reported results.  Unfortunately, if $p$ is decreased, the time step
+  size is increased, and the number of GMRES iterations to solve the
+  implicit system increases.  We want to avoid this increase in the
+  number of GMRES iterations so that we can compare the total number of
+  FMM calls required for different time integrators.
+  \item In order to guarantee that the quadrature error has a
+  negligible effect on the overall error, we took $p$ sufficiently
+  large that it has an additional three orders of accuracy than the
+  most accurate time integrator used in each example.  This amounts to
+  using $p=5$ for the relaxation flow (the most accurate runs have
+  fifth-order accuracy), and $p=4$ for the remaining flows (the most
+  accurate runs have fourth-order accuracy).
+  \item We discuss this justification at the start of the Results
+  section.  We also mention that if one is not doing a convergence
+  study/comparison of different methods, then smaller values of $p$
+  can be used without compromising the overall accuracy.
+\end{itemize}
+
+
+\comment{So in summary, the use SDC methods for stiff problems leads to
+a very subtle trade off. Using enough iterations so that the SDC
+iterations converge (which can be checked by monitoring the residual)
+requires more work, but insures the optimal order of accuracy and
+stability of the Gauss collocation schemes. Using a fewer fixed number
+means that the order for stiff problems will be reduced. This paper
+proceeds with numerical convergence tests as if the problems are not
+stiff, and hence will add confusion to the question of order of
+accuracy.}
+\begin{itemize}
+  \item We have made it clearer that throughout the manuscript that
+  order reduction due to stiffness is observed in our formulation and
+  examples.
+  \item While we would like to reduce the order reduction by
+  interpreting SDC as a preconditioner of the Gaussian collocation
+  discretization [21], this is currently not practical with the
+  complexity of our governing equations.  The number of unknowns per
+  time step is $3N\times(\text{number of vesicles})  +
+  2N_{\mathrm{wall}} \times (\text{number of walls})$ (3 = 2 (for
+  position) + 1 (for tension)).  For the final example (Couette), this
+  corresponds to 6656 unknowns which discretize the non-linear
+  integro-differential equations with an algebraic constraint.  We are
+  unaware of a Krylov-Deferred-Correction method being applied to
+  systems of this size and complexity.
+  \item These estimates become even more prohibitive in 3D which is an
+  extension that we are currently considering.
+  \item Since we are often not in the asymptotic regime when doing
+  adaptive time stepping, we are using the safety factors defined by
+  $\alpha$, $\beta_{\mathrm{up}}$, and $\beta_{\mathrm{down}}$.  We have
+  found, and demonstrated in the manuscript, that we are able to achieve
+  user-defined tolerances, even when SDC iterations are naively applied
+  to the stiff equations.  We now mention that these parameters are
+  needed because of observed order reduction.
+\end{itemize}
+
+\comment{Finally, the formulas like that for $C_{A}$ appearing on page
+11, directly use assume the order of the scheme. In the stiff limit,
+these are only valid when the SDC iterations have converged. So it would
+seem that a to use this sort of estimate for higher-order SDC, one would
+need to monitor the residual as well.}
+\begin{itemize}
+  \item We experimented with monitoring the residual of the system as
+  well.  The challenge is that the governing equations are sufficiently
+  ill-conditioned, and we found that a small residual still resulted in
+  large errors in the area and length.  However, we do observe that the
+  residual converges to zero with respect to the SDC iteration.  This is
+  now mentioned in the text, but numbers are not reported.
+  \item Even though the expression involving $C_{A}$ and other similar
+  expressions rely on the order of the method being achieved, without
+  further calculations, this is the best estimate we have available.
+  Experimentally, these assumptions are justified since we do achieve
+  the desired tolerance in many examples.  Moreover, the safety factors
+  are used to help increase the likelihood of a time step being accepted
+  even if the method is not in the asymptotic regime.
+\end{itemize}
+
+
+\comment{In my opinion, the use of only the length and area of the
+vesicles as a measure of error is a major short-coming in the numerical
+experiments, particularly in light of the results on the demonstrated
+order of accuracy. The SDC method is applied to the position of vesicle
+markers, hence the most appropriate measure of error would be a norm of
+the error in position at a fixed time. This of course has the
+disadvantage that the error would have to be approximated by comparison
+to a reference solution, but this is not reasonable grounds for
+exclusion of such results. Accurate computation of particle trajectories
+will imply that the vesicle length and area remain accurate, but the
+converse is not true. For simulations with many vesicles moving in
+complex flows, the exact position of each may not be the most relevant
+finding, but in terms of demonstrating the accuracy and order of
+convergence of a new numerical approach, convergence of position error
+should be demonstrated.}
+\begin{itemize}
+  \item We agree with the reviewer that convergence of the error in area
+  and length is not sufficient to guarantee convergence of the vesicle
+  position.  In our previous paper, we did a convergence study of the
+  vesicle-wall position of the stenosis example (Table 9). In all of our
+  experiments when the error in area and length are small, the error in
+  the position is small. This is an empirical observation that we use
+  here. 
+
+  \item In this manuscript, we now also do a convergence study of the
+  vesicle position for the relaxation flow.  We computed a
+  highly-accurate (with a very small fixed-time stepping) reference
+  solution to use as an ``exact" solution.  As desired, the errors in
+  area and length behave asymptotically in the same manner as the error
+  in position.  For the fixed time step size, this is reported as an
+  additional column in Tables 2-4.  For the adaptive time stepping, we
+  added additional plots (Figure 2) that show how the error in length
+  and area achieve the desired tolerance, and that the error in
+  position decays at the same rate as the error in length and position. 
+
+  \item Now that we have demonstrated convergence for this example, we
+  feel confident that using the error in area and length is suitable
+  for doing adaptive time stepping.  This is important since there is
+  now a negligible amount of additional cost to estimate the local
+  truncation error.
+\end{itemize}
+
+\comment{A related issue: How are the length and area of the vesicles
+actually computed? Is it the case that these are spectrally accurate as
+well?}
+\begin{itemize}
+  \item The vesicle boundary is represented in a Fourier basis.
+  Therefore the area and length can be computed with spectral accuracy
+  in space.  This is now mentioned in the text at two locations
+  (Sections 4 and 5).
+\end{itemize}
+
+\comment{pg 1. The first sentence of the abstract mentions an
+``arbitrary-order accurate" method. Given the ambiguous evidence of even
+3rd order accuracy in time, I think this characterization is
+inappropriate.}
+\begin{itemize}
+  \item We changed it to ``high-order accurate".  We added a sentence to
+  the abstract stating that we achieve in excess of second-order
+  accuracy, which we do observe.
+  
+  \item We added an additional row to the second numerical example to
+  help show that the error is decaying close to the expected rate, but
+  that additional sources of error are dominating the overall error.
+\end{itemize}
+
+\comment{pg.~2 first paragraph. ,”implicit higher-order methods are
+quite challenging to combine with adaptive schemes. The most common
+methods are implicit multistep schemes, but those are problematic
+especially for dynamics that involve moving interfaces.” I am not sure
+here what the authors mean. Combining multistep methods with adaptive
+time stepping does require more work than single step methods, but that
+holds true for both implicit and explicit. Why do moving interfaces make
+the things ``especially problematic"?}
+\begin{itemize}
+  \item We wanted to mention that adaptive time stepping with multistep
+  methods is problematic if the time step size changes too quickly.  The
+  method can become unstable which we now state and reference a paper.
+\end{itemize}
+
+\comment{pg 2 second paragraph. You might explain why a standard stiff DIRK
+method does not meet you design goals.}
+\begin{itemize}
+  \item The problem with a DIRK method is that we are unaware of a
+  method for integro-differential equations such as the ones we have to
+  solve.  We have had success in the previous papers with using IMEX
+  splittings, both first- and second-order.
+  \item The issue with second-order adaptive IMEX is that it is fragile
+  if the time step size changes too quickly.  Therefore, we want to only
+  use the first-order time stepper and then SDC sweeps to increase the
+  accuracy.
+\end{itemize}
+
+\comment{pg 2, ``The incompressibility and inextensibility conditions
+require that the vesicle preserves both its enclosed area and total
+length." You should be clear that this is true only in two dimensions.}
+\begin{itemize}
+  \item This is clarified
+\end{itemize}
+
+\comment{pg 2., ``These are relatively easy to implement but inefficient
+due to bending stiffness." It is not the bending stiffness, but rather
+the small time step that the bending stiffness necessitates.}
+\begin{itemize}
+  \item This is corrected.
+\end{itemize}
+
+\comment{pg 2, ``grouped in three classes of methods" There are no
+citations given for the first two classes. Do they actually exist?}
+\begin{itemize}
+  \item We have now cited cited works that were in the bibliography
+  under the appropriate classes.
+\end{itemize}
+
+\comment{pg 2, and beyond: ``a first order backward Euler scheme"
+``first order" should be hyphenated when used as an adjective.}
+\begin{itemize}
+  \item This is fixed and we searched for all other instances of this
+  same error.
+\end{itemize}
+
+\comment{pg 4. ``Any time stepping scheme can be used to generate a
+provisional solution".  Time stepping schemes do not produce a
+continuous function of t.  This explanation of SDC mixes up approximate
+continuous solutions and approximate discrete solutions.  The former can
+be constructed from the latter by standard interpolation.  The notation
+needs to cleared up here to differentiate between discrete and
+continuous approximate solutions.}
+\begin{itemize}
+  \item We made it clear that the provisional solution can be formed by
+  interpolating the result of a time stepping scheme.
+  \item We have updated other parts of the manuscript to help clarify
+  where the approximates are continuous and discrete.
+\end{itemize}
+
+\comment{ pg. 5, the equation for vesicle suspensions contain a
+confusion mix of $\xx_{k}$, $\xx$, $\yy$, $\xx$'.}
+\begin{itemize}
+  \item We have improved these equations so that they only use $\xx_{k}$
+  and $\xx_{j}$.
+\end{itemize}
+
+\comment{pg. 7. This section at the top of the page would be much
+clearer if it was described on a timestep $[t_{n}, t_{n+1}]$. This is almost
+done in the first line of the page, but below the integrals always say 
+$t \in [0, T]$, which is misleading at best.}
+\begin{itemize}
+  \item We have reformulated the presentation of the section at the end
+  of Section 2.2.  It is now formulated as the reviewer mentioned.
+  \item We used the same presentation in the Appendix.
+\end{itemize}
+
+\comment{pg 10 paragraph starting ``A common strategy of an adaptive
+time step method is to control an estimate of the local truncation
+error. One estimate is the difference of two numerical solutions".  Some
+specific citations are appropriate here.}
+\begin{itemize}
+  \item We have added appropriate citations.
+\end{itemize}
+
+\comment{pg 11 ``it is dangerous to change the time step size ..." What
+is the danger?}
+\begin{itemize}
+  \item This has been rephrased.
+\end{itemize}
+
+\comment{pg 13 first paragraph in 5.1, the maximum accuracy using 5
+Lobatto nodes is 8, not seven.}
+\begin{itemize}
+  \item We fixed the multiple locations where this error was in the
+  manuscript.
+\end{itemize}
+
+\comment{Table 1 and beyond: These tables are tedious. Log plots of
+errors make understanding convergence so much easier.}
+\begin{itemize}
+  \item While we agree that log-log plots for a fixed time step size
+  would neatly demonstrate the convergence rates, this is not
+  the case for the adaptive time stepping results.  We want the readers
+  to be able to compare the amount of CPU time required to achieve a
+  desired accuracy using a fixed versus an adaptive time step size.
+
+  \item Moreover, for a fixed time step size, we want to report both the
+  CPU time, the error in area, and the error in length, and the error in
+  position for the relaxation flow.  Combining all these lines for all
+  the different time integrators in a log-log plot would also be
+  tedious.
+\end{itemize}
+
+\comment{Table 5-9. There is too much content in the captions of these
+tables. Some is redundant and should be omitted while some should be
+moved to the discussion.}
+\begin{itemize}
+  \item We like to repeat information in the caption that can also be
+  found in the text.  This allows readers to quickly understand the
+  information that is presented in figures and tables without having to
+  search through the text which, at times, is on different pages.
+\end{itemize}
+
+\comment{pg 18, first bullet. It makes no sense that 6,000 fixed time
+steps gives the same number of digits as 30,000 adaptive time steps. Is
+this a typo?}
+\begin{itemize}
+  \item While this seems counterintuitive, this results are correct.
+  The reason is that with a fixed time step size, almost no error is
+  committed for the entire simulation, except when the vesicle passes
+  through the constriction.  However, with an adaptive time step size, a
+  much larger time step is taken when the vesicle is not in the
+  constriction, but an extremely small time step size is required when
+  the vesicle passes through the constriction.
+
+  \item The net result is that first-order adaptive time stepping
+  requires more time steps than first-order fixed time stepping.  This,
+  however, is not the case for second-order which further justifies our
+  efforts to form second- and higher-order results.
+
+  \item We have clarified this in the text.
+\end{itemize}
+
+\comment{Figure 6. Again, the caption is very long.}
+\begin{itemize}
+  \item Again, we like to repeat information in the caption and the
+  text.
+\end{itemize}
+
+\comment{pg 23, last bullet. In $3d$, the use of length and area become
+volume and surface area. Are these quantities readily computable with
+the accuracy necessary to choose the time step?}
+\begin{itemize}
+  \item Yes they are.  In $3D$, we use a spherical harmonic
+  representation which amends itself easily to computing the surface
+  area and volume.  This is now discussed in the text.
+\end{itemize}
+
+\comment{pg 24-25 the SDC sweeps described here look like procedures for
+stepping from $[t_{n}, t_{n+1}]$ where typically SDC is described by
+sub-stepping between quadrature nodes in $[t_{n}, t_{n+1}]$ (often
+denoted $t_{m}$).  Also, one of the novel things about this method is
+the mixing of terms both implicit and explicit and from SDC iteration k
+and $k+1$ (or here tilde and not tilde). This should be emphasized in
+the description.}
+\begin{itemize}
+  \item We have emphasized that we are using substepping in Section A.1.
+  \item We mentioned that we are using first-order IMEX, which, by
+  definition, has a mixture of implicit and explicit terms.  We also
+  cite our previous paper which was the first to describe the IMEX
+  method that we use.
+\end{itemize}
+
+
+\end{document}

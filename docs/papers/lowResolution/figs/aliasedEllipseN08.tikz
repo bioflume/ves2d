@@ -1,0 +1,47 @@
+\begin{tikzpicture}[scale=0.6]
+
+\begin{axis}[
+  xmin = -4,
+  xmax = 4,
+  xtick = {-4,-2,0,2,4},
+%  xlabel = {Number of Time Steps},
+  ymin = 1.0e-2,
+  ymax = 1.0e-0,
+  ytick = {1e-2,1e-1,1e0},
+%  yticklabels = {$10^{-4}$,$10^{-3}$,$10^{-2}$,$10^{-1}$},
+  ymode = log,
+%  ylabel = {Error},
+%  ylabel style = {yshift = 10pt},
+%  legend style = {font=\small},
+%  legend entries = {no fixes ($N=64$,fix area and length,reduce aliasing,both},
+%  legend style = {draw=none},
+  ]
+
+% "Exact" single-layer potential
+\addplot [color=black,solid,line width=2] table{
+-3.0000e+00 1.8265e-02
+-2.0000e+00 4.4583e-02
+-1.0000e+00 2.5781e-01
+0.0000e+00 7.2810e-02
+1.0000e+00 2.5781e-01
+2.0000e+00 4.4583e-02
+3.0000e+00 1.8265e-02
+};
+
+% No anti-aliasing; Yes shape correct
+\addplot [color=red,only marks,mark=*] table{
+-3.0000e+00 2.0166e-02
+-2.0000e+00 4.4357e-02
+-1.0000e+00 2.5199e-01
+0.0000e+00 6.9478e-02
+1.0000e+00 2.5199e-01
+2.0000e+00 4.4357e-02
+3.0000e+00 2.0166e-02
+};
+
+
+\end{axis}
+
+
+\end{tikzpicture}
+

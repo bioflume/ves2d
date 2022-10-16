@@ -1,0 +1,380 @@
+\documentclass[12pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath,amsfonts,amssymb,stmaryrd}
+\usepackage{color}
+\usepackage{enumitem}
+\newcommand{\comment}[1]{{\color{blue} #1}}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\newcommand{\note}[1]{{\color{green} #1}}
+\newcommand{\grad}{{\triangledown}}
+\newcommand{\nn}{{\mathbf{n}}}
+\newcommand{\sdc}{{\mathrm{sdc}}}
+\newcommand{\vv}{{\mathbf{v}}}
+\newcommand{\xx}{{\mathbf{x}}}
+\newcommand{\yy}{{\mathbf{y}}}
+\newcommand{\DD}{{\mathcal{D}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+
+\title{Revisions to: Adaptive Time Stepping for \\ Vesicle Suspensions}
+\author{Bryan Quaife and George Biros}
+
+\begin{document}
+
+\maketitle
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Major changes in this revision}
+Here we provide an itemized summary of the major changes between the
+previous and current version of the manuscript.
+\begin{itemize}
+  \item We have reduced the number of Gauss-Lobatto points so that the
+  quadrature formula is as small as possible.  For example, we only use
+  $p=2$ Gauss-Lobatto points when doing a single SDC iteration which is
+  sufficient to guarantee second-order accuracy.
+  \item We do a new convergence study of the relaxation example.  The
+  time horizon is increased, and, therefore, we are able to take much
+  larger time step sizes.  We now observe first- through third-order
+  convergence.
+  \item We have added symbols to all the plots that originally required
+  color to distinguish the different curves.  Therefore, the plots are
+  now able to read in black and white.
+  \item Other changes are described in detail below, and we have also
+  carefully read the manuscript and corrected typos.
+\end{itemize}
+
+Several other changes that the reviewers discussed are described in
+the sections below.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Response to reviewer 1}
+
+\comment{The paper has now significantly improved, an advantage
+concerning error tolerance and computational time could be demonstrated
+compared to the previous approach of the authors.  However, I'm still
+not completely convinced with the conclusions.  Fig. 9 and Fig 10
+essentially demonstrate that the error increases over time by using the
+adaptive strategy.  This at least should be commented on and other used
+approaches mentioned, which correct e.g. the inextensibility constraint
+in each time step:\\
+J. Beaucourt, F. Rioual, T. Seon, T. Biben, C. Misbah, Steady to
+unsteady dynamics of a vesicle in a flow, Phys. Rev. E 69 (2004) 011906
+\\
+T. Biben, C. Misbah, Tumbling of vesicles under shear flow within an
+advected-field approach, Phys. Rev. E 67 (2003) 031908 \\
+S. Aland, S. Egerer, J. Lowengrb, A. Voigt, Diffuse interface models of
+locally inextensible vesicles in a viscous flow, J. Comput. Phys. 277
+(2014) 32\\
+and thus guarantee no accumulation of the error.}
+
+The papers referred above correct the area/length errors by adding
+artificial forces that remove any numerical simulation errors. It is
+unclear how these forces effect the dynamics of the system, especially
+for large number of vesicles. The fact that the area and length are
+preserved doesn't mean the computed dynamics is correct. Experimental
+evidence on very simple flows indicates that adding artificial terms
+is a reasonable approach. But there have been no studies of the effect
+of using such correction terms in complex geometries and concentrated
+suspensions.  Our goal is to solve the governing equations faithfully
+without using artificial forces to stabilize the equations.
+Therefore, it is essential that we control the error by adjusting the
+time step size according to the amount of error that is committed.
+
+In the revised version, we cite and discuss the suggested references,
+in addition to a fourth reference, as a potential strategy for
+controlling the error for problems with long time horizon
+simulations.\\ \\
+
+ \comment{What are the dots in the time step size graphs in Fig. 7,
+   9 and 10? What leads to the jump in the error at time approx 2 and
+   6 in the BDF schemes in Fig 10?}
+
+First, we assume that the reviewer meant Figure 11 rather than Figure 10
+(again, these numbers have changed).  The open circles indicate the time
+locations where a time step is rejected.  This is clearly stated in all
+of the appropriate captions.  The jump in the error is simply because
+too large of a time step is taken for at least one of the vesicles, and
+it commits a large amount of error.  In the right plot of Figure 11, we
+see that these times are exactly when the adaptive scheme reduces the
+time step size, as desired.  This is described further in the text of
+section {\em Couette flow}. \\ \\
+\comment{Furthermore the authors should read their manuscript carefully
+and correct typos.}
+
+The manuscript has been read carefully.  Typos that were addressed by
+Reviewer 2 and others that we found have been corrected. \\ \\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Response to reviewer 2}
+\comment{The third iteration of this paper is again an improvement on
+the previous versions in terms of correctness and clarity.
+Unfortunately, the paper is still rather unsatisfying in that the SDC
+machinery introduced seemingly has no benefit passed 2nd order.  The
+apparent inability of the authors to find a numerical example where even
+3rd order is clearly evident is blamed inexactly on either order
+reduction (which is not quantified) or solver tolerance (which is not
+adjusted).  Since there are no analytical proofs the method can achieve
+higher than 2nd order, the numerical convergence results are not
+convincing.}
+
+We have run the relaxation example with a much longer time horizon,
+larger time step sizes, and we used the LU decomposition rather than
+GMRES.  We can conclusively observe first- through third-order
+convergence.\\ \\
+\comment{The authors basically conclude that one SDC iteration is
+optimal, so one alternative would be to just present an adaptive 2nd
+order time stepper and compare it to BDF.  This would make a much more
+concise paper.  In fact, a method using p=2 Lobatto nodes and 1 SDC
+sweep should also be 2nd order and might compare even better to BDF (and
+require half the storage).  Such a method could be described as a
+predictor corrector method without even mentioning SDC.}
+
+We have reduced the number of Gauss-Lobatto points to $p=2$ when doing
+one SDC correction.  Indeed, the paper could be presented in the context
+of a predictor-corrector.  However, we would like to keep it in the SDC
+framework.  That way, as we address some of the issues this manuscript
+discusses (ie. stiffness, order reduction), we have the necessary
+framework to use SDC.  Moreover, we now observe third-order convergence
+for 2 SDC corrections with 3 Gauss-Lobatto points for the relaxation
+flow, so we require the SDC framework for this example. \\ \\
+\comment{The other alternative is to show that the SDC machinery can
+produce a higher order method (even if it is not optimal in terms of
+accuracy vs. CPU time).  I would suggest running the relaxation flow
+problem with p=3 and $n_{\sdc}=100$.  If you can't find any range of m
+where higher than 2nd order is clearly evident, then your SDC procedure
+is defective.}
+
+We have run the relaxation flow with 0, 1, 2, and 3 SDC sweeps with
+larger time step sizes.  In all cases, the fewest number of
+Gauss-Lobatto points are used to guarantee that the quadrature order
+of accuracy is at least as large as $n_{\sdc}+1$.  We do observe
+first-, second-, and third-order convergence, but fourth-order
+convergence can not be observed.  Therefore, we did $p=3$
+Gauss-Lobatto points with 10 SDC sweeps.  Ten sweeps was enough for
+the SDC iteration to reach a fixed point ie. the correction was nearly
+zero.  We still can not conclusively observe fourth-order convergence
+as there is not enough room before we reach the minimum achievable
+error (due to the ill-conditioning of the operator).  However, we are
+now pleased that we are able to achieve third-order convergence for
+such a stiff set of governing equations. \\ \\ \comment{p1: The term
+  ``textbook" to describe fully implicit SDC seems out of place since
+  I am aware of no textbook that includes SDC methods.}
+
+The word ``textbook" has been removed \\ \\
+\comment{p3: The citation 17 has nothing to do with SDC so it should be
+removed}
+
+This has been removed at all instances. \\ \\
+\comment{p3: 2nd to last line ``only" seems odd here}
+
+This sentence has been rephrased. \\ \\
+\comment{p4: last line ``SDC correction" is redundant}
+
+This has been fixed at all instances. \\ \\
+\comment{p5: first line of last paragraph ``interporetation"}
+
+Fixed \\ \\
+\comment{p5: 3rd to last line ``have been show"}
+
+Fixed. \\ \\
+\comment{p5: Quoting Thm 2.1 doesn't add much to the paper, particularly
+because the notation is so obtuse that it is almost impossible to
+understand.  It is not clear what $\phi$ or $\phi_m$ means.  Also, there
+is a seeming contradiction between this Thm and the work of Christlieb,
+et. al., Mathematics of Computation, v 79, where they show that using
+higher-order Runge-Kutta methods for the correction yields the expected
+increase in accuracy only in special cases.  I think it is sufficient
+here to just state that using a first order discretization of the
+correction equation raises the order by one.}
+
+We have simplified the presentation and only stated the result for
+first-order corrections.  This makes the results consistent with the work of
+Christlieb et.~al. \\ \\
+\comment{p6: middle of page.  When describing the operator notation,
+using $N$ and $N+1$ in the subscript confused me since N is the number
+of tracker particles.  Using m would be better.  Also, you could add $N$
+and $M$ to the table of variables}
+
+Using $N$ was typo.  We now use $m$ to indicate a discretization point
+in time.  $N$ is reserved for the number of points per vesicle and $M$
+is the total number of vesicles. \\ \\
+\comment{p7: Last paragraph.  I can't tell if $n_{\sdc}$ includes the
+predictor.  For example, a first order predictor and 3 additional SDC
+sweeps should give a 4th order method.  On page 9 it is stated the
+$n_{\sdc}+1$ is the expected order of convergence.}
+
+$n_{\sdc}$ does NOT include the predictor step.  There was a typo on the
+end of page 7 regarding the convergence order.  This has been corrected.
+This is now consistent with the statement on page 9 and the {\em
+Complexity Estimates}\\ \\
+\comment{p8: First paragraph (or elsewhere).   You might mention that
+IMEX Runge-Kutta methods also suffer from order reduction (see e.g. the
+work of S. Boscarino)}
+
+In our previous version, we had discussed DIRK in the introduction.  We
+have increased the discussion and referenced the work of Boscarino. \\
+\\
+\comment{p8: First paragraph  ``More expensive discretizations ... are
+computationally expensive".  True.}
+
+Fixed. \\ \\
+\comment{p8: 4th bullet.  Can $\Delta t$ be linked to the distance
+between vesicles?}
+
+We could compute the Fourier symbol of two circular vesicles separated
+by a set of distances.  This would be analogous to the spectral analysis
+that is done in Veerapaneni et. al. JCP, 2009.  While this analysis
+would be useful, we do not address it in this work.  At this time, we
+avoid the trial-and-error procedure of finding a stable time step size
+by using estimates of the local truncation error and adaptivity.  The
+adaptive time stepping scheme will automatically pick time step sizes
+that give the desired accuracy. \\ \\
+\comment{p9: Using $p$ as the number of Lobatto quadrature nodes is
+confusing since in other places you use $p$ to be the order of the
+quadrature (page 7 for example).}
+
+We have kept $p$ as the number of Lobatto quadrature nodes.  We made
+sure to not use $p$ for the order of accuracy of the corresponding
+quadrature formula.
+\\ \\
+\comment{p10: Middle paragraph  ``However there is a loss of accuracy".
+This statement is not clear.}
+
+This statement has been removed.  We now compare two potential IMEX
+discretizations of the error equation.  The first is a natural extension
+of the original SDC-IMEX paper of Minion.  Unfortunately, it is not
+consistent with the inextensibility condition, so we introduce a second
+discretization. \\ \\
+\comment{p10: The steps are an endless loop.  I think you want to repeat
+2-5 $n_{\sdc}$ times.}
+
+Fixed \\ \\
+\comment{p11: First bullet:  The way in which you present the SDC
+algorithm would imply that computing the residual is simply applying the
+quadrature rule to the previously computed rhs values.  So the cost
+would be much less.}
+
+Given a vesicle configuration $\xx$, its velocity can not be computed
+from the iteration that was used to form $\xx$.  The reason is that the
+iteration uses an IMEX discretization such as
+\begin{align*}
+  \frac{\xx^{m+1} - \xx^{m}}{\Delta t} = \vv(\xx^{m};\xx^{m+1}),
+\end{align*} 
+while the true velocity required for the residual is
+\begin{align*}
+  \frac{d\xx}{dt} = \vv(\xx;\xx)
+\end{align*}
+Applying $\vv$ requires a single matrix-vector multiplication.  This has
+been made clear in the manuscript. \\ \\
+\comment{p11: 2nd bullet.  One would think that as the solution gets
+more accurate with each SDC iteration the number of GMRES iterations
+required should decrease.  Is this not observed?}
+
+It is true that as the number of SDC iterations increases, the unknown
+function ($\delta_{\xx}$ and $\delta_{\sigma}$) become smaller.
+However, the norm of the right-hand side that is passed to GMRES also
+decreases as the number of SDC iterations increases.  Therefore, we do
+not observe a decrease in the number of GMRES iterations at each SDC
+sweep. 
+
+What does have a significant effect on the GMRES iterations is the time
+step size (small $\Delta t$ results in fewer GMRES iterations), and the
+current Gauss-Lobatto point.  The reason the Gauss-Lobatto point has an
+effect is that the preconditioner is only constructed at the first
+Gauss-Lobatto point and then used for all future Gauss-Lobatto points.
+Therefore, there is a slight increase in the number of GMRES iterations
+as a solution is formed at each subsequent Gauss-Lobatto point.  This
+is now further discussed in the section {\em Preconditioning}.  \\ \\
+\comment{p12: When a time step is rejected,  the solution at SDC nodes could
+interpolated to the new nodes rather than starting over with a
+predictor.}
+
+We agree that this could be done.  We make a note of this in the
+manuscript, but it has not been implemented. \\ \\
+\comment{p13: Your choice of p is still overkill in terms of formal
+accuracy.  For example, choosing p=2 and $n_{\sdc}=1$ should give 2nd
+order and p=3 and $n_{\sdc}=3$ give 4th order.  You should justify why
+you are using more Lobatto nodes than necessary for the order.}
+
+We now take $p=2$ Gauss-Lobatto points for 0 (first-order), and 1
+(second-order) SDC iterations.  We now take $p=3$ Gauss-Lobatto points
+for 2 (third-order), and 3 (fourth-order) SDC iterations.  We now take
+$p=4$ Gauss-Lobatto points for 4 (fifth-order) SDC iterations.  Compared
+to our previous results, this caused more time steps to be rejected when
+using adaptive time stepping.  Therefore, we have decreased our safety
+parameter $\alpha$ to $0.9$ which results in an acceptable number of
+rejected time steps.\\ \\
+\comment{p14: Second full paragraph.  What you say about temporal errors
+dominating is not quite true as shown by your numerical examples.  It is
+in fact not possible to see the temporal errors in your examples on page
+15 with order more than 2 because of the either spatial error or error
+from the GMRES tolerance.  This is really unfortunate since the whole
+novelty here is that SDC allows higher order accuracy.}
+
+We agree with the reviewer that the temporal error does not dominate in
+all of our results.  We have experimented with smaller GMRES tolerances,
+but ill-conditioning and round-off error due to the high-order spatial
+derivatives results in GMRES stagnating around $1$E$-10$.  Therefore, we
+have increased the time step size for the relaxation example and used
+the LU decomposition rather than GMRES.  With these changes, up to
+third-order convergence can be observed. \\ \\
+\comment{p14: It would be nice to use different symbols for the data
+points in the Fig. 2 so that they can be differentiated in black and
+white for those of us who like to print papers to read them carefully.
+}
+
+Marks have been added to Figure 2 (from the last submission).  This was
+also done for the other plots that have lines that can not be
+distinguished in black and white.
+\\ \\
+\comment{p15: As mentioned above, it is sad that for this simple
+example the higher-order accuracy in time is not better demonstrated
+either be choosing smaller m or making the GMRES accuracy better.  The
+explanation on page 14 says that using bigger time steps will result in
+order reduction, is that actually true?  Why then the wonderful
+convergence in $e_L$?  I think this is the biggest shortcoming in the
+paper which could be remedied simply by running more values of m and
+decreasing the GMRES tolerance.  Otherwise it is simply not clear if the
+SDC methods are ``Higher Order" as the first line of  the abstract
+proclaims.}
+
+We have experimented with smaller GMRES tolerances, but this does not
+help because of conditioning issues.  We now obtain third-order
+convergence with a longer time horizon, larger time step sizes, and an
+LU solver rather than GMRES. \\ \\
+\comment{p15: The variable $m$ is used throughout as the substep number
+and here it is the number of time steps (although this is never actually
+stated in the text as far as I can tell).  Perhaps $N_t$?}
+
+As suggested, $m$ has been changed to $N_t$ and added to Table 1 \\ \\
+\comment{p17: Table 6.  How is it that $n_{\sdc}=1$ is outperforming
+BDF?  BDF has better $e_a$ errors for the same CPU and since the
+convergence rate of BDF is closer to 2, it would do even better for
+larger m.}
+
+When we are comparing two methods, we look at the maximum of the errors
+in length and area over all of the vesicles.  For BDF, it is the error
+in length that dominates, but for $n_{\sdc}=1$, it is the error in area.
+We now reference the Figure which compares the error vs CPU time and
+shows that in certain regimes, BDF is outperformed by $n_{\sdc}=1$, even
+with a fixed time step size.
+\\ \\
+\comment{p18: Fig 4 is too small to see.  The middle figure has only
+one y axis label so that the magnitude of the Error is not possible to
+determine.}
+
+The size of the figures are now the same as Figure 7.  An additional
+tick was added to the Error vs.~time plot \\ \\
+\comment{p18: Fig 6 is too small and too redundant.}
+
+Two of the figures are removed and the other two are doubled in size \\
+\\
+\comment{p20: middle of page ``that is commit"}
+
+Fixed 
+
+\end{document}

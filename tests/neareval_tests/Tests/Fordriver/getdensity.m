@@ -1,0 +1,9 @@
+function [f1 f2] = getdensity(N)
+t = (0:N-1)*2*pi/N;
+f1 = @(t)(exp(cos(t)));
+f2 = @(t)(exp(sin(t)));
+%f1 = @(t) ones(size(t));
+%f2 = @(t) ones(size(t));
+t = [0:N-1]*2*pi/N;
+f1 = f1(t);
+f2 = f2(t);

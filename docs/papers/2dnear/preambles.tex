@@ -1,0 +1,105 @@
+%\usepackage[sort,compress]{cite} % this doesn't work with elsevier styles
+\usepackage{palatino}
+\usepackage[usenames]{color}
+\usepackage{epsfig}
+\usepackage[fleqn,reqno]{amsmath}
+\usepackage{amsfonts,amsthm,bm}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{stmaryrd}
+%\usepackage{subfigure, appendix}
+\usepackage{subfigure}
+\usepackage[titletoc]{appendix}
+\usepackage{tabularx,booktabs}
+\usepackage{graphics,caption}
+\usepackage{fancybox}
+\usepackage[top=1.2in,bottom=1.2in,left=1in, right=1in]{geometry}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{algorithmic,algorithm}
+\usepackage{paralist}
+\usepackage{ifthen}
+\usepackage{enumitem}
+\usepackage{tikz,pgfplots,filecontents}
+\usepackage{mdframed}
+%\usepackage{showkeys}
+%To see the labels for now.  Will remove later
+
+%%%%%%  pdftex  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[pagebackref=false,bookmarks=false]{hyperref} 
+
+\definecolor{dblue}{rgb}{0.03,0.3,0.62}
+\definecolor{dorange}{rgb}{1,0.55,0}
+
+\hypersetup{
+  bookmarksnumbered=true,
+  bookmarksopen=false,
+  hypertexnames=false,      
+  breaklinks=true,          
+  unicode=false,
+  pdffitwindow=true,        
+  pdfnewwindow=true,        
+  colorlinks=true,         
+  linkcolor=dblue,
+  anchorcolor=red,
+  citecolor=dorange,
+  filecolor=magenta,
+  urlcolor=dblue,
+  pdfstartview = FitH,
+  %pdftitle = {},
+  %pdfsubject = {Subject},
+  pdfkeywords = {},
+  pdfcreator = {LaTeX with hyperref package}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\renewcommand{\algorithmiccomment}[1]{
+%        \settowidth\textLen{\footnotesize\tt// #1}
+%        \setlength\resLen{\the\commLen}
+%        \addtolength\resLen{-\the\textLen} 
+%        \hfill{\footnotesize\tt// #1}\hspace{\the\resLen}}
+
+\definecolor{sblue}{cmyk}{0.98,0.13,0,0.43} % section blue
+\definecolor{sblue}{cmyk}{0.98,0.13,0,0.43} % section blue
+\newcommand{\csblue} {\color{sblue}}  %\renewcommand{\csblue}{\color{black}}
+\newcommand{\cblack} {\color{black}}
+\newcommand{\sblue}[1]{{\color{sblue} #1}}
+
+\newcommand{\todo}[1]{ \fbox{{\bf TODO:} \color{red} #1}}
+\newcommand{\comment}[1]{\sblue{#1}}
+\def\gap{\hspace*{.2in}}
+\newcommand{\half}[1]{\frac{#1}{2}}
+\newcommand{\bigO}{\mathcal{O}}
+\newcommand{\Div}{\mathrm{Div}}
+\newcommand{\p}{\partial}
+\newcommand{\avg}[1]{\left< #1 \right>}
+
+
+%Bryan's new commands
+\newcommand{\xx}{{\mathbf{x}}}
+\newcommand{\yy}{{\mathbf{y}}}
+\newcommand{\ff}{{\mathbf{f}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+\newcommand{\BB}{{\mathcal{B}}}
+\newcommand{\DD}{{\mathcal{D}}}
+\newcommand{\EE}{{\mathcal{E}}}
+\newcommand{\TT}{{\mathcal{T}}}
+\newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\cc}{{\mathbf{c}}}
+\newcommand{\uu}{{\mathbf{u}}}
+\newcommand{\vv}{{\mathbf{v}}}
+\newcommand{\rr}{{\mathbf{r}}}
+\newcommand{\nn}{{\mathbf{n}}}
+\newcommand{\eeta}{{\boldsymbol\eta}}
+\newcommand{\zzeta}{{\boldsymbol\zeta}}
+\newcommand{\ttau}{{\boldsymbol\tau}}
+\newcommand{\ssigma}{{\boldsymbol\sigma}}
+\newcommand{\llambda}{{\boldsymbol\lambda}}
+\newcommand{\grad}{{\triangledown}}
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+%\renewcommand{\algorithmiccomment}[1]{\hfill \texttt{\% #1}}
+\renewcommand{\algorithmiccomment}[1]{\hfill{\footnotesize\tt #1}}
+
+
+\newcolumntype{C}{>{\centering\arraybackslash} m{2.5cm}}

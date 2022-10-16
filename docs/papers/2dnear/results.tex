@@ -1,0 +1,821 @@
+We discuss the behaviour of the different time integrators for several
+bounded and unbounded vesicle suspensions.  Because of the
+incompressibility of the fluid and the inextensibility of the vesicles,
+the area enclosed by a vesicle and its total length remain fixed.
+However, due to numerical errors, these quantities change throughout
+simulations.  Penalty methods are often used to enforce maintain the
+vesicles length, but these techniques change the physics of the problem.
+In our formulation, no such penalty method is used and the
+inextensibility constraint is enforced algebraically
+using~\eqref{e:inextensibility}.  Even though the length and area of the
+vesicles are low-order moments of the shape, we have experimentally
+found that they are good estimates for the error of our numerical
+methods.  Therefore, we use the relative errors in area and length to
+study the convergence rates of our different time integrators.  We also
+report minimum distances between vesicles and solid walls to demonstrate
+convergence, but without an exact solution, we must used an over-refined
+solution as the exact solution.  The experiments we perform are now
+summarized.
+
+
+\begin{itemize}
+\item{\bf Shear Flow} 
+(Tables~\ref{t:shear:RA65}--\ref{t:shear:RA99} and
+Figure~\ref{f:shear:reducedAreas}): Here we consider the classic
+problem of two vesicles in the shear flow $\uu = (y,0)$ with the left
+vesicle slightly elevated from the right vesicle.  We study the effect
+of the reduced area and the viscosity contrast on the dynamics.  Then,
+we compare the three different stable time integrators we have
+discussed: first-order with explicit and semi-implicit inter-vesicle
+interactions and second-order with semi-implicit inter-vesicle
+interactions.  All three methods converge at the expected rate.
+Moreover, if we use first-order time stepping, semi-implicit and
+explicit inter-vesicle interactions give similar errors.  Therefore,
+for first-order time stepping, if the time step is small enough, using
+explicit inter-vesicle interactions is appropriate since the
+resulting linear system is easier to solve.
+
+\item{\bf Taylor-Green Flow}
+(Table~\ref{t:taylorGreen:convergence} and
+Figures~\ref{f:taylorGreen:collision}--\ref{f:taylorGreen:summary}):
+Here we look at the stability of the semi-implicit inter-vesicle
+interactions.  For a short time horizon, we quantify its stability.  We
+do a convergence study and also discuss a significant difference in the
+behaviour of the first- and second-order time integrators.
+
+\item {\bf Extensional Flow}
+(Table~\ref{t:extensional:convergence} and
+Figure~\ref{f:extensional:summary}): We consider two vesicles placed
+symmetrically in an extensional flow.  We show that the simulation is
+unstable without near-singular integration.  A convergence study shows
+that we achieve the desired first- and second-order convergence.  We
+also report CPU times to demonstrate that we are achieving the expected
+complexity.
+
+\item{\bf Stenosis} 
+(Table~\ref{t:stenosis:errors}--\ref{t:stenosis:gapSize} and
+Figure~\ref{f:stenosis:snaps}): We consider a single vesicle passing
+through a constriction in a confined flow.  We are able to take a
+vesicle that is over two times taller than a similar simulation
+in~\cite{rah:vee:bir}.  A convergence study on the errors in area and
+length as well as the minimium distance between the vesicle and solid
+wall show that we achieve second-order accuracy.
+
+\item{\bf Couette Apparatus}
+(Figures~\ref{f:couetteLow}--\ref{f:couetteHigh}): High concentration
+flows are demonstrated with two Couette simulations, one with a moderate
+volume fraction and one with a high volume fraction.  We compare first-
+and second-order time stepping with the moderate volume fraction and
+observe a similar behaviour in the errors that is described in the
+Taylor-Green example.  For the larger volume fraction, we report results
+for first- and second-order time stepping which both require
+semi-implicit inter-vesicle interactions for the chosen time step size
+to be stable.
+
+\end{itemize}
+
+Other details of our results include:
+\begin{itemize}
+\item The parameters we investigate are the number of points per
+vesicle, $N$, the number of vesicles, $M$, the number of points per
+solid wall, $N_{\mathrm{wall}}$, the time step size, $\Delta t$, the
+viscosity contrast, $\nu$, and the time integrator.
+
+\item An important dimensionless quantity is the vesicle's reduced
+area: the ratio of its area to the area of a circle of the same
+perimeter.  Because of the incompressibility and inextensibility
+constraints, the reduced area should remain constant.  Intuitively, the
+reduced area indicates how much the vesicle can deform.  The closer the
+reduced area is to its maximum value of one, the less it is able to
+deform.  We are particularly interested in vesicles of reduced area
+0.65. This value results in shapes that resemble (two-dimensional
+approximations of) red blood cells.
+
+\item All vesicle-to-vesicle and vesicle-to-wall interactions are
+accelerated with the FMM.  The wall-to-wall iterations are precomputed
+and stored and the wall-to-vesicle interactions are computed with the
+direct method which results in a $\bigO(MNN_{\mathrm{wall}})$
+calculation.  For flows with viscosity contrast, the double-layer
+potential is also evaluated with the direct method resulting in a
+$\bigO(M^{2}N^{2})$ calculation.  Fast algorithms for these
+interactions are under consideration.
+
+\item We precondition all the linear systems with the block-diagonal
+preconditioner.  We have observed that this results in a
+mesh-independent solver with semi-implicit interactions.
+
+\item We have experimented with different GMRES tolerances.  If it is
+too large, second-order convergence is difficult to achieve.  If it is
+to small, the condition number of the block-diagonal preconditioner
+makes the tolerance unachievable.  Experimentally we have found that
+$10^{-12}$ is a good compromise.
+
+\item The bending modulus sets the time scale.  We let $\kappa_{b}=0.1$
+for all simulations.
+
+\item All simulations are preformed in MATLAB on a six-core 2.67GHz
+Intel Xeon processor with 24GB of memory. 
+\end{itemize}
+
+\paragraph{Estimation of the overall complexity}
+Here we summarize the cost of the most expensive parts of the overall
+algorithm.  Recall that we are using a mesh-independent preconditioned
+GMRES iteration.  Therefore, the cost can be summarized by the time
+required to preform one matrix-vector product.
+\begin{itemize}
+  \item{\em {Vesicle-vesicle interactions:}}
+    Using the FMM, the single-layer potential requires $\bigO(MN)$
+    operations. 
+
+  \item{\em {Viscosity contrast:}}
+    Since we do not have a fast algorithm to compute the double-layer
+    potential, viscosity contrast requires $\bigO(M^{2}N^{2})$
+    operations.  However, this is just a shortcoming of the specific
+    implementation, not a theoretical one.
+
+  \item{\em {Confined flows:}}
+    Wall-to-wall interactions are precomputed and stored.
+    Wall-to-vesicle interactions require $\bigO(MNN_{\mathrm{wall}})$
+    operations and vesicle-to-wall interactions require
+    $\bigO(MN+N_{\mathrm{wall}})$ operations using the FMM.
+
+  \item{\em {Near-singular integration:}}
+    Our near-singular integration complexity is summarized in
+    Section~\ref{s:near-singular}.  The upsampling results in an
+    increase in the above complexities.  For instance, vesicle-vesicle
+    interactions with the FMM require $\bigO(MN^{3/2}+MN)$ operations
+    and vesicle-to-wall interactions require
+    $\bigO(MN^{3/2}+N_{wall})$.  However, since we have not implemented
+    a fast summation for the double-layer potential, flows with a
+    viscosity contrast require a $\bigO(M^{2}N^{5/2})$ calculation.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Shear Flow}
+Here we consider two vesicles in the shear flow $(y,0)$.  We initially
+place the left vesicle's center slightly above the x-axis and place the
+right vesicle's center exactly on the x-axis.  Initially, we expect the
+right vesicle to undergo tank-treading~\cite{kantsler,misbah2006} while
+the other vesicle will travel from left to right.  Here we study the
+effect of the reduced area and the viscosity contrast on the dynamics
+and errors.  We expect vesicles with larger viscosity contrast and
+larger reduced areas to behave more like rigid bodies.  In particular,
+we expect them to come closer to one another.
+Figure~\ref{f:shear:reducedAreas} indicate that a higher viscosity
+contrast results in the vesicles coming closer together.  Moreover, for
+larger reduced areas, the effect of the viscosity contrast is less
+pronounced.  We also see that vesicles with a larger reduced area come
+closer together.
+
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{m{1cm}CCCCC}
+%\ifInputs
+%$\nu=1$ &
+%\input{figs/shearOrder1RA1viscCont1Time1.tikz} &
+%\input{figs/shearOrder1RA1viscCont1Time2.tikz} &
+%\input{figs/shearOrder1RA1viscCont1Time3.tikz} &
+%\input{figs/shearOrder1RA1viscCont1Time4.tikz} &
+%\input{figs/shearOrder1RA1viscCont1Time5.tikz}
+%\fi
+%\end{tabular}
+%\begin{tabular}{m{1cm}CCCCC}
+%\ifInputs
+%$\nu=4$ &
+%\input{figs/shearOrder1RA1viscCont4Time1.tikz} &
+%\input{figs/shearOrder1RA1viscCont4Time2.tikz} &
+%\input{figs/shearOrder1RA1viscCont4Time3.tikz} &
+%\input{figs/shearOrder1RA1viscCont4Time4.tikz} &
+%\input{figs/shearOrder1RA1viscCont4Time5.tikz}
+%\fi
+%\end{tabular}
+%\begin{tabular}{cc}
+%\ifInputs
+%\input{figs/shearRA1GapSizeOrder1.tikz} &
+%\input{figs/shearRA1GapSizeOrder2.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{Two vesicles of reduced Area $0.65$ are submerged in a shear
+%flow.  The vesicles in the top row have no viscosity contrast and the
+%vesicles in the second row have a viscosity contrast of 4.  The bottom
+%plots show the distance between the vesicles for both viscosity
+%contrasts with first- and second-order time stepping.  Implicit
+%vesicle-vesicle interactions are used for all the simulations.  The gap
+%sizes of the first- and second-order methods differ by 1.7\% for $\nu=1$
+%and by 2.3\% for $\nu=4$.}{f:shear:reducedArea1} 
+%\end{figure}
+%
+%
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{m{1cm}CCCCC}
+%\ifInputs
+%$\nu=1$ &
+%\input{figs/shearOrder1RA2viscCont1Time1.tikz} &
+%\input{figs/shearOrder1RA2viscCont1Time2.tikz} &
+%\input{figs/shearOrder1RA2viscCont1Time3.tikz} &
+%\input{figs/shearOrder1RA2viscCont1Time4.tikz} &
+%\input{figs/shearOrder1RA2viscCont1Time5.tikz}
+%\fi
+%\end{tabular}
+%\begin{tabular}{m{1cm}CCCCC}
+%\ifInputs
+%$\nu=4$ &
+%\input{figs/shearOrder1RA2viscCont4Time1.tikz} &
+%\input{figs/shearOrder1RA2viscCont4Time2.tikz} &
+%\input{figs/shearOrder1RA2viscCont4Time3.tikz} &
+%\input{figs/shearOrder1RA2viscCont4Time4.tikz} &
+%\input{figs/shearOrder1RA2viscCont4Time5.tikz}
+%\fi
+%\end{tabular}
+%\begin{tabular}{cc}
+%\ifInputs
+%\input{figs/shearRA2GapSizeOrder1.tikz} &
+%\input{figs/shearRA2GapSizeOrder2.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{Two vesicles of reduced Area $0.99$ are submerged in a shear
+%flow.  The vesicles in the top row have no viscosity contrast and the
+%vesicles in the second row have a viscosity contrast of 4.  The bottom
+%plots show the distance between the vesicles for both viscosity
+%contrasts with first- and second-order time stepping.  Implicit
+%vesicle-vesicle interactions are used for all the simulations.  The gap
+%sizes of the first- and second-order methods differ by 2.2\% for $\nu=1$
+%and by 1.2\% for $\nu=4$.}{f:shear:reducedArea2}
+%\end{figure}
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{m{1cm}CCCCC}
+\ifInputs
+$\nu=1$ &
+\input{figs/shearOrder1RA1viscCont1Time1.tikz} &
+\input{figs/shearOrder1RA1viscCont1Time2.tikz} &
+\input{figs/shearOrder1RA1viscCont1Time3.tikz} &
+\input{figs/shearOrder1RA1viscCont1Time4.tikz} &
+\input{figs/shearOrder1RA1viscCont1Time5.tikz} \\
+$\nu=4$ &
+\input{figs/shearOrder1RA1viscCont4Time1.tikz} &
+\input{figs/shearOrder1RA1viscCont4Time2.tikz} &
+\input{figs/shearOrder1RA1viscCont4Time3.tikz} &
+\input{figs/shearOrder1RA1viscCont4Time4.tikz} &
+\input{figs/shearOrder1RA1viscCont4Time5.tikz} \\
+$\nu=1$ &
+\input{figs/shearOrder1RA2viscCont1Time1.tikz} &
+\input{figs/shearOrder1RA2viscCont1Time2.tikz} &
+\input{figs/shearOrder1RA2viscCont1Time3.tikz} &
+\input{figs/shearOrder1RA2viscCont1Time4.tikz} &
+\input{figs/shearOrder1RA2viscCont1Time5.tikz} \\
+$\nu=4$ &
+\input{figs/shearOrder1RA2viscCont4Time1.tikz} &
+\input{figs/shearOrder1RA2viscCont4Time2.tikz} &
+\input{figs/shearOrder1RA2viscCont4Time3.tikz} &
+\input{figs/shearOrder1RA2viscCont4Time4.tikz} &
+\input{figs/shearOrder1RA2viscCont4Time5.tikz}
+\fi
+\end{tabular}
+\begin{tabular}{cc}
+\ifInputs
+\input{figs/shearRA1GapSizeOrder1.tikz} &
+\input{figs/shearRA2GapSizeOrder1.tikz}
+\fi
+\end{tabular}
+\mcaption{Two vesicles are submerged in a shear flow.  In the first and
+second rows, the vesicles have reduced area 0.65, and in the third and
+fourth rows, the vesicles have reduced area 0.99.  Each simulation is
+done with viscosity contrasts $\nu=1$ and $\nu=4$.  The bottom plots
+show the distance between the vesicles for both reduced areas and both
+viscosity contrasts.  Comparing semi-implicit inter-vesicle interactions
+with both first- and second-order time stepping, the distance between
+the vesicles never differ by more than 2.2\% for both reduced areas and
+both viscosity contrasts.}{f:shear:reducedAreas} 
+\end{figure}
+
+We now do a convergence study for both values of the reduced area and
+viscosity contrast.  We vary the number of points per vesicle, the
+number of time steps, and the time integrator.  We report the errors in
+area and length at the time horizon $t=12$ in Tables~\ref{t:shear:RA65}
+and~\ref{t:shear:RA99}.  First, we see that first- and second-order
+convergence is achieved for all combinations of reduced area and
+viscosity contrast.  Second, semi-implicit inter-vesicle interactions
+do not improve the accuracy of first-order time stepping, but, we will
+see later that this time integrator is more stable.
+
+\begin{table}[htp]
+\centering
+\begin{tabular}{ccc|cc|cc} 
+Time & & & \multicolumn{2}{c|}{$\nu=1$} & \multicolumn{2}{c}{$\nu=4$} \\
+Integrator   & $N$ & $\Delta t$ & $e_{A}$   & $e_{L}$   & 
+$e_{A}$   & $e_{L}$ \\ 
+\hline
+
+Explicit (1) & 32  & 0.04       & $6.73e-2$ & $5.21e-2$ &
+$4.07e-2$ & $2.41e-2$ \\ 
+
+Explicit (1) & 64  & 0.02       & $3.36e-2$ & $2.62e-2$ &
+$2.02e-2$ & $1.20e-2$ \\ 
+
+Explicit (1) & 128 & 0.01       & $1.68e-2$ & $1.31e-2$ &
+$1.01e-2$ & $5.99e-2$ \\ 
+\hline
+
+Implicit (1) & 32  & 0.04       & $6.73e-2$ & $5.21e-2$ &
+$4.06e-2$ & $2.40e-2$ \\ 
+
+Implicit (1) & 64  & 0.02       & $3.36e-2$ & $2.62e-2$ &
+$2.02e-2$ & $1.20e-2$ \\ 
+
+Implicit (1) & 128 & 0.01       & $1.68e-2$ & $1.31e-2$ &
+$1.02-2$ & $5.98e-3$ \\ 
+\hline
+
+Implicit (2) & 32  & 0.04       & $1.59e-4$ & $3.21e-4$ &
+$2.69e-5$ & $6.33e-5$ \\ 
+
+Implicit (2) & 64  & 0.02       & $3.87e-6$ & $6.52e-5$ &
+$3.78e-6$ & $1.20e-5$ \\ 
+
+Implicit (2) & 128 & 0.01       & $2.79e-7$ & $1.47e-5$ &
+$3.85e-7$ & $2.28e-6$ 
+\end{tabular}
+\mcaption{The errors in area and length at $t=12$ for different time
+integrators applied to two vesicles of reduced area $0.65$ in a shear
+flow.  The parenthetic values are the time stepping order.  Results are
+presented for no viscosity contrast and a viscosity contrast of
+4.}{t:shear:RA65}
+
+\begin{tabular}{ccc|cc|cc} 
+Time & & & \multicolumn{2}{c|}{$\nu=1$} & \multicolumn{2}{c}{$\nu=4$} \\
+Integrator   & $N$ & $\Delta t$ & $e_{A}$   & $e_{L}$   & 
+$e_{A}$   & $e_{L}$ \\ 
+\hline
+
+Explicit (1) & 32  & 0.04       & $1.05e-1$ & $5.48e-2$ &
+$9.67e-2$ & $4.94e-2$ \\ 
+
+Explicit (1) & 64  & 0.02       & $5.15e-2$ & $2.70e-2$ &
+$4.78e-2$ & $2.45e-2$ \\ 
+
+Explicit (1) & 128 & 0.01       & $2.55e-2$ & $1.34e-2$ &
+$2.37e-2$ & $1.22e-2$ \\ 
+\hline
+
+Implicit (1) & 32  & 0.04       & $1.05e-1$ & $5.48e-2$ &
+$9.69e-2$ & $4.93e-2$ \\ 
+
+Implicit (1) & 64  & 0.02       & $5.16e-2$ & $2.70e-2$ &
+$4.77e-2$ & $2.45e-2$ \\ 
+
+Implicit (1) & 128 & 0.01       & $2.55e-2$ & $1.34e-2$ &
+$2.36e-2$ & $1.22e-2$ \\ 
+\hline
+
+Implicit (2) & 32  & 0.04       & $2.40e-5$ & $1.13e-4$ &
+$5.85e-5$ & $4.68e-5$ \\ 
+
+Implicit (2) & 64  & 0.02       & $1.65e-6$ & $1.50e-5$ &
+$7.05e-6$ & $5.86e-6$ \\ 
+
+Implicit (2) & 128 & 0.01       & $1.56e-7$ & $1.92e-6$ &
+$8.62e-7$ & $7.26e-7$ 
+
+\end{tabular}
+
+\mcaption{The errors in area and length at $t=12$ for different time
+integrators applied to two vesicles of reduced area $0.99$ in a shear
+flow.  The parenthetic values are the time stepping order.  Results are
+presented for no viscosity contrast and a viscosity contrast of
+4.}{t:shear:RA99}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Taylor-Green Flow}
+\label{s:taylorGreen}
+We consider the Taylor-Green flow $\uu = (\sin x \cos y,-\cos x \sin
+y)$ with 9 vesicles each with $N=64$ points of reduced area 0.65 placed
+inside the periodic cell $(0,2\pi)^{2}$ (left plot of
+Figure~\ref{f:taylorGreen:collision}).  We consider first-order IMEX
+Euler with both semi-implicit and explicit inter-vesicle interactions.
+We find the largest time step of both methods so that the vesicles do
+not cross before a time horizon of $T = 1$.  With explicit
+interactions, the vesicles cross if $74$ time steps are taken but not
+if $75$ time steps are taken.  However, with semi-implicit
+interactions, the simulation successfully completes even with one time
+step.  Of course the error is too large and a time step size this large
+is unreasonable.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{ccc}
+    \ifInputs
+    \input{figs/taylorGreenSnapsExplicitTime1.tikz} &
+    \input{figs/taylorGreenSnapsExplicitTime2.tikz} &
+    \input{figs/taylorGreenSnapsImplicitTime2.tikz} \\
+    &
+    \input{figs/taylorGreenSnapsExplicitTime2Zoomed.tikz} &
+    \input{figs/taylorGreenSnapsImplicitTime2Zoomed.tikz}
+    \fi
+  \end{tabular}
+\end{center}
+\mcaption{We compare first-order time stepping with explicit and
+semi-implicit inter-vesicle interactions for a time step size of 0.02
+and 64 points per vesicle with the initial configuration in the
+left-most plot.  With explicit interactions (middle plot), the vesicles
+cross after only 13 time steps.  However, with semi-implicit
+interactions (right plot), the vesicles do not cross.  The bottom plots
+show magnifications of the region where the explicit solver first
+crosses.}{f:taylorGreen:collision}
+\end{figure}
+
+For this example, we found that using explicit interactions with 75
+time steps requires approximately the same amount of CPU time as using
+semi-implicit interactions with 30 time steps.  Therefore, if one
+permits the error to be approximately 2.5 times larger, using
+semi-implicit inter-vesicle interactions is justified.
+
+We do a convergence study for first- and second-order time stepping
+with semi-implicit inter-vesicle interactions.  If these interactions
+are treated explicitly, the coarsest simulation results in the vesicles
+crossing.  We achieve the desired first-order convergence, but
+second-order convergence is not achieved at these resolutions.
+However, we ran the simulation with $\Delta t = 3.13e-4$ and $\Delta t
+= 1.56e-4$ and this is where second-order convergence is first
+observed; the error in area reduced by $4.67$ and the error in length
+reduced by $3.96$.
+
+We have also observed a qualitative difference in the
+behaviour of the errors of first- and second-order time stepping.  The
+errors of the first-order methods continue to grow throughout the
+simulation, while for second-order time stepping, the errors
+plateau.  Thus, given a fixed time step size, second-order time stepping
+can simulate longer time horizons than first-order time stepping.  We
+demonstrate this behaviour in the bottom plot of
+Figure~\ref{f:taylorGreen:summary} where we plot the errors in area and
+length for the first- and second-order time stepping.  Snapshots of the
+simulation are in the top plots of Figure~\ref{f:taylorGreen:summary}.
+
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{cc|cc|cc}
+& & \multicolumn{2}{c|}{First-order} & \multicolumn{2}{c}{Second-order} \\
+$N$ & $\Delta t$ & $e_{A}$ & $e_{L}$ & $e_{A}$ & $e_{L}$ \\
+\hline
+32  & $2e-2$ & $5.24e-2$ & $3.03e-2$ & $5.25e-4$ & $3.98e-3$ \\
+64  & $1e-2$ & $2.77e-2$ & $1.64e-2$ & $2.08e-4$ & $1.96e-3$ \\
+128 & $5e-3$ & $1.43e-2$ & $8.68e-3$ & $7.76e-5$ & $9.42e-4$ \\
+256 &$2.5e-3$& $7.24e-3$ & $4.53e-3$ & $2.73e-5$ & $4.20e-4$ \\
+%128 &$1.25e-3$ & $     $ & $       $ & $8.98e-6$ & $1.69e-4$ \\
+%256 &$6.125e-3$ & $    $ & $       $ & $2.59e-6$ & $5.91e-5$
+\end{tabular}
+\mcaption{The errors in area and length at $t=5$ for a Taylor-Green
+flow.  All runs were done with semi-implicit inter-vesicle interactions
+since explicit interactions with $N=32$ and $\Delta t = 2e-2$ results
+in crossing vesicles.}{t:taylorGreen:convergence} 
+\end{center}
+\end{table}
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{cccccc}
+    \ifInputs
+    \input{figs/taylorGreenSnapsTime1.tikz} &
+    \input{figs/taylorGreenSnapsTime2.tikz} &
+    \input{figs/taylorGreenSnapsTime3.tikz} &
+    \input{figs/taylorGreenSnapsTime4.tikz} &
+    \input{figs/taylorGreenSnapsTime5.tikz} &
+    \input{figs/taylorGreenSnapsTime6.tikz}
+    \fi
+  \end{tabular}
+  \begin{tabular}{cc}
+    \ifInputs
+    \input{figs/taylorGreenErrorsOrder1.tikz} & 
+    \input{figs/taylorGreenErrorsOrder2.tikz} 
+    \fi
+  \end{tabular}
+\end{center}
+\mcaption{The top plots show several snapshots of a Taylor-Green
+simulation with a long time horizon using second-order time stepping.
+In the bottom plots are the errors in area and length for the first- and
+the second-order time integrators.  Notice that the errors for the
+first-order method continue to grow and the simulation stops near $t=20$
+(the simulation is stopped when a 10\% error has been incurred), whereas
+the errors for the second-order method plateau and the simulation is
+able to run much longer.}{f:taylorGreen:summary} 
+\end{figure}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Extensional Flow}
+We consider two vesicles with reduced area $0.65$ symmetrically placed
+around the origin (top plots of Figure~\ref{f:extensional:summary}).
+The background velocity is given by $\uu = (-x,y)$.  We first run the
+simulation with and without near-singular integration.  We compute the
+distance between the vesicles, and the errors in area and length
+(bottom plots of Figure~\ref{f:extensional:summary}).  We see that when
+$t \approx 5$, the simulation without near-singular integration begins
+to introduce large errors in the area of the vesicles.  This indicates
+that the approximation of the single-layer potential is not adequate.
+Then, around $t \approx 12$, the vesicles are too close for the
+$N$-point trapezoid rule and the simulations fails.  This agrees with
+our error estimate from Appendix~\ref{A:AppendixA}  since for this
+simulation, an arclength term is approximately 0.24.  However, with
+near-singular integration, the simulation successfully runs to
+completion.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{ccccc}
+  \ifInputs
+  \input{figs/extensionalSnapsTime1.tikz} &
+  \input{figs/extensionalSnapsTime2.tikz} &
+  \input{figs/extensionalSnapsTime3.tikz} &
+  \input{figs/extensionalSnapsTime4.tikz} &
+  \input{figs/extensionalSnapsTime5.tikz} 
+  \fi
+  \end{tabular}
+  \begin{tabular}{cc}
+  \ifInputs
+  \input{figs/extensionalGapSize.tikz} &
+  \input{figs/extensionalErrors.tikz}
+  \fi
+  \end{tabular}
+\end{center}
+\mcaption{Top: Two vesicles discretized with $N=32$ points at several
+time steps using near-singular integration.  Bottom left: The distance
+between the two vesicles both with (solid) and without (dashed)
+near-singular integration.  Bottom right: The error in area (blue) and
+length (red) with (solid) and without (dashed) near-singular
+integration.}{f:extensional:summary} 
+\end{figure}
+
+We report the errors in area and length at $t=24$ in
+Table~\ref{t:extensional:convergence}.  Also reported is the error in
+the distance between the vesicles at $t=24$, for which we take the
+``true'' distance from an overrefined simulation.  As before, we
+achieve first-order convergence and there is little difference between
+the accuracy when comparing explicit and semi-implicit inter-vesicle
+interactions.  We also achieve second-order convergence, but it
+requires a finer time step size when compared to the first-order
+methods before the asymptotic rate is achieved.
+
+In Table~\ref{t:extensional:convergence}, we also list the required CPU
+time per time step relative to the smallest simulation.  When the
+number of points is doubled from 32 to 64, the amount of work per time
+step goes up by less than a factor of two.  The increase in CPU time
+when $N$ is doubled from 64 to 128 is attributed to extra work required
+by near-singular integration since, to simplify the implementation, we
+only work with powers of 2.  Therefore, we upsample 64 to 256, but 128
+is upsampled to 4096.  We also see that semi-implicit inter-vesicle
+interactions are computationally not much more expensive.  This is
+because a lot of work is spent precomputing the block-diagonal
+preconditioner which is done once per time step for all the time
+integrators.
+
+\begin{table}[htp] 
+\begin{centering} 
+\begin{tabular}{ccccccc} 
+Integrator & $N$ &   $\Delta t$ & $e_{A}$ & $e_{L}$ & $e_{\mathrm{gap}}$ & CPU Time \\ \hline
+Explicit (1) & $32$  & $0.04$ & $1.99e-4$ & $6.53e-4$ & $1.97e-1$ & --- \\  
+Explicit (1) & $64$  & $0.02$ & $6.34e-5$ & $3.42e-4$ & $3.73e-3$ & $1.15$ \\ 
+Explicit (1) & $128$ & $0.01$ & $3.13e-5$ & $1.78e-4$ & $1.16e-3$ & $2.83$ \\ 
+\hline
+Implicit (1) & $32$  & $0.04$ & $2.12e-4$ & $6.64e-4$ & $1.92e-1$ & $2.65$ \\  
+Implicit (1) & $64$  & $0.02$ & $6.43e-5$ & $3.46e-4$ & $2.23e-3$ & $2.72$ \\ 
+Implicit (1) & $128$ & $0.01$ & $3.15e-5$ & $1.79e-4$ & $4.35e-4$ & $7.40$ \\ 
+\hline
+Implicit (2) & $32$  & $0.04$ & $3.26e-4$ & $1.38e-4$ & $3.96e-2$ & $2.43$ \\  
+Implicit (2) & $64$  & $0.02$ & $4.14e-6$ & $4.45e-5$ & $8.32e-2$ & $2.89$ \\ 
+Implicit (2) & $128$ & $0.01$ & $5.08e-7$ & $1.27e-5$ & $2.69e-2$ & $8.13$ \\
+Implicit (2) & $128$ & $0.005$& $1.02e-7$ & $3.13e-6$ & $1.27e-4$ & $7.70$ \\
+\end{tabular}
+\mcaption{The errors in area, length, and the error in the gap size at
+$t=24$, and the CPU time per time step for the extensional flow.  The
+parenthetic values are the order of the time integrator.  The error in
+the gap size is found by computing a ``true'' solution with $N=256$ points per
+vesicle and a time step size so that the error in area is $9.0e-9$ and
+in length is $7.3e-11$.  The CPU times are relative to the simulation
+with $N=32$, $\Delta t = 0.04$ which took approximately
+$2.62e-1$ seconds per time step.}{t:extensional:convergence}
+\end{centering}
+\end{table}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Stenosis}
+
+We consider a single vesicle of reduced area $0.65$ in a constricted
+tube.  The solid wall is parameterized as $\xx(\theta) =
+10r(\theta)\cos(\theta)$ and $y(\theta) =
+3r(\theta)\sin(\theta)\eta(\theta)$, where $r(\theta) =
+(\cos(\theta)^{8} + \sin(\theta)^{8})^{-1/8}$, and
+\begin{align*}
+  \eta(\theta) = \left\{
+    \begin{array}{cl}
+      \frac{1-0.6\cos(x)}{1.6} & |x(\theta)| \leq \pi, \\
+      1 & |x(\theta)| > \pi.
+    \end{array}
+  \right.
+\end{align*}
+For this geometry, the error of the trapezoid rule is $\bigO(10^{-4})$
+with $N_{\mathrm{wall}}=256$ points and is $\bigO(10^{-6})$ with
+$N_{\mathrm{wall}}=512$ points.  We impose a Gaussian-shaped boundary
+condition at the intake and outake of the tube which is plotted along
+with the geometry in Figure~\ref{f:stenosis:snaps}.  The vesicle's
+initial height is $2.3$ times larger than the size of the constriction.
+We report a convergence study for second-order time stepping in
+Table~\ref{t:stenosis:errors} and we exceed the expected rate of
+convergence.  We note that for this example, $N_{\mathrm{wall}}$ can not
+be less than 256.  If it is, the Lagrange interpolation points required
+by near-singular integration for wall-to-vesicle interactions are on
+both sides of the solid wall.  Since the double-layer potential has a
+jump across the solid wall, this creates a discontinuity in the velocity
+field and the method becomes unstable.
+
+This example is ideally situated for adaptive time stepping.  As the
+vesicle passes through the constriction, large jumps in the errors are
+committed.  In the simulation with $\Delta t = 5.0e-3$, the error in
+length jumps by four orders of magnitude, and the error in area jumps
+by three orders of magnitude near $t=3$.  These jumps are less severe
+in the simulation with $\Delta t = 2.5e-3$, which has a jump of one
+order of magnitude in length and two orders of magnitude in area.
+
+\begin{figure}[htp] 
+\centering 
+\begin{tabular}{ccc}
+\ifInputs
+\input{figs/stenosisSnapsTime1.tikz} &
+\input{figs/stenosisSnapsTime2.tikz} &
+\input{figs/stenosisSnapsTime3.tikz} \\
+\input{figs/stenosisSnapsTime4.tikz} &
+\input{figs/stenosisSnapsTime5.tikz} &
+\input{figs/stenosisSnapsTime6.tikz} \\
+\input{figs/stenosisSnapsTime7.tikz} &
+\input{figs/stenosisSnapsTime8.tikz} &
+\input{figs/stenosisSnapsTime9.tikz}
+\fi
+\end{tabular} 
+\mcaption{Snapshots of a single vesicle in a constricted tube.  The
+boundary condition on the solid wall (plotted in blue) at the inlet and
+outlet is Gaussian-shaped, and on the remainder of the solid wall is
+zero.  The vesicle is initially $2.3$ times larger than the size of the
+constriction.  Results from~\cite{rah:vee:bir} were only able to
+simulate vesicles that were $1.12$ times larger than the
+constriction.}{f:stenosis:snaps}
+\end{figure}
+
+%These runs are in Bryan's aug122013 directory
+\begin{table}[htp] 
+\begin{centering} 
+  \begin{tabular}{cccccc} 
+    $N$ & $N_{\mathrm{wall}}$ & $\Delta t$ & 
+      $e_{A}$ & $e_{L}$ \\ \hline 
+    128 & 256 & $5.0e-3$ & $6.55e-4$ & $1.17e-2$ \\ 
+    256 & 512 & $2.5e-3$ & $9.59e-7$ & $1.05e-6$  
+  \end{tabular} 
+  \mcaption{The errors in area and length at $t=8$ for the second-order
+  stenosis flow.}{t:stenosis:errors}
+  \end{centering}
+\end{table}
+
+We also report the minimum distance, and the time when the minimum
+distance occurs, between the vesicle and the solid wall in
+Table~\ref{t:stenosis:gapSize}.  In order to focus the error on the time
+step size, we take a fine spatial resolution of $N=256$ and
+$N_{\mathrm{wall}}=512$.  We report the minimum over time of the
+distance 
+\begin{align*}
+  d(\gamma,\Gamma) = \inf_{\xx \in \gamma, \yy \in \Gamma} \|\xx - \yy\|
+\end{align*}
+rather than the error since an exact solution is not available.  The
+time integrators predict different locations, $t_{\min}$, where the
+minimum occurs, but they both are converging.  For the first-order
+results, if we compare the minimum distances with the distance of the
+most accurate second-order simulation at $t=5.26$, which is $9.6369e-2$,
+then we see that first-order convergence has been achieved.  Without a
+much more accurate numerical solution, we are unable to compute
+convergence rates for the second-order results.  However, it appears
+that we have resolved the distance up to at least three digits of
+accuracy.
+
+\begin{table}[htp] 
+  \begin{centering} 
+  \begin{tabular}{c|cc|cc} 
+  & \multicolumn{2}{c|}{First-order} &
+    \multicolumn{2}{c}{Second-order} \\
+    $\Delta t$ & $t_{\min}$ & $d(\Gamma,\gamma)$ &  
+      $t_{\min}$ & $d(\Gamma,\gamma)$  \\ \hline
+    $1.0e-2$ & $4.37$ & $1.0318e-1$ & $4.34$ & $1.0196e-1$ \\
+    $5.0e-3$ & $4.41$ & $1.0262e-1$ & $4.39$ & $9.8055e-2$ \\
+    $2.5e-3$ & $4.42$ & $1.0143e-1$ & $5.77$ & $9.5809e-2$ \\
+    $1.3e-3$ & $5.26$ & $9.9541e-2$ & $5.77$ & $9.5804e-2$ \\
+    $6.3e-4$ & $5.26$ & $9.7938e-2$ & $5.77$ & $9.5803e-2$ \\ 
+    $3.1e-4$ & $5.26$ & $9.7137e-2$ & $5.77$ & $9.5802e-2$ 
+  \end{tabular}
+ \mcaption{The minimum distance, $d(\Gamma,\gamma)$, between the vesicle
+ and the solid wall, and the time, $t_{\min}$, when this distance is
+ achieved.  Rather than forming an overrefined ''true" solution, we
+ report the actual distances.}{t:stenosis:gapSize}
+ \end{centering}
+\end{table}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Couette Apparatus}
+\label{s:couette}
+Here we consider two simulations of a Couette apparatus with different
+volume fractions.  We first consider a Couette apparatus where the
+inner boundary, which is slightly off-centered, is rotating with
+constant angular velocity and the outer boundary is fixed.  We randomly
+place 42 vesicles of reduced area 0.65 inside the apparatus which
+corresponds to a volume fraction of 20\%.  Each vesicle is discretized
+with 64 points, each solid wall with 64 points, the time step size is
+$0.01$, and the time horizon is $T=30$.  Snapshots of the simulation
+are in the top plots of Figure~\ref{f:couetteLow}.  Using first-order
+time stepping with explicit inter-vesicle interactions, the error in
+area is $1.70e-2$ and the error in length is $7.94e-2$ at $t=30$.
+Semi-implicit inter-vesicle interactions are not required for this time
+step size.  The simulation took a little less than 6 hours, or about
+7.1 seconds per time step.
+
+We repeat this experiment with second-order time stepping which
+requires semi-implicit inter-vesicle interactions.  The simulation took
+about 83 hours, or about 100 seconds per time step.  The errors in area
+and length at $t=30$ are $2.95e-3$ and $7.13e-4$.  To achieve a similar
+accuracy with first-order time stepping, a time step size 11 times
+smaller would be required which would require more than 83 hours of CPU
+time due to the double-layer potentials.  Moreover, the errors in area
+and length for second-order time stepping have plateaued while for
+first-order time stepping, they continue to grow (bottom plots of
+Figure~\ref{f:couetteLow}).  Again, this means that with second-order
+time stepping, we can take much longer time horizons without requiring
+a smaller time step size.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}}
+    \ifInputs
+    \input{figs/couetteSnapsTime1.tikz} &
+    \input{figs/couetteSnapsTime2.tikz} &
+    \input{figs/couetteSnapsTime3.tikz} &
+    \input{figs/couetteSnapsTime4.tikz} &
+    \input{figs/couetteSnapsTime5.tikz} &
+    \input{figs/couetteSnapsTime6.tikz} 
+    \fi
+  \end{tabular}
+  \begin{tabular}{cc}
+    \ifInputs
+    \input{figs/couetteErrorsOrder1.tikz} & 
+    \input{figs/couetteErrorsOrder2.tikz} 
+    \fi
+  \end{tabular}
+\end{center}
+\mcaption{The top plots show snapshots of a Couette flow with 42
+vesicles and a volume fraction of 20\%.  One vesicle is coloured in blue
+to view its time history.  The outer boundary is fixed while the inner
+boundary completes one revolution every 10 time units.  The bottom plots
+show the errors in area and length for the first- and second-order time
+integrators.  Notice that the errors for first-order method  continue to
+grow whereas the errors for the second-order method
+plateau.}{f:couetteLow}
+\end{figure}
+
+We now consider a Couette apparatus with the inner boundary exactly in
+the middle of the outer boundary.  We use 150 vesicles of reduced area
+0.65 resulting in a volume fraction of approximately $40.5\%$.  With
+this higher concentration, a finer discretization of the solid walls is
+required to resolve its density function $\eeta$.  Therefore, we have
+discretized both boundaries with 256 points.  We also used our
+collision detection algorithm to alert us if vesicles had crossed.
+With $\Delta t = 0.01$ and explicit inter-vesicle interactions, the
+first-order method results in crossing vesicles.  Therefore, we report
+the results using first-order semi-implicit inter-vesicle interactions
+which does not result in vesicles crossing.  Snapshots are illustrated
+in Figure~\ref{f:couetteHigh}.  On average, each time step required 27
+GMRES iterations. The total simulation took about 10 days, but this
+number will drop dramatically once the double-layer potential is
+implemented with a fast summation method.  At $t=10$, the error in area
+is $9.62e-3$ and the error in length is $1.92e-2$.  We also ran this
+simulation with second-order time stepping and achieved an error in
+area of $9.39e-4$ and an error in length of $4.19e-4$.
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}}
+    \ifInputs
+    \input{figs/couetteDenseSnapsTime1.tikz} &
+    \input{figs/couetteDenseSnapsTime2.tikz} &
+    \input{figs/couetteDenseSnapsTime3.tikz} &
+    \input{figs/couetteDenseSnapsTime4.tikz} &
+    \input{figs/couetteDenseSnapsTime5.tikz} &
+    \input{figs/couetteDenseSnapsTime6.tikz} 
+    \fi
+  \end{tabular}
+\end{center}
+\mcaption{Snapshots of a Couette flow with 150 vesicles.  One vesicle
+is coloured in blue to view its time history.  The inner boundary
+completes one full revolution every 10 time units.}{f:couetteHigh}
+\end{figure}
+
+

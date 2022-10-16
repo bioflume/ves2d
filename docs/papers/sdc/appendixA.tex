@@ -1,0 +1,140 @@
+Here we write our SDC formulation for the unbounded vesicle formulation
+that includes the tension $\sigma_{j}$.  We do not use the notation
+$\vv(\xx_{j};\xx_{k})$ to help clarify the discretization of the
+prediction and SDC equations.  Given the solution at time
+$t_{m}$, let $\txx{}$ and $\tsigma{}$ be a provisional solution of
+\begin{align}
+  \xx_{j}(t) = \xx_{j}(t_{m}) + \int_{t_{m}}^{t} \left(\vv_{\infty}(\xx_{j}) + 
+    \sum_{k=1}^{M}\SS(\xx_{j},\xx_{k})(-\BB(\xx_{k})(\xx_{k}) + 
+    \TT(\xx_{k})(\sigma_{k}))\right)d\tau, \quad t \in [t_{m},t_{m+1}],
+  \label{e:picardFull}
+\end{align}
+which can be formed by a time stepping method followed by an
+interpolation step.  Then, the residual for $t \in [t_{m},t_{m+1}]$ is
+\begin{align*}
+  \rr_{j}(t;\txx{},\tsigma{}) = \txx{j}(t_{m}) - \txx{j}(t) + 
+    \int_{t_{m}}^{t} \left(\vv_{\infty}(\txx{j}) + 
+    \sum_{k=1}^{M}\SS(\txx{j},\txx{k})(-\BB(\txx{k})(\txx{k}) + 
+    \TT(\txx{k})(\tsigma{k}))\right)d\tau.
+\end{align*}
+As before, the residual is approximated with a quadrature rule, and,
+therefore, the interpolation step is not required in practice.  The
+error in the position is $\exx{j} = \xx_{j} - \txx{j}$, and the error
+in tension is $\esigma{j} = \sigma_{j} - \tsigma{j}$.  Substituting the
+errors into~\eqref{e:picardFull}, for $t \in [t_{m},t_{m+1}]$,
+\begin{equation}
+\begin{aligned}
+  \exx{j}(t) = \rr_{j}(t_{m};\txx{j},\tsigma{j}) &+
+    \int_{t_{m}}^{t}(\vv_{\infty}(\txx{j}+\exx{j}) -
+      \vv_{\infty}(\txx{j}))d\tau \\
+    &-\int_{t_{m}}^{t}\sum_{k=1}^{M}
+    \left(\SS(\txx{j}+\exx{j},\txx{k}+\exx{k})
+      \BB(\txx{k}+\exx{k}) - \SS(\txx{j},\txx{k})\BB(\txx{k})
+        \right)(\txx{k}) d\tau \\
+    &+\int_{t_{m}}^{t}\sum_{k=1}^{M}
+      \left(\SS(\txx{j}+\exx{j},\txx{k}+\exx{k})
+      \TT(\txx{k}+\exx{k}) - \SS(\txx{j},\txx{k})\TT(\txx{k})
+        \right)(\tsigma{k}) d\tau \\
+    &+\int_{t_{m}}^{t}\sum_{k=1}^{M} \SS(\txx{j}+\exx{j},\txx{k}+\exx{k})
+      (-\BB(\txx{k}+\exx{k})(\exx{k}) +
+        \TT(\txx{k}+\exx{k})(\esigma{k}))d\tau.
+\end{aligned}
+\label{e:sdcUpdateFull}
+\end{equation}
+For confined flows, $\vv_{\infty}$ depends on yet another variable, a
+density function defined on the solid walls $\Gamma$, which we denote
+by $\eeta$.  The dependence is through a double-layer potential
+$\DD(\txx{j},\Gamma)$.  In this case, the term involving $\vv_{\infty}$
+in~\eqref{e:sdcUpdateFull} becomes
+\begin{align*}
+  \int_{t_{m}}^{t}(\DD(\txx{j}+\exx{j},\Gamma) - \DD(\txx{j},\Gamma))
+      (\eeta) d\tau, \quad t \in [t_{m},t_{m+1}],
+\end{align*}
+and the final term in~\eqref{e:sdcUpdateFull} includes the term
+$\DD(\txx{j}+\exx{j},\Gamma)(\ee_{\eeta_{k}})$.  The additional
+equation required, since we have introduced the new variable $\eeta$,
+is a no-slip boundary condition on the solid walls.
+
+The inextensibility constraint~\eqref{e:inextens} is
+\begin{equation}
+\begin{aligned}
+  0&=\Div(\xx_{j})\left(\vv_{\infty}(\xx_{j})
+    +\sum_{k=1}^{M} \SS(\xx_{j},\xx_{k})(
+    -\BB(\xx_{k})(\xx_{k}) + \TT(\xx_{k})(\sigma_{k}))\right) \\
+  &=\frac{d\xx_{j}}{ds} \cdot \frac{d}{ds}\left(\vv_{\infty}(\xx_{j})
+    +\sum_{k=1}^{M} \SS(\xx_{j},\xx_{k})(
+    -\BB(\xx_{k})(\xx_{k}) + \TT(\xx_{k})(\sigma_{k}))\right),
+\end{aligned}
+\label{e:inextensMethod1}
+\end{equation}
+and the errors satisfy
+\begin{align}
+  0=&\Div(\txx{j}+\exx{j})\left(\vphantom{\sum_{k=1}^{M}} 
+    \vv_{\infty}(\xx_{j}) \right. \nonumber \\
+  &\left. + \sum_{k=1}^{M} \SS(\txx{j}+\exx{j},\txx{k}+\exx{k})\left(
+    -\BB(\txx{k}+\exx{k})(\txx{k}+\exx{k}) + 
+    \TT(\txx{k}+\exx{k})(\tsigma{k}+\esigma{k})\right)\right).
+  \label{e:inextensUpdateMethod1}
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Discretization}
+Using first-order IMEX time stepping~\cite{qua:bir2014b}, the
+provisional solution is found at the Gauss-Lobatto quadrature points
+$t_{m} = t_{1} < \cdots < t_{p} = t_{m+1}$ by
+discretizing~\eqref{e:picardFull} and~\eqref{e:inextensMethod1} as
+\begin{align*}
+  \xx_{j}^{m+1} = \xx_{j}^{m} + \Delta t_{m}
+    \left(\vv_{\infty}(\xx^{m}_{j}) + 
+    \sum_{k=1}^{M} \SS(\xx^{m}_{j},\xx^{m}_{k})(
+    -\BB(\xx^{m}_{k})(\xx^{m+1}_{k}) +
+    \TT(\xx^{m}_{k})(\sigma^{m+1}_{k}))\right), \quad m = 1,\ldots,p-1,
+\end{align*}
+where $\Delta t_{m} = t_{m+1} - t_{m}$, and
+\begin{align*}
+  \Div(\xx^{m}_{j})\left(\sum_{k=1}^{M} \SS(\xx^{m}_{j},\xx^{m}_{k})(
+    -\BB(\xx^{m}_{k})(\xx^{m+1}_{k}) +
+    \TT(\xx^{m}_{k})(\sigma^{m+1}_{k}))\right)=0, \quad m = 1,\ldots,p-1.
+\end{align*}
+For $m=1,\ldots,p-1$, the SDC updates~\eqref{e:sdcUpdateFull}
+and~\eqref{e:inextensUpdateMethod1} are discretized as
+\begin{align*}
+  \ee^{m+1}_{\xx_{j}} = \ee^{m}_{\xx_{j}} + 
+  \rr_{j}^{m+1} - \rr_{j}^{m}
+  +\Delta t_{m} \left(\sum_{k=1}^{M} 
+    \SS(\txx{j}^{m+1},\txx{k}^{m+1})\left(
+    -\BB(\txx{k}^{m+1})(\ee^{m+1}_{\xx_{k}}) +
+    \TT(\txx{k}^{m+1})(e^{m+1}_{\sigma_{k}})
+    \right)\right),
+\end{align*}
+and
+\begin{align*}
+  \Div(\txx{j}^{m+1})&\left(\sum_{k=1}^{M} 
+    \SS(\txx{j}^{m+1},\txx{k}^{m+1})\left(
+    -\BB(\txx{k}^{m+1})(\ee^{m+1}_{\xx_{k}}) +
+    \TT(\txx{k}^{m+1})(e^{m+1}_{\sigma_{k}})
+    \right)\right) \\
+  &=-\Div(\txx{j}^{m+1})\left(\vv_{\infty}(\txx{j}^{m+1})
+    +\sum_{k=1}^{M} \SS(\txx{j}^{m+1},\txx{k}^{m+1})\left(
+    -\BB(\txx{k}^{m+1})(\txx{k}^{m+1}) + 
+    \TT(\txx{k}^{m+1})(\tsigma{k}^{m+1})\right)\right).
+\end{align*}
+With this discretization of~\eqref{e:inextensUpdateMethod1}, we see
+that if $\ee^{m}_{\xx_{k}}=0$ and $e^{m}_{\sigma_{k}}=0$, then
+\begin{align*}
+  \Div(\txx{j}^{m+1})\left(\vv_{\infty}(\txx{j}^{m+1})
+    +\sum_{k=1}^{M} \SS(\txx{j}^{m+1},\txx{k}^{m+1})\left(
+    -\BB(\txx{k}^{m+1})(\txx{k}^{m+1}) + 
+    \TT(\txx{k}^{m+1})(\tsigma{k}^{m+1})\right)\right) = 0, 
+\end{align*}
+which means that
+\begin{align*}
+  \Div(\txx{j}^{m})\left( \sum_{k=1}^{M}
+    \vv(\txx{j}^{m};\txx{k}^{m})\right) = 0, \quad m = 1,\ldots,p.
+\end{align*}
+In other words, by using the
+discretization~\eqref{e:numericSDCImplicit}, the fixed point of the SDC
+iteration exactly satisfies the inextensibility condition, in addition
+to converging to the solution of the fully-implicit collocation scheme
+of~\eqref{e:picardFull}.
+

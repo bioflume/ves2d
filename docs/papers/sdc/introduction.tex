@@ -1,0 +1,291 @@
+Vesicles are deformable capsules filled with a viscous fluid. Vesicle
+flows refer to flow of vesicles that are suspended in a Stokesian
+fluid.  Vesicles are differentiated from other capsules in the balance
+of forces in their interface.  In particular, their boundary is locally
+inextensible (in 3D is locally incompressible).  Vesicle flows find
+applications in many biological applications such as the simulation of
+biomembranes~\cite{sac1996} and red blood
+cells~\cite{ghi:rah:bir:mis2011, kao:tah:bib:ezz:ben:bir:mis2011,
+mis2006, nog:gom2005,poz1990}.
+
+The dynamics of a vesicle is governed by bending, tension (enforces
+inextensibility), hydrodynamic forces from other vesicles in the
+suspension, and possibly hydrodynamic forces from flow confinement
+boundary walls.  Vesicle suspensions are modeled using the Stokes
+equations, a jump in the stress across each vesicle to match the
+interfacial forces on the membrane of the vesicle, and a no-slip
+boundary condition on the vesicles and the confinement walls.
+
+A significant challenge in simulating vesicle flows is that their
+governing equations are stiff. One stiffness source is associated with
+the interfacial forces, bending forces, and inextensibility related
+tension forces (these depend mainly on the curvature of the vesicle).
+Another stiffness source is the hydrodynamic interaction between
+vesicles (these depend on the minimum distance between vesicles). A
+third stiffness source is the hydrodynamic interaction between vesicles
+and external boundary walls (these depend on the minimum distance
+between the vesicles and the wall).  Therefore, to resolve the dynamics
+of a vesicle, it may be necessary to take a small time step when the
+vesicle has regions of large curvature, or when a vesicle approaches a
+boundary wall, or approaches another vesicle. However, a large time
+step may be taken when a vesicle has a smooth boundary and is separated
+from all other vesicles and the boundary walls.  These considerations
+necessitate that we use an adaptive time-stepping scheme, mostly for
+robustness of the code and to remove the need to manually select a time
+step size.
+
+Another challenge in simulating vesicle flows is that maintaining good
+accuracy for long horizons requires a great number of time steps when
+using a low-order time-stepping method.  One remedy to accumulating
+error is to use artificial forces and algorithms that correct each
+vesicle's area and length (these quantities are conserved by the
+physics)~\cite{bea:rio:seo:bib:mis2004, bib:mis2003, can:kas:mis2003,
+ala:ege:low:voi2014}.  However, these approaches may not successfully
+stablize the dynamics if too large of a time step is taken.
+Alternatively, higher-order methods such as diagonally-implicit
+Runge-Kutta (DIRK) or implicit-explicit (IMEX) multistep can mitigate
+error accumulation over long simulation times.  While DIRK is
+high-order, we are unaware of a formulation for a set of
+integro-differential equations, such as the ones that vesicle
+suspensions satisfy.  Moreover, when applying many DIRK methods to
+stiff algebraic-differential equations, order reduction is often
+present~\cite{bos2007}.  While order reduction of DIRK methods can be
+reduced, we choose to develop high-order accurate methods with
+time-stepping methods that we have successfully used in our previous
+work: constant time step size IMEX multistep methods.  Unfortunately,
+unless IMEX-Euler is used, these become unstable if the time step size
+is changed too quickly~\cite{dah:lin:nev1983}.  Therefore, we will be
+developing high-order solutions by iteratively applying an IMEX-Euler
+method.
+
+In summary, the design goals for a time-stepping scheme for vesicle
+flows is to address stiffness with reasonable computational costs,
+allow for adaptivity, and enable high-order time marching (at least
+second-order). In the past (in other groups as well as our group),
+methodologies have addressed parts of the design goals above, but no
+method, to our knowledge, addresses all of them.  In this paper, we
+propose a scheme that provides this capability.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Summary of the method and contributions}
+To address stiffness, we use our recent work in which wall-vesicle,
+vesicle-vesicle, and bending and tension self-interactions are treated
+implicitly~\cite{qua:bir2014b}.  There we used backward difference
+formulas (BDFs) with constant time step sizes.  As we discussed, it is
+possible to extend BDF with adaptive time-stepping, but, since BDFs
+require the solution from multiple previous time step sizes, they
+become quite difficult to use in practice~\cite{dah:lin:nev1983}. We
+develop a new high-order method that uses spectral deferred correction
+(SDC) to iteratively increase the order of a first-order time
+integrator.  By introducing SDC, we are able to iteratively construct
+high-order solutions that only require the solution from the previous
+time step.
+
+In addition, we propose a time-stepping error estimation specific to
+vesicle flows.  The incompressibility and inextensibility conditions
+impose that two-dimensional vesicles preserve both their enclosed area
+and total length. Thus, errors in area enclosed by a vesicle and errors
+in its perimeter can be used to estimate the local truncation error.
+In this way we avoid forming multiple expensive solutions to estimate
+the local truncation error.  We numerically verify that this estimate
+is valid by comparing it to the truncation error of the vesicle
+position.
+
+Our contributions are summarized below.
+\begin{itemize}
+  \item We propose an SDC formulation to construct high-order solutions
+  of an integro-differential-algebraic equation that governs vesicle
+  suspensions.
+
+  \item We propose an adaptive time-stepping method that uses conserved
+  quantities to estimate the local truncation error, therefore not
+  requiring multiple numerical solutions to form this estimate.
+
+  \item We conduct numerical experiments for several different flows
+  involving multiple vesicles, confined flows, and long time horizons
+  that demonstrate the behavior of our scheme.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Related work}
+There is a rich literature on numerical methods for Stokesian
+particulate flows. We only discuss some representative time-stepping
+methods for vesicle flows and we omit details on the spatial
+discretization. Most methods for vesicle flows are based on integral
+equation formulations~\cite{ram:poz1998, soh:tse:li:voi:low2010,
+suk:sei2001, zha:sha2013b,
+rah:las:vee:cha:mal:moo:sam:shr:vet:vud:zor:bir2010,
+rah:vee:bir2010,vee:gue:zor:bir2009, vee:rah:bir:zor2011,zha:sha2011a},
+but other formulations based on stencil discretizations also
+exist~\cite{laa:sar:mis2014, bib:kas:mis2005, du:zha2008, kim:lai2010}.
+
+The time-stepping schemes used for vesicle flows can be grouped in
+three classes of methods. The first class is fully explicit methods,
+which often include a penalty formulation for the inextensibility
+constraint~\cite{suk:sei2001, soh:tse:li:voi:low2010, ram:poz1998,
+kim:lai2010, laa:sar:mis2014, hsi:lai:yan:you2013}.  These are
+relatively easy to implement but a small time step is necessitated by
+the bending stiffness. Another class of methods treats
+self-interactions using linear semi-implicit
+time-stepping~\cite{vee:gue:zor:bir2009, rah:vee:bir2010, zha:sha2013b,
+zha:sha2011a}.  This addresses one main source of stiffness but they
+are fragile. No adaptive or higher than second-order scheme have been
+reported for these schemes. Finally, a third class of methods treat all
+the vesicle interactions using linearization and semi-implicit
+time-stepping. We are aware of two papers in this direction.  In
+\cite{zha:sha2013b} a first-order backward Euler scheme is used (with
+no adaptivity). As we mentioned in our own work~\cite{qua:bir2014b,
+rah:vee:zor:bir2012}, we used a BDF scheme for vesicle flows that
+treats all interactions implicitly, but again, it is not adaptive and
+is accurate only up to second-order.
+
+Finally, we briefly review the literature on SDC methods.  SDC was
+first introduced by Dutt et al.~\cite{dut:gre:rok2000}.  SDC has been
+applied to partial differential equations~\cite{bou:lay:min2003,
+chr:hay:ong2012, emm:min2012, min:spe:bol:emm:rup2015,
+spe:rup:emm:min:bol:kra2014, jia:hua2008, spe:rup:emm:bol:kra2014},
+differential algebraic equations~\cite{bu:hua:min2012,
+hua:jia:min2007}, and integro-differential
+equations~\cite{hua:lai:xia2006}, but not to vesicle flows.
+In~\cite{min2003}, Minion was the first to apply SDC to
+implicit-explicit (IMEX) methods by studying the problem $\dot{\xx}(t)
+= F_{E}(\xx,t) + F_{I}(\xx,t)$ where $F_{E}$ is non-stiff and $F_{I}$
+is stiff.  Unfortunately, our governing equations do not exhibit an
+additive splitting as non-stiff and stiff terms.  Moreover, IMEX SDC
+often often suffers from order reduction, meaning that a very small
+time step is required before the asymptotic convergence rate is
+achieved.  We will see similar behavior in our work.
+
+Algorithmically, SDC has been accelerated using several strategies.
+SDC can be parallelized by either assigning each iteration of SDC to
+its own processor~\cite{chr:ong2011, chr:mac:ong2010, chr:hay:ong2012,
+ong:mel:chr2012}, or by embedding SDC in parareal or multigrid
+framework~\cite{emm:min2012, spe:rup:emm:bol:kra2014,
+min:spe:bol:emm:rup2015, spe:rup:emm:min:bol:kra2014}.  We anticipate
+that similar parallelization strategies are possible for vesicle
+suspensions, but we do not report results at this time.  Next,
+high-order (greater than first-order) methods can be used at each SDC
+iteration, and this is analyzed in~\cite{chr:ong:qui2009} for the
+initial value problem $y' = f(y,t)$.  Finally, by interpreting SDC as
+an iterative method that converges to the collocation scheme (a
+fully-implicit Runge-Kutta discretization), several methods of
+accelerating the convergence have been
+investigated~\cite{hua:jia:min2006, hua:jia:min2007, emm:min2012,
+wei2013, win:spe:rup2014, bu:hua:min2009, bu:hua:min2012, jia:hua2008,
+min:spe:bol:emm:rup2015, spe:rup:emm:bol:kra2014,
+spe:rup:emm:min:bol:kra2014, spe:rup:min:emm:kra2014}.  However, as a
+first step towards applying SDC to vesicle suspensions, we investigate
+the use of a first-order method applied to a predetermined number of
+SDC iterations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Limitations}
+The novelty of this work is to introduce a high-order adaptive time
+stepper.  This addresses one of the limitations form our previous
+work~\cite{qua:bir2014b}, but also introduces new limitations.
+\begin{itemize}
+  \item We cannot provide a proof on the convergence order of our
+  scheme.  We will see in Section~\ref{s:results} that each SDC
+  iteration reduces the error significantly. However, when large
+  numbers of SDC iterations are used, the asymptotic convergence rates
+  are unclear.  Many other groups have observed similar order
+  reduction, and several methods of reducing its effect include Krylov
+  deferred corrections~\cite{hua:jia:min2006, hua:jia:min2007,
+  bu:hua:min2012, bu:hua:min2009, jia:hua2008}, multilevel
+  SDC~\cite{emm:min2012, min:spe:bol:emm:rup2015,
+  spe:rup:emm:min:bol:kra2014, spe:rup:emm:bol:kra2014}, and diagonally
+  implicit Runge-Kutta sweeps~\cite{wei2013}.  Understanding the
+  asymptotic rates of convergence, and resolving the observed order
+  reduction, could be used to further optimize the method for choosing
+  optimal time step sizes.
+
+%  \item We have not explored the scheme for vesicle suspensions
+%  where the viscosity inside and outside each vesicles differs
+%  (viscosity contrast).  The difficulty arises because flows with a
+%  viscosity contrast include a double-layer potential of the fluid
+%  velocity. 
+
+  \item Currently, each vesicle must use the same time step size.
+  Therefore, in flows with multiple vesicles, the time step size is
+  controlled by the vesicle requiring the smallest time step.  This can
+  result in the actual global error being much less than the desired
+  error (see {\em Couette} example).  Simulations could be accelerated
+  if each vesicle had its own time step size, resulting in a multirate
+  time integrator.
+
+\end{itemize}
+
+Let us remark that we do not use adaptivity in space.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Outline of the paper}
+In Section~\ref{s:formulation}, we briefly discuss SDC for initial
+value problems (IVPs), and then discuss how to extend SDC to vesicle
+suspensions.  In Section~\ref{s:numerics}, we discretize the
+differential and integral equations arising in the SDC framework,
+discuss preconditioning, and provide complexity estimates.
+Section~\ref{s:adaptive} discusses our adaptive time-stepping strategy,
+and numerical results are presented in Section~\ref{s:results}.
+Finally, we make concluding remarks in Section~\ref{s:conclusions}, and
+we reserve a more in depth formulation of our governing equations in
+the SDC framework in Appendix~\ref{a:appendix1}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Notation}
+In Table~\ref{t:notation}, we summarize the main notation used in this
+paper.
+\begin{table}[htp]
+\colorbox{gray!20}{
+\begin{tabular}{|l|l|}
+\hline
+Symbol & Definition \\
+\hline
+$N$                         & Number of points per vesicle \\
+$M$                         & Number of vesicles \\
+$N_{t}$                     & Number of time steps \\
+$\gamma_{k}$                & Boundary of vesicle $k$ \\
+$\xx_{k}(s,t)$              & Parameterization of $\gamma_{k}$ at time
+                              $t$ and parameterized in arclength $s$ \\
+$\sigma_{k}(s,t)$           & Tension of vesicle $k$ at time $t$ and
+                              parameterized in arclength $s$ \\
+$\Gamma$                    & Boundary of the confined geometry \\
+$\BB(\xx_{k})$              & Bending operator due to vesicle $k$ \\
+$\TT(\xx_{k})$              & Tension operator due to vesicle $k$ \\
+$\Div(\xx_{k})$             & Surface divergence operator due to 
+                              vesicle $k$ \\
+$\SS(\xx_{j},\xx_{k})$      & Single-layer potential due to vesicle $k$ 
+                              and evaluated on vesicle $j$ \\
+$\DD(\xx_{j},\Gamma)$       & Double-layer potential due to $\Gamma$ 
+                              and evaluated on vesicle $j$ \\
+$\vv_{\infty}(\xx_{j})$     & Background velocity due to a far-field 
+                              condition \\
+$\vv(\xx_{j};\xx_{k})$      & Velocity of vesicle $j$ due to
+                              hydrodynamic forces from vesicle $k$ \\
+$\rr(t;\txx{})$             & Residual of equation~\eqref{e:picardEqn} 
+                              due to the provisional solution 
+                              $\txx{}$ \\
+$p$                         & Number of Gauss-Lobatto points used to
+                              approximate $\rr$ \\
+$\exx{j}$                   & Error between the exact vesicle position and
+                              the provisional position $\txx{j}$  \\
+$\esigma{j}$                & Error between the exact vesicle tension and
+                              the provisional tension $\tsigma{j}$  \\
+$A(t),L(t)$                 & Area and length of the vesicles at time 
+                              $t$ \\
+$e_{A},e_{L}$               & Relative error in area and length \\
+$\epsilon$                  & Desired final tolerance for the area and 
+                              length of the vesicles \\
+$\beta_{\up} \geq 1$        & Maximum rate that the time step is
+increased per time step \\
+$\beta_{\down} \leq 1$      & Minimum rate that the time step is
+decreased per time step \\
+$\alpha \leq 1$             & Multiplicative safety factor for the new
+                              time step size \\
+\hline
+\end{tabular}
+}
+\mcaption{Index of frequently used notation.}{t:notation}
+\end{table}
+

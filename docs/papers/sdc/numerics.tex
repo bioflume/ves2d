@@ -1,0 +1,306 @@
+In this section, we present our numerical scheme for
+solving~\eqref{e:picardEqn},~\eqref{e:picardRes},
+and~\eqref{e:sdcUpdate}.  Evaluating $\vv$ involves layer potentials
+and Fourier differentiation, and for concentrated suspensions, this can
+be costly, especially when this work is extended to three dimensions.
+Moreover, high-order derivatives in the governing equations introduce
+stiffness, and this can result in order reduction.  In this first
+implementation of SDC for vesicle suspensions, we opt to use the
+following strategy: we fix the number of SDC iterations and apply our
+previous first-order semi-implicit time integrator~\cite{qua:bir2014b}
+to~\eqref{e:picardEqn} and \eqref{e:sdcUpdate}, and use standard
+quadrature to compute the residual defined in~\eqref{e:picardRes}.  In
+addition, there are several approximations when comparing our
+discretization of~\eqref{e:sdcUpdate} with standard methods of
+discretizing~\eqref{e:picardCorrect}.  More expensive discretizations
+are possible, but we found that they did not improve the overall
+accuracy of the method.  We also discuss how the block-diagonal
+preconditioner outlined in~\cite{qua:bir2014b} is applied.  We conclude
+with estimates of the overall work per time step as a function of the
+number of vesicles and the number of points per vesicle.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Spatial Discretization}
+
+Following our previous
+work~\cite{qua:bir2014b,rah:vee:bir2010,vee:gue:zor:bir2009}, we use a
+Lagrangian formulation by marking each vesicle with $N$ tracker
+points.  Since vesicles are modeled as smooth closed curves, all the
+derivatives are computed spectrally using the fast Fourier transform
+(FFT).  Near-singular integrals are handled using the near-singular
+integration scheme outlined in~\cite{qua:bir2014b}.  Finally, we use
+Alpert's high-order Gauss-trapezoid quadrature rule~\cite{alp1999} with
+accuracy $\bigO(h^{8} \log h)$ to evaluate the single-layer potential,
+and the trapezoid rule for the double-layer potential which has
+spectral accuracy since its kernel is smooth.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Temporal Discretization}
+
+A fully explicit discretization of~\eqref{e:diffEqn} results in a stiff
+system for multiple reasons.  A stiffness analysis
+in~\cite{vee:gue:zor:bir2009} reveals that the leading sources of
+stiffness, and the corresponding time step restrictions, are:
+\begin{itemize}
+  \item $\SS(\xx_{j},\xx_{j})\BB(\xx_{j})(\xx_{j})$ (self-hydrodynamic
+  bending force) -- $\Delta t \sim \Delta s^{3}$;
+
+  \item $\SS(\xx_{j},\xx_{j})\TT(\xx_{j})(\xx_{j})$ (self-hydrodynamic
+  tension force) -- $\Delta t \sim \Delta s$;
+
+  \item $\Div(\xx_{j})(\xx_{j})$ (self-inextensibility force) -- $\Delta
+  t \sim \Delta s$;
+
+  \item $\SS(\xx_{j},\xx_{k})(\BB(\xx_{k})(\xx_{k}) +
+  \TT(\xx_{k})(\sigma_{k}))$, $j \neq k$ (inter-vesicle hydrodynamic
+  forces) -- depends on the inter-vesicle distance.
+\end{itemize}
+The leading sources of stiffness result from the intra-vesicle
+interactions; but, for concentrated suspensions, inter-vesicle
+interactions become significant and introduce stiffness.  In future
+work, we plan to use spectral analysis to analyze the stiffness due to
+inter-vesicle interactions.  In particular, we hope to find a
+relationship between the stable time step size and the distance between
+vesicles.
+
+To address these multiple sources of stiffness, we use a variant of
+IMEX~\cite{asc:ruu:wet1995} time integrators.  IMEX methods were
+developed for the problem $\dot{\xx}(t) = F_{E}(\xx) + F_{I}(\xx)$,
+where $F_{E}$ is non-stiff and is treated explicitly, and $F_{I}$ is
+stiff and is treated implicitly.  For problems with this additive
+splitting, the family of time integrators is
+\begin{align*}
+  \frac{\beta \xx^{m+1} - \xx^{0}}{\Delta t} = 
+    F_{E}(\xx^{e}) + F_{I}(\xx^{m+1}),
+\end{align*}
+where $\xx^{0}$ and $\xx^{e}$ are linear combinations of previous time
+steps and $\beta > 0$.  Unfortunately,~\eqref{e:diffEqn} does not have
+an additive splitting between stiff and non-stiff terms.  However, we
+have observed first- and second-order convergence~\cite{qua:bir2014b}
+for the time integrator
+\begin{align*}
+  \frac{\beta \xx^{m+1}_{j} - \xx^{0}_{j}}{\Delta t} =
+    \sum_{k=1}^{M} \vv(\xx_{j}^{e};\xx_{k}^{m+1}), \quad j=1,\dots,M,
+\end{align*}
+where
+\begin{align*}
+  \vv(\xx_{j}^{e};\xx_{k}^{m+1}) = \SS(\xx^{e}_{j},\xx^{e}_{k})
+    (-\BB(\xx^{e}_{k})(\xx^{m+1}_{k}) +
+      \TT(\xx^{e}_{k})(\sigma^{m+1}_{k})).
+\end{align*}
+Note that in this formulation, it is the operators involved in $\vv$,
+such as the bending $\BB(\xx_{k})$ and the single-layer potential
+$\SS(\xx_{j},\xx_{k})$, that are discretized explicitly at $\xx^{e}$.
+In line with our previous work, we use the first-order method given by
+$\beta = 1$, $\xx^{0}=\xx^{m}$, and $\xx^{e}=\xx^{m}$, and the
+second-order backward difference formula (BDF) given by $\beta = 3/2$,
+$\xx^{0} = 2\xx^{m} - 1/2\xx^{m-1}$, and $\xx^{e} = 2\xx^{m} -
+\xx^{m-1}$.  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Quadrature Formula}
+\label{s:vesicleQuadrature}
+
+SDC requires a quadrature formula to approximate~\eqref{e:picardRes},
+the residual of the Picard integral.  The quadrature rule affects the
+accuracy of SDC (Proposition~\ref{pro:convergence}).  However, the
+stability of SDC is also effected by the quadrature rule, and this has
+been investigated in depth in~\cite{bou:lay:min2003}.  In order to
+achieve the highest possible accuracy, we could use Gaussian nodes;
+however, in order to avoid extrapolation, we would like both endpoints
+to be quadrature nodes.  Therefore, we use Gauss-Lobatto points, $t_{m}
+= t_{1} < \cdots < t_{p} = t_{m+1}$, since they include both endpoints
+and have successfully been used by other groups~\cite{bou:lay:min2003,
+bou:min2010, min2003}, and have an order of accuracy of $2p-2$.
+Alternatively, we could use Radau quadrature formula which include the
+right endpoint, but not the left endpoint.
+
+For computational efficiency, the accuracy of the quadrature formula
+should not exceed the expected rate of convergence.  This will become
+especially important in three dimensions since multiple variables must
+be stored at each of the quadrature nodes for future SDC iterations.
+In our numerical examples, we take $p$ to be the smallest value such
+that the quadrature order of accuracy (in our case, $2p-2$) is greater
+than or equal to $n_{\sdc}+1$ (the expected order of convergence of the
+time integrator).  Once a quadrature formula for~\eqref{e:picardEqn} is
+chosen, the result is a fully-implicit collocation scheme whose
+solution the SDC iteration attempts to converge towards.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Picard Integral Discretization}
+\label{s:vesiclePicard}
+
+Equations~\eqref{e:picardEqn} and~\eqref{e:sdcUpdate} have similar
+structure, and we take advantage of this structure in their
+discretizations.  For adaptivity, we want a scheme that easily allows
+for variable time step sizes.  For this reason, we use only first-order
+methods for~\eqref{e:picardEqn} and~\eqref{e:sdcUpdate}.  When desired,
+we use SDC iterations to increase the accuracy.
+
+The first-order provisional solution is found at the substeps
+$t_{1},\ldots,t_{p}$ by discretizing~\eqref{e:picardEqn} as
+\begin{align}
+  \xx_{j}^{m+1} = \xx_{j}^{m} + \Delta t_{m}
+    \sum_{k=1}^{M} \vv(\xx_{j}^{m};\xx_{k}^{m+1}), \quad
+    m=1,\ldots,p-1,
+  \label{e:numericProvisionalImplicit}
+\end{align}
+where $\Delta t_{m} = t_{m+1} - t_{m}$.  This is exactly the first-order
+time integrator we introduced in~\cite{qua:bir2014b}.  As we march in
+time with~\eqref{e:numericProvisionalImplicit}, we save the variables
+required for near-singular integration for future SDC iterations.  Then,
+we evaluate the residual~\eqref{e:picardRes} using the Gauss-Lobatto
+quadrature rule.
+
+In line with~\cite{min2003}, which considers semi-implicit SDC methods,
+we would like to discretize~\eqref{e:sdcUpdate} as
+\begin{align*}
+  \ee^{m+1}_{\xx_{j}} = \ee^{m}_{\xx_{j}} + 
+  \rr_{j}^{m+1} - \rr_{j}^{m} + 
+  \Delta t_{m}\sum_{k=1}^{M}(
+    \vv(\txx{j}^{m}+\ee^{m}_{\xx_{j}};\txx{k}^{m+1}+\ee^{m+1}_{\xx_{k}}) - 
+    \vv(\txx{j}^{m},\txx{k}^{m+1})).
+\end{align*}
+The issue with this formulation is that it requires additional storage
+and computations to find the velocity due to the vesicle parameterized
+by $\txx{j}^{m} + \ee^{m}_{\xx_{j}}$.  Again, in three dimensions
+this restriction is even more prohibitive.  We have experimented with
+other discretizations of~\eqref{e:sdcUpdate}.  The simplest such one is
+\begin{align*}
+  \ee^{m+1}_{\xx_{j}} = \ee^{m}_{\xx_{j}} + 
+    \rr_{j}^{m+1} - \rr_{j}^{m}.
+\end{align*}
+This discretization is consistent with the governing
+equations\footnote{If $\ee^{m}_{\xx_{j}}$ converges to 0, then
+$\rr_{j}^{m+1}=\rr_{j}^{m}$, and by~\eqref{e:picardRes}, SDC has
+converged to the solution of the fully-implicit collocation
+discretization of~\eqref{e:picardEqn}.}, but, experimentally, SDC
+converges only if a very small time step is used.  To allow for larger
+time steps, we can include the implicit term in the discretization
+\begin{align}
+  \label{e:numericSDCimex}
+  \ee^{m+1}_{\xx_{j}} = \ee^{m}_{\xx_{j}} + 
+  \rr_{j}^{m+1} - \rr_{j}^{m} + 
+  \Delta t_{m} \sum_{k=1}^{M} 
+  (\vv(\txx{j}^{m};\txx{k}^{m+1}+\ee_{\xx_{k}}^{m+1}) -
+    \vv(\txx{j}^{m};\txx{k}^{m+1})),
+\end{align}
+where we use a slight abuse of notation by defining
+\begin{align*}
+  \vv(\txx{j}^{m};\txx{k}^{m+1} + \ee_{\xx_{k}}^{m+1}) = 
+    \SS(\txx{j}^{m},\txx{k}^{m})
+    (-\BB(\txx{k}^{m})(\txx{k}^{m+1}+\ee_{\xx_{k}}^{m+1}) +
+      \TT(\txx{k}^{m})(\sigma^{m+1}_{k} + e_{\sigma_{k}}^{m+1})).
+\end{align*}
+(Note how none of the operators depend on the error $\ee$.)
+Appendix~\ref{a:appendix1} presents this same discretization without
+the abuse of notation.  While this discretization allows larger time
+steps, it does not converge to the solution of the fully-implicit
+discretization of~\eqref{e:picardEqn} and is incompatible with the
+inextensibility constraint (see Appendix~\ref{a:appendix1}).  As an
+alternative to~\eqref{e:numericSDCimex}, an appropriate discretization
+of the error equation is
+\begin{align}
+  \label{e:numericSDCImplicit}
+  \ee^{m+1}_{\xx_{j}} = \ee^{m}_{\xx_{j}} + 
+  \rr_{j}^{m+1} - \rr_{j}^{m} + 
+  \Delta t_{m} \sum_{k=1}^{M} 
+  (\vv(\txx{j}^{m+1};\txx{k}^{m+1}+\ee_{\xx_{k}}^{m+1}) -
+    \vv(\txx{j}^{m+1};\txx{k}^{m+1})),
+\end{align}
+where we are using the same abuse of notation.  Note
+that~\eqref{e:numericSDCImplicit} only requires evaluating the velocity
+field due to the vesicle configuration given by $\txx{j}^{m+1}$.  Since
+these velocity fields are required to form residual $\rr$, no
+additional velocity fields need to be formed.
+
+To summarize, the main steps for using SDC to solve~\eqref{e:picardEqn}
+are
+\begin{enumerate}
+  \item Find a first-order provisional solution $\tilde{\xx}$ at the
+  Gauss-Lobatto quadrature points
+  using~\eqref{e:numericProvisionalImplicit}.
+
+  \item \label{step:residual} Compute the residual $\rr$ by
+  approximating the integral in~\eqref{e:picardRes} with the
+  Gauss-Lobatto quadrature rule.
+
+  \item Use~\eqref{e:numericSDCImplicit} to approximate the error
+  $\tee{}$.
+
+  \item Define the new provisional solution to be $\txx{} + \tee{}$.
+
+  \item \label{step:repeat} Repeat
+  steps~\ref{step:residual}--\ref{step:repeat} $n_{\sdc}$ times.
+\end{enumerate}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Preconditioning}
+\label{s:preco}
+Equations~\eqref{e:numericProvisionalImplicit}
+and~\eqref{e:numericSDCImplicit} are ill-conditioned and require a
+large number of GMRES iterations~\cite{vee:gue:zor:bir2009}.  To reduce
+the cost of the linear solves, we used a block-diagonal preconditioner
+in~\cite{qua:bir2014b} which is formed and factorized in matrix form at
+each time step.  Using this preconditioner, the number of
+preconditioned GMRES iterations depends only on the magnitude of the
+inter-vesicle interactions, which in turn is a function of the
+proximity of the vesicles.  For further savings, we freeze and
+factorize the preconditioner at the first Gauss-Lobatto point, and this
+preconditioner is used for all the subsequent Gauss-Lobatto points and
+SDC iterates.  By freezing the preconditioner, there is a slight
+increase in the number of GMRES iterations as the solution is formed at
+the each subsequent Gauss-Lobbato substep.  However, the savings is
+significant when compared to constructing and factorizing the
+preconditioner at each substep.  Moreover, we only require one matrix
+factorization per time step, which is the number of factorizations
+required in the preconditioner we introduced in~\cite{qua:bir2014b}.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Complexity Estimates}
+Here we summarize the cost of the most expensive algorithms required in
+our formulation.
+\begin{itemize}
+
+\item \emph{Matrix-vector multiplication:}
+For unbounded flows, if $M$ vesicles are each discretized with $N$
+points, the bending and tension calculations require $\bigO(MN\log N)$
+operations using the FFT, and the single-layer potential requires
+$\bigO(MN)$ operations using the fast multipole method (FMM).  If the
+solid wall is discretized with $N_{\wall}$ points, using the FMM, the
+matrix-vector multiplication requires $\bigO(MN\log N + N_{\wall})$
+operations.
+
+\item \emph{Computing the residual:}
+Given a provisional solution $\tilde{\xx}$, its velocity $\vv$
+satisfies~\eqref{e:diffEqn} and can be
+formed with a single matrix-vector multiplication.  Therefore,
+computing the residual $\rr$ requires $p$ matrix-vector
+multiplications, one for each Gauss-Lobatto substep, and computing the
+residual requires $\bigO(p(MN\log N + N_{\wall}))$ operations.
+
+\item \emph{Forming the provisional solution and SDC iterations:}
+Equations~\eqref{e:numericProvisionalImplicit}
+and~\eqref{e:numericSDCImplicit} require solving the same linear system
+(only the right-hand sides are different), and our preconditioner
+results in a mesh-independent number of GMRES iterations.  Therefore,
+if $n_{\gmres}$ total iterations are required to find the provisional
+solution, then $n_{\sdc}$ SDC iterations requires
+$\bigO(n_{\gmres}p(n_{\sdc}+1)(MN\log N + N_{\wall}))$ operations.  
+
+\item \emph{Forming the preconditioner:} The preconditioner is computed
+and stored in matrix form and requires $\bigO(MN^{2}\log N)$ operations
+per time step by using Fourier differentiation and the FFT.  The
+preconditioner must be factorized which requires $\bigO(MN^{3})$
+operations.  This is computed only once per time step and is reused at
+all the additional Gauss-Lobatto quadrature points.  In two dimensions,
+this cost is acceptable since the number of unknowns on each vesicle is
+sufficiently small.  However, in three dimensions, this cost is
+unacceptable and different preconditioners will need to be constructed.
+\end{itemize}
+
+

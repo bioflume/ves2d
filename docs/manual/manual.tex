@@ -1,0 +1,364 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,array,longtable}
+
+\newcommand{\xx}{{\mathbf{x}}}
+\newcommand{\vv}{{\mathbf{v}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+\newcommand{\BB}{{\mathcal{B}}}
+\newcommand{\TT}{{\mathcal{T}}}
+
+\title{Manual for Ves2D}
+\author{Bryan Quaife}
+
+\begin{document}
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Brief Overview}
+Given a vesicle $\xx$ with tension $\sigma$, the code simulates the
+dynamics governed by
+\begin{align*}
+  \frac{d\xx}{dt} &= \vv_{\infty}(\xx)+\kappa_{b}\SS\BB\xx+\SS\TT\sigma, \\
+  0 &= \xx_{s} \cdot \frac{d\xx_{s}}{dt}.
+\end{align*}
+$\vv_{\infty}$ is the background velocity which can either be a far
+field condition or come from a double-layer potential due to sources on
+a solid wall.  If using the latter, there is an additional second-kind
+integral equation as there is an unknown density function on the
+boundary of the solid walls.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Options}
+
+\begin{longtable}{|l|l|m{6cm}|}
+\hline
+Name & Default & Description \\ \hline
+%%%  
+order & 1 & 
+Time Stepping Order.  Can be 1 up to 4 \\  \hline
+%%%
+expectedOrder & 2 & 
+If using time adaptivity, this is the order that we expect out of the
+time integrator.  This plays a role in selecting the new time step size
+\\ \hline
+%%%
+inextens & `method2' &  
+Method for discretizing the inextensibility condition.  `method1'
+discretizes $\mathrm{div}_{\gamma} \mathbf{v} = 0$ where $\mathbf{v}$ is
+the given velocity field and `method2' discretizes
+$\mathrm{div}_{\gamma} \xx^{\mathrm{new}} = \mathrm{div}_{\gamma}
+\xx^{\mathrm{old}}$ \\ \hline
+%%%
+farField & `shear' &
+Unbounded boundary condition or the name of the confined flow.
+Examples include `extensional', 'taylorGreen', and 'couette'.  See
+\emph{tstep.bgFlow} for all flows \\ \hline
+%%%
+farFieldSpeed & 1 & 
+Scales the background velocity from its default value \\ \hline
+%%%
+vesves & `implicit' &  
+Vesicle-vesicle and vesicle-boundary interactions are treated explicitly
+or implicitly \\ \hline
+%%%
+near & true & 
+Near-singular integration algorithm to handle suspensions where vesicles
+are close to one another or to solid walls \\ \hline
+%%%
+nearStrat & `interp' &
+Method for handing the near-singular integration.  Gleb (Courant) had
+a first implementation of the method `cauchy' which uses the work of
+Barnett and Veerapaneni \\ \hline
+%%%
+fmm & false &
+Use the fast-multipole method to evaluate Stokes single-layer potential,
+the layer potentials for the pressure, and the laplace double-layer
+potential used for collision detection \\ \hline
+%%%
+fmmDLP & false &
+Use the fast-multipole method to evaluate Stokes double-layer potential
+\\ \hline
+%%%
+confined & false &
+Determines if the flow is confined or unbounded \\ \hline
+%%%
+usePlot & true &
+Plots the suspension as the simulation runs \\ \hline
+%%%
+track & false &  
+Places tracker points on the vesicles for visualization.  Particularly
+useful for observing tank-treading \\ \hline
+%%%
+quiver & false &  
+Do a quiver plot of the velocity field on top of the vesicles \\ \hline
+%%%
+axis & [-5 5 -5 5] &  
+Axis for the plot \\ \hline
+%%%
+saveData & true &  
+Save information to a log file and the configuration to a dat file so
+that it can be post-processed and visualized.  Also saves the pressure
+and stress if they are being computed \\ \hline
+%%%
+logFile & `output/example.log' &  
+Name of log file where information is saved.  This also controls the
+name of the pressure/stress binary files and the profile directory \\ \hline
+%%%
+dataFile & `output/exampleData.bin' &  
+Name of bin file where configuration is saved \\ \hline
+%%%
+verbose & true &  
+Used to turn on or off the information being printed on the console.
+Output is identical to what is written to the log file \\ \hline
+%%%
+profile & false &  
+Run matlab's profile on the simulation and save the output to a
+collection of html files \\ \hline
+%%%
+collision & false &  
+Use Laplace double-layer potential to detect collisions.  This will
+only issue a warning if vesicle cross \\ \hline
+%%%
+timeAdap & false &  
+Use time adaptivity \\ \hline
+%%%
+bending & false &
+Make the modification to the bending where the curve tries to fit itself
+to a prescribed configuration \\ \hline
+%%%
+tracers & false &
+Passive tracers included in the simulation \\ \hline
+%%%
+correct & false &
+A correction to the right-hand side when doing time stepping if doing an
+SDC correction \\ \hline
+%%%
+pressure & false &
+Compute the pressure at a user-defined set of points \\ \hline
+%%%
+orderGL & 2 &
+Number of Gauss-Lobatto points if monitoring or using the residual to
+use SDC \\ \hline
+%%%
+nsdc & false &
+Compute the residual at each time step using Gauss-Lobatto points \\  \hline
+%%%
+adhesion & false & 
+Add in an adhesive force which is treated fully explicitly \\ \hline
+%%%
+periodic & false & 
+If points ``leave" the geometry on the right side, reinsert them on the
+left to maintain a uniform volume fraction \\ \hline
+%%%
+correctShape & false & 
+At each time step, locally correct the vesicle's area and length to
+maintain stability for long time horizons \\ \hline
+%%%
+antiAlias & false & 
+Use anti-aliasing when computing layer potentials and traction jumps.
+This is not yet fully implemented.
+\\ \hline
+%%%
+redistributeArcLength & false & 
+If the Jacobian of the vesicle shape deviates too far from a constant
+value, redistribute the points equispaced in arclength.  This is an
+$\mathcal{O}(N^{2})$ operation \\ \hline
+%%%
+\caption{Options used in Ves2D}
+\end{longtable}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parameters}
+
+\begin{longtable}{|l|l|m{8cm}|}
+\hline
+Name        & Default                  & 
+  Description \\ \hline
+%%%
+N & 64 &  
+Number of points per vesicle.  Must be the same for all vesicles \\ \hline
+%%%
+nv & 1 &  
+Number of vesicles.  This will be overwritten if user requests a
+specified volume fraction when defining initial configuration \\ \hline
+%%%
+T & 1 &  
+Time horizon \\ \hline
+%%%
+m & 100 &  
+Number of time steps.  This only controls the initial time step size if
+using adaptive time stepping \\ \hline
+%%%
+Nbd & 0 &  
+Number of points per solid wall.  This must be the same for all solid
+walls \\ \hline
+%%%
+Nbdcoarse & 0 &  
+Number of points per solid wall on a coarse grid.  This could be used
+with multigrid to precondition solid wall calculations, but it is not
+fully implemented \\ \hline
+%%%
+nvbd & 0 &  
+Number of solid wall components \\ \hline
+%%%
+kappa & $1e-1$ &  
+Bending coefficient.  This only sets the time step size.  Must be the
+same for all vesicles \\ \hline
+%%%
+viscCont & 1 & 
+Ratio of the viscosity inside the vesicle to outside the vesicle.  May
+be different for each vesicle \\ \hline
+%%%
+gmresTol & $1e-12$ &  
+GMRES tolerance for solving all linear systems \\ \hline
+%%%
+gmresMaxIter & 50 &
+Maximum allowable number of GMRES iterations per call to gmres \\ \hline
+%%%
+errorTol & $1e-1$ &  
+Tolerance that the error in area and length are allowable to achieve
+before the simulation stops \\ \hline
+%%%
+rtolArea & $1e-2$ &  
+Tolerance for the local change in the error in area for adaptive time
+stepping \\ \hline
+%%%
+rtolLength & $1e-2$ &  
+Tolerance for the local change in the error in length for adaptive time
+stepping \\ \hline
+%%%
+betaUp & 1.5 &
+Maximum amount the time step size is allowed to be upscaled \\ \hline
+%%%
+betaDown & 0.6 &
+Maximum amount the time step size is allowed to be downscaled \\ \hline
+%%%
+alpha & sqrt(0.9) &
+Amount the optimal time step size is multiplied by to form the actual
+time step size taken \\ \hline
+%%%
+adStrength & 4e-1 & 
+Strength of the adhesive potential \\ \hline
+%%%
+adRange & 8e-1 & 
+Width of the adhesive potential \\ \hline
+%%%
+\caption{Parameters used in Ves2D}
+\end{longtable}
+%table with name, default value and description
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Classes}
+\paragraph{\emph{capsules:}}
+\begin{itemize}
+\item Generic class for storing a vesicles, solid walls, tracers, or
+other arbitrary target locations (ex. places to evaluate pressure and
+stress)
+\item Allowed pass any set of points (such as solid walls), or arbitrary
+points (such as tracers).  However, if the curves are not closed, the
+derivatives will be useless as they are computed with FFTs
+\item Computes the traction jump 
+\item Computes the surface divergence of of a function defined on a
+curve
+\item Computes the ahesion force
+\item Computes the modified bending term that comes from spontaneous
+curvature
+\item Computes bending, tension, and divergence in matrix form so that
+we can use block-diagonal preconditioner
+\item Given a vesicle shape and the solid walls, computeSigAndEta
+computes the tension and density function on the solid walls.  This is
+required for the first time step when doing sdc corrections and when
+computing the velocity field at arbitrary points (ex. Gokberk's
+evaluation of the velocity on a Cheyshev-Fourier grid.
+\item Near-singular integration structure is constructed.  This needs to
+be improved as there is a loop over target points
+\item Does collision detection
+\item Can sort a collection of arbitrary points as being inside or
+outside of a configuration
+\item Computes stress and pressure of a given configuration.  Stress of
+double-layer potential may have a bug
+\end{itemize}
+
+\paragraph{\emph{curve:}}
+\begin{itemize}
+\item Does basic calculus on 2-dimension curves such as finding the curvature,
+jacobian, tangent vector, etc.
+\item Finds the area, length, and reduced area of closed curves
+\item Structure of curves is a column vector with the x-coordinate
+followed by the y-coordinate.  Additional rows correspond to different
+curves
+\item Curves need not be closed, but then the derivatives don't make
+sense 
+\item Has precomputed initial shapes and solid wall configurations
+\item addAndRemove is used if periodic==true to keep the volume fraction
+constant
+\item correctAreaAndLength finds a nearby vesicle configuration that has
+the correct area and length
+\item redistributeParameterize redistributes the shape, tension, and
+velocity so that it is equispaced in arclength
+\item Has standard spectral and local restriction and prolongation
+\end{itemize}
+
+\paragraph{\emph{fft1:}}
+\begin{itemize}
+\item Does FFT calculations on closed curves
+\item Functions are Fourier interpolation and Fourier differentiation
+\item Computes Fourier differentiation matrix
+\end{itemize}
+
+\paragraph{\emph{monitor:}}
+\begin{itemize}
+\item Handles all the input and output of the results
+\item Initializes files when starting a new run
+\item Checks the error in area and length and terminates the code if it
+is above a certain tolerance
+\item Writes messages to log files and console
+\item Writes vesicle information to dat file
+\item Writes the pressure and stress to dat files
+\item Plots the vesicle configuration
+\item Gives a final summary of the run
+\end{itemize}
+
+\paragraph{\emph{poten:}}
+\begin{itemize}
+\item Does standard potential theory for closed curves
+\item Loads and uses quadrature rules for single- and double-layer
+potentials for stokes and laplace
+\item Contains main near-singular integration function
+\item Computes single- and double-layer potentials for Stokes and
+Laplace.  When available, there are routines that use the FMM.
+\item Many layer potentials can be generated as matrices to do
+self-evaluation
+\item Computes layer potentials for pressure and stress
+\item Gleb's implementation of the near-singular strategy of Shravan and
+Barnett is in this routine.  This is not yet operational
+\end{itemize}
+
+\paragraph{\emph{tstep:}}
+\begin{itemize}
+\item Class to move the simulation forward in time
+\item Has different time integrators such as first- and second-order,
+implicit vs. explicit vesicle-vesicle interactions, two different
+methods for enforcing the inextensibility.  Note that explicit is not
+fully supported.  It was not very robust, so it has not been maintained
+\item Includes a small time step size initialization for doing
+second-order time stepping
+\item Can take Gauss-Lobatto sub time steps for computing the residual,
+doing adaptive time stepping, or simply to study a different time
+integrator
+\item Computes the different velocities due to the different sources on
+all sources.  For example, vesicle to vesicle, vesicle to wall, stokeslets to
+vesicles, etc.
+\item Applies the block-diagonal preconditioner
+\item Computes the velocity at tracers
+\item Has all the background unbounded velocities
+\item Computes the residual at Gauss-Lobatto points which can either be
+simply monitored or used to build an adaptive time stepping scheme
+\item Does Gauss-Lobatto integration
+\end{itemize}
+
+\end{document}
+

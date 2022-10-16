@@ -1,0 +1,137 @@
+Main issues that need to be resolved are
+\begin{itemize}
+  \item Filtering, aliasing, and other Fourier issues for very coarse
+  resolutions:  Suggestion: use $2\times$ upsampling for product of
+  functions and $n\times$ upsampling for any nonlinear function. Since
+  the cost becomes $n^2$ it is  still much less than $n^3$ required
+  for the block diagonal preconditioner. If it is too expensive we can
+  reduce it to $n/2$ or $n/4$ upsampling. 
+  \comment{Bryan: I've seen that upsampling by a factor of 2 (or maybe
+  even 1.5) with Fourier restriction is adequate.  This is used to
+  compute the layer potentials as well as the bending, tension, and
+  surface divergence.  I only upsample the vesicle position and the
+  function of interest (tension, density, etc).  Then, terms like the
+  jacobian are computed using the upsampled vesicle positions.  This is
+  in contrast to upsampling the jacobian from the lower resolution; this
+  expressions has aliasing errors in it, too.}
+
+  \item Equidistribution in arclength: this works well.
+  \comment{Bryan: This does work well, and it is key to equally
+  distribute the tracker points of the vesicle in arclength.  However, I
+  have examples where the points start to cluster and this leads to an
+  instability.  Therefore, I now have an option to check the jacobian at
+  each time step, if it deviates from a constant value by more than some
+  threshold, then the vesicle is reparameterized so that the points are
+  equally distributed in arclength.  This is a $\mathcal{O}(N^{2})$
+  algorithm, but I expect that this'll beat one possible alternative
+  which would require a non-uniform FFT.}
+
+  \item Local correction to area and length of vesicle at each time
+  step:  for this we have to do high-fidelity simulations to show that
+  we should always use it.
+  \comment{Bryan: It's easy to show that it is essential to correct the
+  vesicle's area and length.  Even in dilute concentrations (1 vesicle),
+  if there is a long time horizon, this is essential.}
+
+  \item Near-singular integration at very coarse resolutions: This will
+  create problems and will be the most critical to resolve to avoid
+  collisions.  Upsample both sources and targets to $n^{3/2}$.  Then
+  perhaps try a more sophisticated filtering in which perhaps and spline
+  projection to minimize Gibbs phenomena, and perhaps some filtering,
+  WENO. No dynamic simulations, just look at different two-vesicle
+  configurations for the near interaction.  Filtering/smoothing (not
+  thresholding) may be necessary, although will more rigid.
+  \comment{Bryan: I haven't observed much difficulty here.  As long as
+  the layer potentials are evaluated with upsampling along the vesicle
+  boundary and at the interpolation nodes, I think this'll be fine.  One
+  thing that I plan to do is only use 3 interpolation points, one on the
+  source vesicle and two after the target points.}
+
+  \item Should we filter overall the velocity before we add it to the
+  new shape? See above; perhaps using couple filtering using
+  optimization with distance contraints?
+  \comment{Bryan: I don't think this is necessary.  By redistributing the
+  points equally in arclength, this will help control the high
+  frequencies in the Jacobian, and therefore, in all the required
+  derivatives, and the next time step.}
+
+  \item Low accurate FMM so that far field is less accurate, so that FMM
+  is fast. Maybe 3 digits or less. 
+  \comment{Bryan: This still needs to be done.}
+
+  \item What should the GMRES tolerance be? I guess not too small since
+  we want as large a step as possible because we want to reuse
+  preconditioner. Coupling it with several steps of SDC may help to
+  amortize cost. Perhaps even increase number of SDC sweeps to go
+  towards a fully implicit scheme that may improve perhaps stability.
+  May be will improve acceptance rates (assuming second-order time
+  stepping).
+  \comment{Bryan: The GMRES tolerance is tricky.  The block-diagonal
+  preconditioner means that GMRES mostly resolves inter-vesicle
+  interactions.  If we are using a low-accurate FMM, then it may be
+  appropriate to use a low GMRES tolerance.  As per SDC, what seems to
+  work best so far is to use only 2 Gauss-Lobatto points (ie. no
+  substeps), and then do SDC sweeps to get a more accurate first-order
+  solution.  Results for this in the single vesicle shear run are soon
+  to be reported.}
+
+  \item Changing the bending coefficient doesn't make a different for a
+  single vesicle, it just changes the time scale and thus the number of
+  time steps. But what  if we have multiple vesicles?  Perhaps it makes
+  a difference, especially in the presence of solid walls. 
+  \comment{Bryan: It seems to me that the bending coefficient only
+  matters if each vesicle has a different bending coefficient (which the
+  code doesn't support right now).  Even if there is a solid wall, the
+  time scale can be controlled by changing the magnitude of the boundary
+  conditions on the solid wall}
+
+  \item What if vesicles cross? We have to be able to detect crossing.
+  If they did, move back and filter more aggressively or moving
+  positions to increase distances? How should we do that? One idea is to
+  increase resolution in space for a few iterations. But if we have
+  concentrated suspensions, it may happen every a few time steps.
+  Another alternative is to increase repulsion?
+  \comment{Bryan: We'll have to wait and see what happens when I have
+  multiple vesicle simulations.}
+
+  \item Adding repulsion. What should be the form of repulsion and what
+  should be its length scale. If we're upsampling for the near singular
+  evaluation. Can we adjust the repulsion length-scale adaptively,
+  depending on the distance of two vesicles, so you don't have a
+  constant force. 
+  \comment{Bryan: There is also the issue of the magnitude of the
+  repulsion.  For adhesion, I implemented the adhesive force between a target
+  point and a vesicle as an average value (integral) of the potential
+  over all source points on the vesicle.  So, for repulsion, as two
+  vesicles come closer together, the repulsion will naturally increase.
+  I am assuming this is what is meant by adjusting the length-scale
+  adaptively.}
+
+  \item The preconditioner can perhaps be inverted on a coarse grid.
+  Need to test what the effect on the number of GMRES iterations is.
+   
+
+\end{itemize}
+
+What to we evaluate the coarse grid solver
+\begin{itemize}
+  \item Global measures: effective viscosity, normal stresses
+  \item Single vesicle: inclination angle, phase diagrams for slipper
+    cell and for tumbling, and for shear flow. 
+  \item Two vesicles: time and drainage for extensional flow,
+    separation distance for two vesicles in shear. 
+  \item For suspensions: look at velocity statistics (a la pietro). 
+  \item For walls/microfluidics?
+\end{itemize}
+
+Algorithms that need to be implemented in some shape or form include:
+\begin{itemize}
+  \item Upsampling, and maybe filtering, at all instances of
+  multiplication, division, and exponentiation of periodic functions.
+  \item Local fix to area and length (done)
+  \item Near-singular integration at coarse grids
+  \item Techniques to measure statistics of vesicle flows
+  \item Look at average pressures and stresses
+\end{itemize}
+
+
