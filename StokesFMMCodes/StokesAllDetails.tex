@@ -1,0 +1,269 @@
+%% LyX 2.0.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[oneside,english]{amsart}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{luainputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=0.75in,bmargin=0.75in,lmargin=0.75in,rmargin=0.75in}
+\setlength{\parskip}{\medskipamount}
+\setlength{\parindent}{0pt}
+\usepackage{babel}
+\usepackage{amsthm}
+\usepackage{esint}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+  \theoremstyle{remark}
+  \newtheorem{claim}{\protect\claimname}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\include{texmacros}
+\usepackage{amsmath,amsthm,amssymb}
+
+\AtBeginDocument{
+  \def\labelitemi{\normalfont\bfseries{--}}
+}
+
+\makeatother
+
+  \providecommand{\claimname}{Claim}
+
+\begin{document}
+
+\title{Stokes}
+
+\maketitle
+
+\section*{Equivalence between SL/DL representation and Goursat Functions}
+
+\textbf{Single and Double layer potential}
+
+The velocity due to a single layer with density $\mathbf{a}=\left(a_{1},a_{2}\right)$
+is given by $\mathbf{u}=SL\left(a_{1},a_{2}\right)$
+
+\begin{equation}
+\mathbf{u}=\frac{1}{4\pi}\int_{\Gamma}-\mathbf{a}\left(y\right)\ln\left|x-y\right|+
+\frac{\left(x-y,\mathbf{a}\left(y\right)\right)}{\left|x-y\right|^{2}}\left(x-y\right)ds_{y}\label{eq:1}
+\end{equation}
+
+
+The velocity due to a double layer with density $\mathbf{a}=\left(b_{1},b_{2}\right)$
+is given by $\mathbf{u}=DL\left(a_{1},a_{2}\right)$
+
+\begin{equation}
+\mathbf{u}=-\frac{1}{\pi}\int_{\Gamma}\frac{\left(x-y,\mathbf{a}\left(y\right)\right)\left(x-y,\mathbf{n\left(y\right)}\right)}
+{\left|x-y\right|^{4}}\left(x-y\right)ds_{y}\label{eq:8}
+\end{equation}
+
+
+\textbf{Reduction of stokes to Biharmonic and Goursat function representation}
+
+Let $\mathbf{u}=\left(u_{1},u_{2}\right)$. Let $w=-u_{2}+iu_{1}$.
+If $u_{1}=\frac{\partial W}{\partial y}\quad u_{2}=-\frac{\partial W}{\partial x}$,
+then $W$ is biharmonic, that is it satisfies
+
+\begin{equation}
+\Delta\Delta W=0
+\end{equation}
+
+
+Every biharmonic function has a representation in terms of goursat
+functions $\phi,\psi$ given by
+
+\begin{equation}
+W=Re\left(\overline{z}\phi+\chi\right)\quad\chi'=\psi
+\end{equation}
+
+
+From this we can derive that
+
+\begin{equation}
+w=\phi+z\overline{\phi'}+\overline{\psi}
+\end{equation}
+
+\begin{claim}
+The following choices of $\phi,\psi$ correspond to the SL + some
+constant integral of the density for stokes
+
+\begin{align}
+\phi & =\frac{1}{4\pi}\int_{\Gamma}\omega\left(\xi\right)\log\left(\xi-z\right)ds_{y}\nonumber \\
+\psi & =\frac{1}{4\pi}\int_{\Gamma}\overline{\omega\left(\xi\right)}\log\left(\xi-z\right)ds+\frac{1}{4\pi}\int_{\Gamma}\frac{\overline{\xi}\omega\left(\xi\right)}{\xi-z}ds\\
+\chi & =-\frac{1}{4\pi}\int_{\Gamma}\overline{\omega\left(\xi\right)}\left(\xi-z\right)\left[\log\left(\xi-z\right)-1\right]ds-\frac{1}{4\pi}\int_{\Gamma}\overline{\xi}w(\xi)\log\left(\xi-z\right)ds\\
+w & =\frac{1}{2\pi}\int_{\Gamma}\omega\left(\xi\right)\log\left|\xi-z\right|ds+\frac{1}{4\pi}\int_{\Gamma}\overline{\left(\frac{\omega\left(\xi\right)}{\xi-z}\right)}\left(\xi-z\right)ds\label{eq:9}\\
+W & =\mbox{Re}\left[\frac{1}{2\pi}\int_{\Gamma}\mbox{Re}\left[\overline{\left(z-\xi\right)}w\left(\xi\right)\right]\log\left(\xi-z\right)+\frac{1}{4\pi}\int_{\Gamma}w\left(\xi\right)\left(\xi-z\right)ds\right]
+\end{align}
+
+\end{claim}
+\textbf{Proof:}
+
+Let $\Gamma$ be paramterized by the arc length parametrization $\Gamma=\left(x_{1}\left(s\right),x_{2}\left(s\right)\right)$,
+$s\in I$
+
+Let $\xi=y=\left(x_{1}\left(t\right),x_{2}\left(t\right)\right)$
+, $z=x=\left(x_{1}\left(t_{0}\right),x_{2}\left(t_{0}\right)\right)$
+and $\omega\left(\xi\right)=\left(b_{1},b_{2}\right)$. Let $x_{1}\left(t\right)-x_{1}\left(t_{0}\right)=y_{1}\left(t\right)$
+and $x_{2}\left(t\right)-x_{2}\left(t_{0}\right)=y_{2}\left(t\right)$
+
+\begin{align}
+\frac{1}{2\pi}\int_{\Gamma}\omega\left(\xi\right)\log\left|\xi-z\right|ds_{y} & =\frac{1}{2\pi}\int_{I}\left(b_{1}+ib_{2}\right)\log\left|x-y\right|dt\\
+\frac{1}{4\pi}\int_{\Gamma}\overline{\left(\frac{\omega\left(\xi\right)}{\xi-z}\right)}\left(\xi-z\right)ds & =\frac{1}{4\pi}\int_{I}\frac{\left(b_{1}-ib_{2}\right)\left(\left(x_{1}\left(t\right)-x_{1}\left(t_{0}\right)\right)+i\left(x_{2}\left(t\right)-x_{2}\left(t_{0}\right)\right)\right)}{\left(\left(x_{1}\left(t\right)-x_{1}\left(t_{0}\right)\right)-i\left(x_{2}\left(t\right)-x_{2}\left(t_{0}\right)\right)\right)}dt\\
+ & =\frac{1}{4\pi}\int_{I}\frac{\left(b_{1}-ib_{2}\right)\left(\left(x_{1}\left(t\right)-x_{1}\left(t_{0}\right)\right)+i\left(x_{2}\left(t\right)-x_{2}\left(t_{0}\right)\right)\right)^{2}}{\left|x-y\right|^{2}}dt\nonumber \\
+ & =\frac{1}{4\pi}\int_{I}\frac{\left(b_{1}-ib_{2}\right)}{\left|x-y\right|^{2}}\left(y_{1}^{2}-y_{2}^{2}+2iy_{1}y_{2}\right)dt\nonumber \\
+ & =\frac{1}{4\pi}\int_{I}\frac{b_{1}\left(y_{1}^{2}-y_{2}^{2}\right)+2b_{2}y_{1}y_{2}+i\left(2b_{1}y_{1}y_{2}-b_{2}\left(y_{1}^{2}-y_{2}^{2}\right)\right)}{\left|x-y\right|^{2}}dt\nonumber 
+\end{align}
+
+
+From these expressions, we get that
+
+\begin{align}
+u_{1} & =\frac{1}{4\pi}\int_{I}\frac{2b_{1}y_{1}y_{2}-b_{2}\left(y_{1}^{2}-y_{2}^{2}\right)}{\left|x-y\right|^{2}}+2b_{2}\log\left|x-y\right|\nonumber \\
+ & =\frac{1}{2\pi}\int_{I}y_{1}\frac{b_{1}y_{2}-b_{2}y_{1}}{\left|x-y\right|^{2}}+b_{2}\log\left|x-y\right|dt+\frac{1}{4\pi}\int_{I}b_{2}dt\label{eq:2}\\
+u_{2} & =\frac{1}{4\pi}\int_{I}-2b_{1}\log\left|x-y\right|-\frac{b_{1}\left(y_{1}^{2}-y_{2}^{2}\right)+2b_{2}y_{1}y_{2}}{\left|x-y\right|^{2}}\nonumber \\
+ & =\frac{1}{2\pi}\int_{I}-b_{1}\log\left|x-y\right|+y_{2}\frac{\left(b_{1}y_{2}-b_{2}y_{1}\right)}{\left|x-y\right|^{2}}-\frac{1}{4\pi}\int_{I}b_{1}dt\label{eq:3}
+\end{align}
+
+
+Comparing equations \ref{eq:2} and \ref{eq:3} to equation \ref{eq:1},
+we see that the goursat function representation is $-2SL\left(b_{2},-b_{1}\right)+\frac{1}{4\pi}\int\mathbf{b}$
+where $\mathbf{b}=\left(b_{2},-b_{1}\right)$ 
+
+\begin{claim}
+The following choices of $\phi,\psi$ correspond to the DL 
+
+\begin{align}
+\phi & =\frac{1}{2\pi i}\int_{\Gamma}\frac{\omega\left(\xi\right)}{\xi-z}d\xi\nonumber \\
+\psi & =\frac{1}{2\pi i}\int_{\Gamma}\frac{\overline{\omega\left(\xi\right)}d\xi+\omega\left(\xi\right)\overline{d\xi}}{\xi-z}-\frac{1}{2\pi i}\int_{\Gamma}\frac{\overline{\xi}\omega\left(\xi\right)}{\left(\xi-z\right)^{2}}\\
+\chi & =-\frac{1}{2\pi i}\int_{\Gamma}\left(\overline{\omega\left(\xi\right)}d\xi+\omega\left(\xi\right)\overline{d\xi}\right)\log\left(\xi-z\right)-\frac{1}{2\pi i}\int_{\Gamma}\frac{\overline{\xi}w\left(\xi\right)d\xi}{\xi-z}\\
+w & =\frac{1}{2\pi i}\left[\int_{\Gamma}\omega\left(\xi\right)\frac{\overline{\xi-z}}{\xi-z}\left(\frac{d\xi}{\overline{\xi-z}}-\frac{\overline{d\xi}\left(\xi-z\right)}{\overline{\left(\xi-z\right)}^{2}}\right)+\overline{\omega\left(\xi\right)}\left(-\frac{d\xi}{\overline{\xi-z}}+\frac{d\overline{\xi}\left(\xi-z\right)}{\overline{\left(\xi-z\right)}^{2}}\right)\right]\nonumber \\
+W & =-\mbox{Re}\left[\frac{1}{2\pi i}\int_{\Gamma}\frac{\overline{\xi-z}}{\xi-z}w\left(\xi\right)d\xi+\frac{1}{2\pi i}\int_{\Gamma}\left(\overline{\omega\left(\xi\right)}d\xi+\omega\left(\xi\right)\overline{d\xi}\right)\log\left(\xi-z\right)\right]
+\end{align}
+
+\end{claim}
+\textbf{Proof:}
+
+Let $\Gamma$ be paramterized by the arc length parametrization $\Gamma=\left(x_{1}\left(s\right),x_{2}\left(s\right)\right)$,
+$s\in I$
+
+Let $\xi=y=\left(x_{1}\left(t\right),x_{2}\left(t\right)\right)$
+, $z=x=\left(x_{1}\left(t_{0}\right),x_{2}\left(t_{0}\right)\right)$
+and $\omega\left(\xi\right)=\left(b_{1},b_{2}\right)$. Let $x_{1}\left(t\right)-x_{1}\left(t_{0}\right)=y_{1}\left(t\right)$
+and $x_{2}\left(t\right)-x_{2}\left(t_{0}\right)=y_{2}\left(t\right)$,
+$n\left(y\right)=\left(-y_{2}',y_{1}'\right)$
+
+\begin{align}
+\frac{1}{2\pi i}\int_{\Gamma}\omega\left(\xi\right)\frac{\overline{\xi-z}}{\xi-z}\frac{d\xi}{\overline{\xi-z}}-\frac{\overline{\omega}d\xi}{\overline{\xi-z}} & =\frac{1}{2\pi i}\int_{I}\frac{\left(b_{1}+ib_{2}\right)\left(y_{1}'+iy_{2}'\right)}{y_{1}+iy_{2}}-\frac{\left(b_{1}-ib_{2}\right)\left(y_{1}'+iy_{2}'\right)}{y_{1}-iy_{2}}\nonumber \\
+ & =\frac{1}{2\pi i}\int_{I}\left(y_{1}'+iy_{2}'\right).2i.\mbox{Im}\left(\frac{b_{1}+ib_{2}}{y_{1}+iy_{2}}\right)\nonumber \\
+ & =\frac{1}{\pi}\int_{I}\frac{\left(y_{1}'+iy_{2}'\right)}{\left|x-y\right|^{2}}\left(b_{2}y_{1}-b_{1}y_{2}\right)\label{eq:4}
+\end{align}
+
+
+\begin{align}
+\frac{1}{2\pi i}\int_{\Gamma}-\omega\left(\xi\right)\frac{\overline{d\xi}}{\overline{\left(\xi-z\right)}}+\overline{\omega\left(\xi\right)}\frac{\overline{d\xi}\left(\xi-z\right)}{\overline{\left(\xi-z\right)}^{2}} & =\frac{1}{2\pi i}\int_{I}-\frac{\left(b_{1}+ib_{2}\right)\left(y_{1}'-iy_{2}'\right)}{y_{1}-iy_{2}}+\frac{\left(b_{1}-ib_{2}\right)\left(y_{1}'-iy_{2}'\right)\left(y_{1}+iy_{2}\right)}{\left(y_{1}-iy_{2}\right)^{2}}\nonumber \\
+ & =\frac{1}{2\pi i}\int_{I}\frac{\left(y_{1}'-iy_{2}'\right)\left(y_{1}+iy_{2}\right)^{2}}{\left|x-y\right|^{4}}\left(-\left(b_{1}+ib_{2}\right)\left(y_{1}-iy_{2}\right)+\left(b_{1}-ib_{2}\right)\left(y_{1}+iy_{2}\right)\right)\nonumber \\
+ & =\frac{1}{2\pi i}\int_{I}\frac{\left(y_{1}'-iy_{2}'\right)\left(y_{1}+iy_{2}\right)^{2}}{\left|x-y\right|^{4}}.2i.\left(b_{1}y_{2}-b_{2}y_{1}\right)\nonumber \\
+ & =\frac{1}{\pi}\int_{I}\frac{\left(b_{1}y_{2}-b_{2}y_{1}\right)}{\left|x-y\right|^{4}}\left[\left(y_{1}'-iy_{2}'\right)\left(y_{1}^{2}-y_{2}^{2}+2iy_{1}y_{2}\right)\right]\nonumber \\
+ & =\frac{1}{\pi}\int_{I}\frac{\left(b_{1}y_{2}-b_{2}y_{1}\right)}{\left|x-y\right|^{4}}\left(y_{1}'\left(y_{1}^{2}-y_{2}^{2}\right)+2y_{2}'y_{1}y_{2}+i\left(2y_{1}y_{2}y_{1}'-y_{2}'\left(y_{1}^{2}-y_{2}^{2}\right)\right)\right)\label{eq:5}
+\end{align}
+
+
+From these expressions, we get that
+
+\begin{align}
+u_{1} & =\frac{1}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)}{\left|x-y\right|^{4}}\left(\left(y_{1}^{2}+y_{2}^{2}\right)y_{2}'-2y_{1}y_{2}y_{1}'+y_{2}'\left(y_{1}^{2}-y_{2}^{2}\right)\right)\nonumber \\
+ & =\frac{1}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)}{\left|x-y\right|^{4}}\left(2y_{1}^{2}y_{2}'-2y_{1}y_{2}y_{1}'\right)\nonumber \\
+ & =\frac{2}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)\left(y_{1}y_{2}'-y_{2}y_{1}'\right)}{\left|x-y\right|^{4}}y_{1}\label{eq:6}\\
+u_{2} & =\frac{1}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)}{\left|x-y\right|^{4}}\left(y_{1}'\left(y_{1}^{2}-y_{2}^{2}\right)+2y_{2}'y_{1}y_{2}-y_{1}'\left(y_{1}^{2}+y_{2}^{2}\right)\right)\nonumber \\
+ & =\frac{1}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)}{\left|x-y\right|^{4}}\left(-2y_{1}'y_{2}^{2}+2y_{2}'y_{1}y_{2}\right)\nonumber \\
+ & =\frac{2}{\pi}\int_{I}\frac{\left(b_{2}y_{1}-b_{1}y_{2}\right)\left(y_{1}y_{2}'-y_{1}'y_{2}\right)}{\left|x-y\right|^{4}}\label{eq:7}
+\end{align}
+
+
+Comparing equations \ref{eq:6} and \ref{eq:9} to equation \ref{eq:8},
+we see that the goursat function representation is $-2DL\left(b_{2},-b_{1}\right)$
+where $\mathbf{b}=\left(b_{2},-b_{1}\right)$ 
+
+
+\subsection*{Surface forces in terms of Goursat functions}
+
+Let $\mathbf{f}=\left(f_{1},f_{2}\right)$ represent the surface forces
+on the surface $\Gamma$. Let $\sigma_{ij}$ $i,j=1,2$ be the stress
+tensor. Then
+
+\begin{align*}
+\sigma_{ij} & =\partial_{x_{j}}u_{i}+\partial_{x_{i}}u_{j}\\
+f_{i} & =\sigma_{i1}n_{1}+\sigma_{i2}n_{2}-pn_{i}
+\end{align*}
+
+
+where $\mathbf{n}=\left(n_{1},n_{2}\right)$ represents the oriented
+normal vector to the boundary. Let $\mathbf{u}=\left(u_{1},u_{2}\right)$
+be the velocity due to the Goursat functions $\phi,\psi$ where $\phi$
+and $\psi$ are analytic functions. Let $\phi=\alpha+i\beta$ and
+$\psi=\gamma+i\delta$. Using Goursat's representation, we know that
+
+\begin{align*}
+-u_{2}+iu_{1} & =\phi+z\overline{\phi'}+\overline{\psi}\\
+ & =\alpha+i\beta+\left(x_{1}+ix_{2}\right)\left(\alpha_{x_{1}}-i\beta_{x_{1}}\right)+\gamma-i\delta
+\end{align*}
+
+
+\begin{align*}
+u_{1} & =\beta+x_{2}\alpha_{x_{1}}-x_{1}\beta_{x_{1}}-\delta\\
+u_{2} & =-\left(\alpha+x_{1}\alpha_{x_{1}}+x_{2}\beta_{x_{1}}+\gamma\right)
+\end{align*}
+
+
+\begin{align*}
+\frac{1}{2}\sigma_{11}=\partial_{x_{1}}u_{1} & =x_{2}\alpha_{x_{1}x_{1}}-x_{1}\beta_{x_{1}x_{1}}-\delta_{x_{1}}\\
+\frac{1}{2}\sigma_{22}=\partial_{x_{2}}u_{2} & =-\alpha_{x_{2}}-x_{1}\alpha_{x_{1}x_{2}}-\beta_{x_{1}}-x_{2}\beta_{x_{1}x_{2}}-\gamma_{x_{2}}\\
+ & =x_{1}\beta_{x_{1}x_{1}}-x_{2}\alpha_{x_{1}x_{1}}+\delta_{x_{1}}\quad\left(\alpha_{x_{2}}=-\beta_{x_{1}},\quad\gamma_{x_{2}}=-\delta_{x_{1}}\quad\mbox{Using CR}\right)\\
+ & =-\partial_{x_{1}}u_{1}
+\end{align*}
+
+
+The last equation verifies the conservation of mass
+
+\begin{align*}
+\partial_{x_{2}}u_{1} & =\beta_{x_{2}}+\alpha_{x_{1}}+x_{2}\alpha_{x_{2}x_{1}}-x_{1}\beta_{x_{1}x_{2}}-\delta_{x_{2}}\\
+ & =2\alpha_{x_{1}}-x_{2}\beta_{x_{1}x_{1}}-x_{1}\alpha_{x_{1}x_{1}}-\gamma_{x_{1}}\quad\left(\mbox{Using CR}\right)\\
+\partial_{x_{1}}u_{2} & =-2\alpha_{x_{1}}-x_{1}\alpha_{x_{1}x_{1}}-x_{2}\beta_{x_{1}x_{1}}-\gamma_{x_{1}}
+\end{align*}
+
+
+\begin{align*}
+\sigma_{12}=\partial_{x_{2}}u_{1}+\partial_{x_{1}}u_{2} & =-2\left(x_{1}\alpha_{x_{1}x_{1}}+x_{2}\beta_{x_{1}x_{1}}+\gamma_{x_{1}}\right)
+\end{align*}
+
+
+\begin{align*}
+-f_{2}+if_{1} & =-\left(\sigma_{12}n_{1}+\sigma_{22}n_{2}\right)+i\left(\sigma_{11}n_{1}+\sigma_{12}n_{2}\right)-ip\left(n_{1}+in_{2}\right)\\
+ & =-\left(\sigma_{12}n_{1}-\sigma_{11}n_{2}\right)+i\left(\sigma_{11}n_{1}+\sigma_{12}n_{2}\right)-ip\left(n_{1}+in_{2}\right)\\
+ & =\left(n_{1}-in_{2}\right)\left(-\sigma_{12}+i\sigma_{11}\right)-ip\left(n_{1}+in_{2}\right)
+\end{align*}
+
+
+\begin{align*}
+-\sigma_{12}+i\sigma_{11} & =2\left(x_{1}\alpha_{x_{1}x_{1}}+x_{2}\beta_{x_{1}x_{1}}+\gamma_{x_{1}}+i\left(x_{2}\alpha_{x_{1}x_{1}}-x_{1}\beta_{x_{1}x_{1}}-\delta_{x_{1}}\right)\right)\\
+ & =2\left(\left(x_{1}+ix_{2}\right)\left(\alpha_{x_{1}x_{1}}-i\beta_{x_{1}x_{1}}\right)+\gamma_{x_{1}}-i\delta_{x_{1}}\right)\\
+ & =2\left(z\overline{\phi''}+\overline{\psi'}\right)
+\end{align*}
+
+
+Let $zn=n_{1}+in_{2}$. Combining the equations above, we get
+
+\begin{align*}
+-f_{2}+if_{1} & =2\left(z\overline{\phi''}+\overline{\psi'}\right)\overline{zn}+4i\mbox{Im}\left(\phi'\right)zn
+\end{align*}
+
+
+\section*{Setting dipole strengths}
+Let $\mu = \mu_{1} + i\mu_{2}$ denote the complex vector density for the double layer potential. 
+Let $z_{n} = n_{1} + i n_{2}$ denote the complex normal vector to the curve.
+The FMM should be called by setting the following parameters
+\[\text{dip}_{1} = \frac{1}{4 \pi} \frac{ds}{dt} \cdot \mu \cdot z_{n} \cdot h \]
+\[\text{dip}_{2} = \frac{1}{4 \pi} \frac{ds}{dt} \cdot \left( \mu \overline{z_{n}} - \overline{\mu} z_{n} \right) \cdot h \]
+\end{document}

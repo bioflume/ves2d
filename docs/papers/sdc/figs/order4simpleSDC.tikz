@@ -1,0 +1,116 @@
+\begin{tikzpicture}[scale=0.7]
+
+\begin{axis}[
+  xmode=log,
+  xmin = 8,
+  xmax = 3000,
+  xtick = {10,40,160,640,2560},
+  xticklabels = {$10$,$40$,$160$,$640$,$2560$},
+  xlabel = {$N_{t}$},
+  ymode = log,
+  ymin = 1E-6,
+  ymax = 1E0,
+  ytick = {1E-6,1E-4,1E-2,1E0},
+  yticklabels = {$1$E$-6$,$1$E$-4$,$1$E$-2$,$1$E$+0$},
+  ylabel = {Error},
+  ylabel style = {yshift = 10pt},
+  label style = {font=\Large},
+  legend entries = {$n_{\sdc}=0$,$n_{\sdc}=1$,$n_{\sdc}=2$,$n_{\sdc}=3$,$n_{\sdc}=5$},
+  legend cell align=left,
+  legend pos = south west,
+  legend style = {draw=none},
+  title = {\Large{$\frac{d\xx}{dt} = -\SS[\xx]\xx_{ssss}$}}
+  ]
+
+% error for 0 SDC sweeeps 
+\addplot [mark=*,blue,line width=1.5] table{
+10 1.57e-2
+20 2.77e-2
+40 2.92e-2
+80 2.47e-2
+160 1.83e-2
+320 1.23e-2
+640 7.61e-3
+1280 4.44e-3
+2560 2.48e-3
+};
+
+% error for 1 SDC sweeeps 
+\addplot [mark=square*,red,line width=1.5] table{
+10 2.28e-1
+20 1.38e-1
+40 8.02e-2
+80 4.35e-2
+160 2.18e-2
+320 1.01e-2
+640 4.32e-3
+1280 1.72e-3
+2560 6.40e-4
+};
+
+% error for 2 SDC sweeeps 
+\addplot [mark=diamond*,green,line width=1.5] table{
+10 2.25e-1
+20 1.29e-1
+40 6.85e-2
+80 3.34e-2
+160 1.47e-2
+320 5.91e-3
+640 2.17e-3
+1280 7.24e-4
+2560 2.21e-4
+};
+
+% error for 3 SDC sweeeps 
+\addplot [mark=triangle*,magenta,line width=1.5] table{
+10 2.28e-1
+20 1.23e-1
+40 6.19e-2
+80 2.83e-2
+160 1.16e-2
+320 4.30e-3
+640 1.43e-3
+1280 4.27e-4
+2560 1.14e-4
+};
+
+% error for 5 SDC sweeeps 
+\addplot [mark=star,cyan,line width=1.5] table{
+10 2.25e-1
+20 1.13e-1
+40 5.38e-2
+80 2.32e-2
+160 8.96e-3
+320 3.09e-3
+640 9.38e-4
+1280 2.47e-4
+2560 5.55e-5
+};
+
+% slope 1
+\addplot [mark=none,black,line width=1.5,dashed] table{
+0160 6.000e-2
+2560 3.750e-3
+};
+
+% slope 2
+\addplot [mark=none,black,line width=1.5,dashed] table{
+0160 2.560e-1
+2560 1.000e-3 
+};
+%
+%
+%% slope 3
+%\addplot [mark=none,black,line width=1.5,dashed] table{
+%0160 2.000e-4
+%2560 4.883e-8 
+%};
+%
+%% slope 4
+%\addplot [mark=none,black,line width=1.5,dashed] table{
+%0160 7.000e-5
+%2560 1.068e-9 
+%};
+
+\end{axis}
+\end{tikzpicture}

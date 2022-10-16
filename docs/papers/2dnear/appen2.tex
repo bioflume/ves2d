@@ -1,0 +1,58 @@
+We compute the jumps in the pressure and the stress of the single-layer potential.  Consider a vesicle $\omega$ with boundary $\gamma$, normal vector $\nn$, tangent vector $\ttau$, and traction jump $\ff$.  Then, the pressure due to the single-layer potential is 
+\begin{align*}
+  p(\xx) &= \frac{1}{2\pi}\int_{\gamma} 
+    \frac{\rr \cdot \ff}{\rho^{2}}ds_{\yy} \\
+  &= \frac{1}{2\pi}\int_{\gamma} 
+    \frac{(\rr \cdot \nn)}{\rho^{2}}(\ff \cdot \nn) ds_{\yy} + 
+    \frac{1}{2\pi}\int_{\gamma} 
+    \frac{(\rr \cdot \ttau)}{\rho^{2}}(\ff \cdot \ttau) ds_{\yy}.
+\end{align*}
+Both integrals are layer potentials of Laplace's equation.  The first is
+the double-layer potential with density $\ff \cdot \nn$ and the second
+is the adjoint of the tangential derivative of the single-layer
+potential with density $\ff \cdot \ttau$.  Standard potential
+theory~\cite{kellogg} shows that the first integral has a jump of size
+$1/2$ while the second integral has no jump.  Therefore, 
+\begin{align*}
+  &\lim_{\substack{\xx \rightarrow \xx_{0} \\ \xx \in \omega}}p(\xx) = 
+  +\frac{1}{2}\ff_{0} \cdot \nn_{0} + p(\xx_{0}), \\
+  &\lim_{\substack{\xx \rightarrow \xx_{0} \\ \xx \notin \omega}}p(\xx) = 
+  -\frac{1}{2}\ff_{0} \cdot \nn_{0} + p(\xx_{0}),
+\end{align*}
+where $\ff_{0} = \ff(\xx_{0})$ and $\nn_{0} = \nn(\xx_{0})$.
+
+To find the jump in the stress tensor, we decompose it into its tangential and normal components
+\begin{align*}
+  T[\ssigma](\xx) &= \frac{1}{\pi}\int_{\gamma}\frac{\rr \otimes \rr}{\rho^{2}}
+    \frac{\rr \cdot \ssigma}{\rho^{2}} \ff ds \\
+  &= \frac{1}{\pi}\int_{\gamma}\frac{\rr \otimes \rr}{\rho^{2}}
+    \frac{\rr \cdot \nn}{\rho^{2}}(\ssigma \cdot \nn)\ff ds + 
+    \frac{1}{\pi}\int_{\gamma}\frac{\rr \otimes \rr}{\rho^{2}}
+    \frac{\rr \cdot \ttau}{\rho^{2}}(\ssigma \cdot \ttau)\ff ds \\
+    &=: T_{\nn}[(\ssigma \cdot \nn)\ff](\xx) + 
+    T_{\ttau}[(\ssigma \cdot \ttau)\ff](\xx). 
+\end{align*}
+We use the usual method of placing a target point $\xx_{0} \in \gamma$, deforming the boundary by adding a circle of radius $\epsilon$ at $\xx_{0}$, computing the integral around the circle, and letting $\epsilon$ tend to zero.  However, we first rotate the tensors $T_{\nn}$ and $T_{\ttau}$ by the matrix $R$ so that the normal and tangential vectors at $\xx_{0}$ are $(1,0)$ and $(0,1)$ respectively.  Using the Residue Theorem to compute the contribution from the half circle, the jumps are 
+\begin{align}
+  &\lim_{\substack{\xx \rightarrow \xx_{0} \\ \xx \notin \omega}} 
+    R T_{\nn}[\ff](\xx) R^{T} = \frac{1}{2}\left[
+    \begin{array}{cc}
+      1 & 0 \\ 0 & 1
+    \end{array}
+    \right] \ff(\xx_{0}) + R T_{\nn}[\ff](\xx_{0}) R^{T}, 
+    \label{e:stress:norm:jump} \\
+  &\lim_{\substack{\xx \rightarrow \xx_{0} \\ \xx \notin \omega}} 
+    R T_{\ttau}[\ff](\xx) R^{T} = \frac{1}{2}\left[
+    \begin{array}{cc}
+      0 & 1 \\ 1 & 0
+    \end{array}
+    \right] \ff(\xx_{0}) + R T_{\ttau}[\ff](\xx_{0}) R^{T}. 
+    \label{e:stress:tang:jump}
+\end{align}
+If the limits are taken with $\xx \in \omega$, the sign in the jump
+changes to $-1/2$.  By left multiplying~\eqref{e:stress:norm:jump}
+and~\eqref{e:stress:tang:jump} by $R^{T}$ and right multiplying by $R$,
+the jump in $T[\sigma](\xx)$ from the interior of the vesicle
+is~\eqref{e:stress:jump:int} and from the exterior of the vesicle
+is~\eqref{e:stress:jump:ext}.
+

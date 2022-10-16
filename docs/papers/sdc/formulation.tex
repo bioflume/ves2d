@@ -1,0 +1,317 @@
+In this section, we briefly summarize the SDC formulation for IVPs and
+then extend SDC to an integro-differential equation that governs
+vesicle dynamics.  We first discuss the theory of SDC and then describe
+its numerical implementation in Section~\ref{s:numerics}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Spectral Deferred Correction}
+In its original development~\cite{dut:gre:rok2000}, SDC iteratively
+constructed a high-order solution of the IVP
+\begin{align}
+  \frac{d\xx}{dt} = f(\xx,t), \quad t \in [0,T],
+  \quad \xx(0) = \xx_{0}. 
+\label{e:ivp}
+\end{align}
+While classical deferred correction methods discretize the time
+derivative in~\eqref{e:ivp}, SDC uses a Picard integral to avoid
+unstable numerical differentiation.  Equation~\eqref{e:ivp} is
+reformulated as
+\begin{align}
+  \xx(t) = \xx_{0} + \int_{0}^{t} f(\xx,\tau) d\tau, \quad t \in [0,T].
+\label{e:picardIVP}
+\end{align}
+A time stepping scheme is applied to compute a numerical solution at $p$
+quadrature points in $[t_{m},t_{m+1}]$.  By interpolating at these
+quadrature points, a provisional solution $\txx{}(t)$ is generated.
+Given this provisional solution $\txx{}(t)$ of~\eqref{e:picardIVP}, the
+residual is defined as
+\begin{align}
+  \rr(t;\txx{}) = \xx(t_{m}) - \txx{}(t) + 
+    \int_{t_{m}}^{t} f(\txx{},\tau) d\tau, 
+    \quad t \in [t_{m},t_{m+1}].
+  \label{e:picardResidual}
+\end{align}
+The provisional solution at the $p$ quadrature points is then used to
+approximate the integral in~\eqref{e:picardResidual} with
+$p^{th}$-order accuracy.  The error $\ee = \xx - \txx{}$ satisfies
+\begin{align}
+  \ee(t) = \rr(t;\txx{}) + \int_{t_{m}}^{t} 
+      (f(\txx{} + \ee,\tau) - f(\txx,\tau)) d\tau, \quad
+      t \in [t_{m},t_{m+1}],
+  \label{e:picardCorrect}
+\end{align}
+and an approximation $\tilde{\ee}$ of $\ee$ is computed, generally
+using the same numerical method used to compute $\txx{}$.  Finally, the
+provisional solution is updated to $\txx{} + \tilde{\ee}$ and the
+procedure is repeated as many times as desired.  The process of forming
+the residual $\rr$, approximating the error $\ee$, and updating the
+provisional solution is referred to as an SDC iteration or sweep.  We
+note that a time stepping scheme forms a discrete provisional solution
+which does not have to be interpolated; instead, one forms discrete
+values at quadrature points which are then used to approximate the
+residual $\rr$.
+
+The accuracy of SDC depends on the discretization
+of~\eqref{e:picardIVP} and~\eqref{e:picardCorrect} and the accuracy of
+the quadrature rule used to estimate $\rr(t;\txx{})$.  An abstract
+error analysis for applying deferred correction methods to the operator
+equation $F(y)=0$ has been performed
+in~\cite{boh:ste1984,lin1980,ske1982,ste1973}.  In~\cite{han:str2011},
+this abstract framework was applied to~\eqref{e:ivp} and the main
+result is stated in Theorem 4.2.  Here we formulate the result in terms
+of first-order corrections, which we will be using.
+\begin{proposition}
+\label{pro:convergence}
+Let $\xx$ be the unique solution of~\eqref{e:ivp}, and $\txx{}$ be an
+order $k$ approximation of $\xx$ formed with a stable time integrator
+meaning that
+\begin{align*}
+  \|\txx{}(T) - \xx(T)\| = \mathcal{O}(\Delta t^{k}),
+\end{align*}
+where the constant depends only on the derivatives of $f$ and on $T$,
+but not on $\Delta t$.  Assume the residual~\eqref{e:picardResidual} is
+computed exactly.  If the exact error $\ee$
+satisfying~\eqref{e:picardCorrect} is approximated with a first-order
+solution $\tee{}$, then
+\begin{align*}
+  \|\tee{}(T) + \txx{}(T) - \xx(T)\| = \mathcal{O}(\Delta t^{k+1}).
+\end{align*}
+However, since $\rr$ is approximated with a quadrature rule,
+the asymptotic error is
+\begin{align*}
+  \|\tee{}(T) + \txx{}(T) - \xx(T)\| = \bigO(\Delta t^{\min(k+1,\ell)}),
+\end{align*}
+where $\ell$ is the quadrature's order of accuracy.
+\end{proposition}
+%\begin{theorem} 
+%\label{thm:convergence}
+%Let $f \in C^{\infty}$ have bounded derivatives, and $\xx$ be the unique
+%solution of~\eqref{e:ivp}.  Suppose that the time integrator $\phi$ is
+%stable.  That is, there exists some $S > 0$ which only depends on $f$
+%and $T$, such that for all $\yy, \zz \in \RR^{m}$,
+%\begin{align*}
+%  \|\yy - \zz\| \leq S\|\phi_{m}(\yy) - \phi_{m}(\zz)\|.
+%\end{align*}
+%Moreover, suppose that $\phi_{m}$ is of order $k$ meaning that
+%$\phi_{m}(\xx) = \mathcal{O}(\Delta t^{k})$, where $\Delta t = T/m$.
+%Suppose that a numerical solution $\txx{}$ of $\xx$ satisfies
+%\begin{align*}
+%  \|\txx{}(T) - \xx(T)\| \leq C \Delta t^{\ell},
+%\end{align*}
+%where $C$ depends only on the derivatives of $f$ and on $T$, but not on
+%$m$.  Assuming the residual $\rr$ is computed exactly, if $\tee{}$ is
+%formed with the order $k$ time integrator $\phi$ to approximate $\ee$,
+%then
+%\begin{align*}
+%  \|\tee{}(T) + \txx{}(T) - \xx(T)\| \leq C \Delta t^{\ell+k}.
+%\end{align*}
+%However, since $\rr$ is approximated with a $p^{th}$-order quadrature,
+%the asymptotic error is
+%\begin{align*}
+%  \|\tee{}(T) + \txx{}(T) - \xx(T)\| = \bigO(\Delta t^{\min(\ell+k,p)}).
+%\end{align*}
+%\end{theorem}
+
+Proposition~\ref{pro:convergence} tells us that by estimating the error
+$\ee$ with a first-order method, which is the only order we will
+consider, the order of accuracy is increased by one, with the constraint
+that this convergence is limited by the accuracy of the quadrature rule
+for approximating~\eqref{e:picardResidual}.  However, the theorem states
+nothing about the stability of SDC.  In~\cite{dut:gre:rok2000}, the
+authors consider three discretizations of~\eqref{e:picardIVP}
+and~\eqref{e:picardCorrect}: fully explicit, fully implicit, and linear
+combinations of the two.  We do not consider explicit methods since the
+governing equations are stiff.  The other two methods could be used for
+vesicle suspensions, but both would require solving non-linear
+equations.
+
+We have successfully used a variant of IMEX methods for vesicle
+suspensions~\cite{qua:bir2014b, rah:vee:bir2010, vee:gue:zor:bir2009},
+and we couple these methods with SDC in this work.  IMEX
+methods~\cite{asc:ruu:wet1995} are a family of time integrators that
+treat some terms (generally, linear) implicitly and other terms
+explicitly.  IMEX methods for additive splittings $\dot{\xx}(t) =
+F_{\mathrm{EXPLICIT}}(\xx,t) + F_{\mathrm{IMPLICIT}}(\xx,t) =
+F_{E}(\xx,t) + F_{I}(\xx,t)$ of~\eqref{e:ivp} were first applied to SDC
+by Minion~\cite{min2003}.  We summarize the numerical results
+from~\cite{min2003} since their behaviour resembles results that we
+will observe.  First, the Van der Pol oscillator is considered in a
+non-stiff, mildly stiff, and stiff regime, and the number of SDC
+iterations ranges from two to six.  In the non-stiff regime, the error
+behaves according to Proposition~\ref{pro:convergence}.  In the mildly
+stiff case, the correct asymptotic result is observed, but not until
+$\Delta t$ is much smaller.  In the stiff regime, the convergence
+behaviour differs considerably from the formal error.  This behaviour
+is attributed to order reduction which is further analyzed.  The author
+proceeds to claim that ``the correct asymptotic convergence rates would
+be observed given sufficiently small $\Delta t$; however, this is not
+the relevant issue in most applications".
+
+An alternative interpretation of SDC which is often useful is as an
+iterative method that is converging to the solution of the
+fully-implicit Gaussian collocation scheme of~\eqref{e:picardIVP}.  By
+using this interpretation, Krylov deferred correction
+methods~\cite{hua:jia:min2006, jia:hua2008, bu:hua:min2009,
+bu:hua:min2012, hua:jia:min2007} can be applied, the stability and
+convergence properties of SDC can analyzed and improved~\cite{wei2013},
+and inexact and multilevel approximations can be
+made~\cite{spe:rup:emm:bol:kra2014, emm:min2012,
+min:spe:bol:emm:rup2015, spe:rup:emm:min:bol:kra2014,
+spe:rup:min:emm:kra2014}.  These methods have been shown to accelerate
+SDC convergence.  However, in this first work on applying SDC to
+vesicle suspensions, we focus on using the simplest algorithm: we apply
+a preselected number of SDC iterations to a set of quadrature points
+which remain fixed at all the SDC iterations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{SDC for Vesicle Suspensions}
+
+Let $\{\gamma_{j}\}_{j=1}^{M}$ be a collection of vesicles
+parameterized by $\xx_{j}$ and with tension $\sigma_{j}$
+(Figure~\ref{f:schematics}).  We use the integro-differential equation
+derived in~\cite{vee:gue:zor:bir2009}.  It expresses the balance of the
+bending and tension forces of the vesicle with the stress jump of the
+fluid across the vesicle membrane and is augmented by a constraint to
+enforce the inextensibility condition. In detail, the equations that
+govern the evolution of the vesicle suspensions is an equation for the
+velocity of the interface~\eqref{e:diffEqn} and the vesicle surface
+inextensibility condition~\eqref{e:inextens}. The key term in these two
+equations is $\vv(\xx_{j};\xx_{k})$---the velocity of vesicle $j$ due
+to the hydrodynamic forces from vesicle $k$. This term is given by
+\begin{align}
+  \vv(\xx_{j};\xx_{k}) = \vv_{\infty}(\xx_{j})\delta_{j,k} + \SS(\xx_{j},\xx_{k})
+    (-\BB(\xx_{k})(\xx_{k}) + \TT(\xx_{k})(\sigma_{k})),
+  \label{e:vesDynamics}
+\end{align}
+where $\delta_{j,k}$ is the Kronecker delta function,
+%\begin{align*}
+%  &s = \|\xx'\|, \quad \quad \rho = \|\xx - \yy\|, \\
+%  &\SS(\xx_{j},\xx_{k})(\ff) = \frac{1}{4\pi}\int_{\gamma_{k}} \left(
+%    -\log \rho + \frac{(\xx - \yy) \otimes (\xx - \yy)}{\rho^{2}} \right)
+%    \ff(\yy) ds_{\yy}, \quad \xx \in \gamma_{j}, \\
+%  &\BB(\xx)(\ff) = \frac{d^{4}\ff}{ds^{4}}, \\ 
+%  &\TT(\xx)(\sigma) =
+%    \frac{d}{ds}\left(\sigma\frac{d\xx}{ds}\right),
+%\end{align*}
+\begin{align*}
+  &\SS(\xx_{j},\xx_{k})(\ff) = \frac{1}{4\pi}\int_{\gamma_{k}} \left(
+    -\log \rho + \frac{(\xx_{j} - \xx_{k}) \otimes (\xx_{j} - \xx_{k})}{\rho^{2}} \right)
+    \ff(\xx_{k}) ds_{k}, \\
+  &\rho = \|\xx_{j} - \xx_{k}\|, \\
+  &\BB(\xx_{k})(\ff) = \frac{d^{4}\ff}{ds_{k}^{4}}, \\ 
+  &\TT(\xx_{k})(\sigma_{k}) =
+    \frac{d}{ds_{k}}\left(\sigma_{k}\frac{d\xx_{k}}{ds_{k}}\right),
+\end{align*}
+$s_{k}$ is the arclength of $\gamma_{k}$, and $\vv_{\infty}$ is the
+background velocity (unconfined flows) or the velocity due to solid
+walls (confined flows).  In the case of confined flows, we use the
+double-layer potential of an unknown density function $\eeta$ defined on
+the boundary of the solid walls.  The extra equation comes from a
+non-slip boundary condition on the solid walls and the details are
+presented in~\cite{rah:vee:bir2010}.  We point out that $\vv$ is not
+symmetric, meaning that $\vv(\xx_{j};\xx_{k}) \neq \vv(\xx_{k};\xx_{j})$
+for all $j \neq k$, and $\SS$, $\BB$, $\TT$ are all linear in their
+second argument.
+
+The notation we are using is chosen so that terms such as
+$\BB(\xx_{k}^{m+1})(\xx_{k}^{m+1})$ can be approximated as
+\begin{align*}
+  \BB(\xx_{k}^{m})(\xx_{k}^{m+1}) = 
+    \frac{d^{4}}{ds_{k}^{4}} \xx_{k}^{m+1}.
+\end{align*}
+The tension $\sigma_{j}$ acts as a Lagrange multiplier to satisfy the
+inextensibility constraint
+\begin{align}
+  \Div(\xx_{j})\left(\sum_{k=1}^{M}\vv(\xx_{j};\xx_{k})\right) = 0,
+  \label{e:inextens}
+\end{align}
+where
+\begin{align*}
+  \Div(\xx_{j})(\ff) = \frac{d\xx_{j}}{ds_{j}} 
+      \cdot \frac{d\ff}{ds_{j}},
+\end{align*}
+which is also linear in its second argument.
+Equation~\eqref{e:inextens} can be eliminated using the Schur
+complement of the tension to write $\sigma_{j}$ in terms of the
+positions
+$\xx_{k}$, $k=1,\ldots,M$.  Then, the vesicle
+velocity~\eqref{e:vesDynamics} can be written entirely in terms of
+$\xx_{j}$ and $\xx_{k}$, and the no-slip boundary condition of vesicle
+$j$ gives
+\begin{align}
+  \frac{d\xx_{j}}{dt} = \sum_{k=1}^{M}\vv(\xx_{j};\xx_{k}), \quad
+  j=1,\ldots,M.
+  \label{e:diffEqn}
+\end{align}
+The formulation~\eqref{e:diffEqn} is easiest to present our numerical
+methods, but we in fact do not eliminate the tension in our
+implementation.  The resulting changes to the SDC formulation are
+presented in Appendix~\ref{a:appendix1}.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{cc}
+  \ifTikz
+  \scalebox{0.9}{\input{figs/unboundedGeom.tikz}} & 
+  \scalebox{0.9}{\input{figs/boundedGeom.tikz}} 
+  \fi
+  \end{tabular}
+\end{center}
+\mcaption{Two typical vesicle suspensions.  Left: $M$ vesicles are
+submerged in an unbounded shear flow.  Right: $13$ vesicles are in a
+bounded domain.  In the right configuration, the flow is driven by
+Dirichlet boundary conditions on $\Gamma$.}{f:schematics}
+\end{figure}
+
+Following the SDC method, given the solution of~\eqref{e:diffEqn} at
+time $t_{m}$, the solution at some later time $t$ satisfies
+\begin{align}
+  \xx_{j}(t) = \xx_{j}(t_{m}) + \int_{t_{m}}^{t}
+    \sum_{k=1}^{M}\vv(\xx_{j};\xx_{k})d\tau, \quad t \in [t_{m},t_{m+1}].
+  \label{e:picardEqn}
+\end{align}
+A provisional solution $\txx{}$ is formed at a set of quadrature nodes
+in $[t_{m},t_{m+1}]$ by using a time stepping method that we describe
+in Section~\ref{s:vesiclePicard}.  By interpolating this discrete
+solution (which is not done in practice), we can define the residual
+\begin{align}
+  \rr_{j}(t;\txx{}) = \xx_{j}(t_{m}) - \txx{j}(t) +
+    \int_{t_{m}}^{t} \sum_{k=1}^{M}\vv(\txx{j};\txx{k})d\tau,
+    \quad t \in [t_{m},t_{m+1}],
+  \label{e:picardRes}
+\end{align}
+which is approximated by a quadrature formula defined in
+Section~\ref{s:vesicleQuadrature}.  Then, the error $\exx{j} = \xx_{j} -
+\txx{j}$ satisfies
+\begin{align*}
+  \exx{j}(t) = \xx_{j}(t_{m}) - \txx{j}(t) + \int_{t_{m}}^{t}
+    \sum_{k=1}^{M}\vv(\txx{j} + \exx{j};\txx{k} + \exx{k})
+    d\tau, \quad t \in [t_{m},t_{m+1}],
+\end{align*}
+which we write using the residual $\rr$ as
+\begin{align}
+  \exx{j}(t) = \rr_{j}(t;\txx{}) + \int_{t_{m}}^{t}
+  \sum_{k=1}^{M}(\vv(\txx{j}+\exx{j};\txx{k} + \exx{k}) - 
+      \vv(\txx{j};\txx{k})) d\tau,
+    \quad t \in [t_{m},t_{m+1}].
+  \label{e:sdcUpdate}
+\end{align}
+Then, the solution of~\eqref{e:sdcUpdate} is approximated by a function
+$\tilde{\ee}_{\xx}$ using the same time stepping method and
+interpolation scheme used to form $\txx{}$.  Finally, we update the new
+provisional solution as $\txx{} + \tilde{\ee}_{\xx}$.  Again, this
+procedure of computing the residual~\eqref{e:picardRes}, numerically
+solving~\eqref{e:sdcUpdate} for the error, and updating the provisional
+solution is referred to as an SDC iteration.  Assuming that we take a
+prediction step followed by $n_{\sdc}$ first-order SDC iterations, and
+$\ell$ is the quadrature error for computing the residual $\rr$, from
+Proposition~\ref{pro:convergence}, we expect that the asymptotic rate
+of convergence is $\min(n_{\sdc}+1,\ell)$.  However, we will see that
+order reduction is present and this asymptotic error is difficult to
+achieve unless $n_{\sdc} \leq 2$.  This has been analyzed
+in~\cite{wei2013}; in particular, it is shown that order reduction for
+SDC is present in differential-algebraic problems and problems with a
+scale separation between non-stiff and highly stiff components.  Both
+of these characteristics are present in our governing equations.  We
+plan to introduce more sophisticated algorithms to reduce order
+reduction in future work.

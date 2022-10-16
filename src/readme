@@ -1,0 +1,31 @@
+In this code, the comments are after the statement. 
+
+Ves2D.m  - driver API to vesicle simulations
+tstep.m
+capsules.m - main class for capsule and solid wall  geometry
+curve.m - geometry, arclength, area correction, and restric/prolong
+poten.m - all potential and layer evaluations and near singular evaluation
+monitor.m - plots/checkpointing/monitoring residuals
+fft1.m - spectral differentiation/interpolation
+
+TODO:
+- clean up tstep.m
+- make all examples run
+- fmm accuracy option
+- velocity postprocessing without solves
+- redistributeArcLength(o,x,y) in curve.m
+jacobian calculation when arclength is corrected, should be done
+with upsampling and should be set to one and not recomputed during the
+vesicle calculations; and precompute all the derivate operators and
+keep them fixed throught out the simulation, especially for the
+low-accuracy versions. (Speculative, may it will create problems)
+
+COMPLETED:
+- remove/clarify selfMatTrap in poten.m (nearSingInt)
+      Removed on July 18
+
+- position should be saved before area/length correction and arc length correction
+      Completed on July 21.  Area and length and redistribution in
+      arclength are done first, followed by a time step, and followed
+      by writing the new position to the .bin files
+

@@ -1,0 +1,64 @@
+We have presented and tested a collection of extensions of the boundary
+integral equation formulation for vesicle suspensions outlined
+in~\cite{rah:vee:bir}.  Our goal is to create a robust method for
+handling high concentration suspensions.  The main contributions we have
+presented are:
+\begin{itemize}
+
+\item To remove stiffness, we have introduced a new time integrator that
+treats inter-vesicle interactions semi-implicitly.  This allows us to
+take larger time steps and to use second-order time stepping.  
+
+\item To handle vesicles in close proximity, we employed and tested the
+near-singular integration algorithm outlined
+in~\cite{ying-biros-zorin06}.  This algorithm creates a uniform error
+when evaluating integral operators, is easy to implement, and does not
+significantly increase the overall complexity.  The vesicle flow
+configurations that we tested are unstable without near-singular
+integration.
+
+\item To test for collisions, we introduced a spectrally accurate
+algorithm that uses standard potential theory and is compatible with
+our near-singular integration scheme and the fast multipole method.
+
+\item We computed the pressure and stress of the single- and
+double-layer potentials.  To use near-singular integration, we require
+the limiting values of the pressure and stress as the target point
+approaches the boundary.  All these jumps were computed.
+
+\item We obtained first- and second-order convergence for a variety of
+bounded and unbounded flows.  We also observed examples where the errors
+for second-order convergence plateau while the error for first-order
+convergence continues to grow.
+\end{itemize}
+
+While these contributions are a major step towards creating a robust
+solver for high concentration vesicle suspensions, there are several key
+features that are necessary and are currently being investigated.
+
+\begin{itemize}
+
+\item The vesicle shapes we have presented in Section~\ref{s:results}
+can be well represented with $N=128$ or fewer points per vesicle.
+However, we may require more points to represent quantities such as the
+traction jump or the velocity field.  Therefore, spatial adaptivity is 
+under consideration.
+
+\item Currently, the time step is found using a trial and error
+process.  We are developing high-order time integrators that use error
+control to automatically and adaptively adjust the time step size.
+
+\item Our formulation is two-dimensional.  The algorithms we have
+introduced naturally extend to three-dimensions, but the linear systems
+are far too expensive to solve without suitable preconditioners. 
+
+\item Our formulation uses the steady Stokes equations for both the
+fluid in the bulk and in the vesicle interior. If transient, inertial,
+or viscoelastic effects are important one has to use a different
+formulation.
+
+\end{itemize}
+
+
+%\todo{acknowledgments of funding.}
+

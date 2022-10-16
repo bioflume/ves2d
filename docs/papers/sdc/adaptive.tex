@@ -1,0 +1,167 @@
+During the course of a simulation, vesicles come close to each other and
+to confining walls.  For instance, as a vesicle passes through a
+constriction (see Figure~\ref{f:stenosisGeom}), it can come very close
+to the solid wall and small time steps should be taken.  Resolving
+multiple time scales is an important step towards a robust solver for
+vesicle suspensions for two reasons.  First, the simulation is sped up
+since the largest possible time step is always taken, and second, we
+eliminate a trial-and-error procedure for finding a time step size that
+results in the desired tolerance.
+
+A common strategy of an adaptive time step method is to control an
+estimate of the local truncation error~\cite{chr:mac:ong:spi2014,
+hai:nor:wan1993, hai:wan1996}.  One estimate is the difference of two
+numerical solutions $\xx_{1}$ and $\xx_{2}$.  One choice for $\xx_{1}$
+and $\xx_{2}$ is the numerical solution formed from a single time step
+of size $\Delta t$ and one formed from two time steps of size $\Delta
+t/2$ (step-doubling).  Another choice is to use solutions formed by two
+different numerical methods of different orders.  For vesicle
+suspensions, we can instead use two invariants to estimate the local
+truncation error.  We use the errors in area and length, which are
+invariant by the incompressibility and inextensibility conditions, to
+estimate the local truncation error.  This estimate does not require
+forming multiple numerical solutions,  and it can be computed with
+spectral accuracy since we use a Fourier representation for the vesicle
+boundary.  Since a small error in area and length does not imply that
+the true error is small, we also perform a convergence study for the
+vesicle position in one of the numerical examples in
+Section~\ref{s:results}.  We will see that the error in position decays
+at the same rate as the error in area and length, and, therefore, they
+are justified as an estimate for the local truncation error.
+
+We now outline how this estimate is used to accept or reject a time
+step, and how it selects a new time step size.  Here we assume that
+$\Delta t$ is sufficiently small that we are in the asymptotic regime
+described in Proposition~\ref{pro:convergence}.  We will see that this
+is not always the case, and for this reason, we build safety factors,
+which we define at the end of this section, into the algorithm.  Suppose
+we have a single vesicle\footnote{If there are multiple vesicles, we
+choose the minimum requested time step size over all of the vesicles.}
+at time $t$ with area $A(t)$, length $L(t)$, and the desired tolerance
+for the global error is $\epsilon$ at the time horizon $T=1$.  We
+compute the solution at time $t+\Delta t$ using a $k^{th}$-order time
+stepping scheme which results in a new area $A(t + \Delta t)$ and length
+$L(t + \Delta t)$.  First, we check if the solution at time $t + \Delta
+t$ satisfies
+\begin{align}
+  |A(t+\Delta t) - A(t)| \leq A(t) \Delta t \epsilon,
+  \quad \text{and} \quad
+  |L(t+\Delta t) - L(t)| \leq L(t) \Delta t \epsilon.
+  \label{e:errorBounds}
+\end{align}
+If condition~\eqref{e:errorBounds} is satisfied, we accept this
+solution and we increase the time step size so that we are taking the
+largest possible $\Delta t$ such that~\eqref{e:errorBounds} is
+satisfied for future time steps.  If condition~\eqref{e:errorBounds} is
+not satisfied, we reject this solution and we compute a new solution
+using a smaller time step size.  Given a rejected time step size, one
+option would be to form a new provisional solution by interpolating the
+rejected solution to the new nodes.  However, in our current
+implementation, we simply form the new provisional solution
+using~\eqref{e:numericProvisionalImplicit}.
+%As an alternative to fixing $\epsilon$ for the entire simulation, we
+%experiment with increasing it as the simulation progresses in
+%Section~\ref{s:couette}.  The strategy is to increase $\epsilon$ at
+%each time step to account for the fact that the actual error committed
+%will be less than the predicted error.  In this manner, the global
+%error is much closer to the tolerance.
+
+Regardless of the acceptance or rejection of the solution at time $t +
+\Delta t$, a new time step size must be chosen.  We first require
+estimates of the asymptotic constants of proportionality for the errors
+in area and length
+\begin{align*}
+  C_{A} = \frac{|A(t+\Delta t) - A(t)|}{A(t)\Delta t^{k+1}}, 
+  \quad \text{and} \quad
+  C_{L} = \frac{|L(t+\Delta t) - L(t)|}{L(t)\Delta t^{k+1}}.
+\end{align*}
+We only consider the error in the area since the same argument can be
+applied to the error in length.  The optimal time step size $\Delta
+t_{\opt}$ satisfies
+\begin{align}
+  |A(t+\Delta t_{\opt}) - A(t)| = A(t) \Delta t_{\opt} \epsilon,
+  \label{e:optimalEstimate1}
+\end{align}
+and we also have the estimate
+\begin{align}
+  |A(t+\Delta t_{\opt}) - A(t)| = C_{A} A(t) \Delta t_{\opt}^{k+1}.
+  \label{e:optimalEstimate2}
+\end{align}
+Equating~\eqref{e:optimalEstimate1} and~\eqref{e:optimalEstimate2},
+$\Delta t_{opt}$ satisfies 
+\begin{align*}
+  C_{A} \Delta t_{\opt}^{k+1} = \Delta t_{\opt} \epsilon.
+\end{align*}
+Finally, using our estimate for $C_{A}$, we have
+\begin{align*}
+  \frac{|A(t+\Delta t) - A(t)|}{A(t) \Delta t^{k+1}} 
+      \Delta t_{\opt}^{k+1} = \Delta t_{\opt} \epsilon, 
+\end{align*}
+which implies that our next time step size should be
+\begin{align}
+  \Delta t_{\opt} = \left(
+    \frac{A(t) \epsilon \Delta t}{|A(t+\Delta t) - A(t)|}\right)^{1/k}
+    \Delta t.
+  \label{e:dtOpt}
+\end{align}
+A similar optimal time step size is computed based on the length and
+the smaller of these two time steps is selected for the next time step.
+We have also experimented with using the residual~\eqref{e:picardRes} to
+choose the optimal time step size.  Unfortunately, due to the
+ill-conditioning of the governing equations, we found that the residual
+is an unreliable estimate of the truncation error.  However, the
+residual can be used to observe if the SDC iteration is converging, and
+we observe this convergence in the reported examples.
+
+When computing the optimal time step size~\eqref{e:dtOpt}, we assumed
+that asymptotic estimates could be used.  However, we will see that the
+desired order of accuracy is often not achieved and the time step
+size~\eqref{e:dtOpt} will not provide tight bounds
+for~\eqref{e:errorBounds}.  Therefore, we place restrictions on the new
+time step size to increase the probability of the next time step being
+accepted.  Using this strategy, we will see that for most simulations,
+the number of rejected time steps is acceptable and the desired
+tolerance is always achieved.  First, we restrict the new time step
+size scaling to the interval $[\beta_{\down},\beta_{\up}]$, where
+$\beta_{\down} < 1$ and $\beta_{\up} > 1$.  Next, we multiply the new
+time step size by a safety factor $\alpha^{1/k}<1$ to increase the
+likelihood of the next time step size being accepted.  Finally, we
+never increase the time step size if the previous time step size is
+rejected~\cite{hai:nor:wan1993}.  In summary, if the previous time step
+is accepted, the new time step size is
+\begin{align*}
+  \Delta t_{\new} = \alpha^{1/k}\min(\beta_{\up}\Delta t,
+    \max(\Delta t_{\opt},\beta_{\down}\Delta t)),
+\end{align*}
+and if the previous time step is rejected, the new time step size is
+\begin{align*}
+  \Delta t_{\new} = \alpha^{1/k}\min(\Delta t,
+    \max(\Delta t_{\opt},\beta_{\down}\Delta t)).
+\end{align*}
+The scaling factor $\alpha^{1/k}$ is chosen so that
+\begin{align*}
+  \max\left(\frac{|A(t+\Delta t)-A(t)|}{A(t)},
+            \frac{|L(t+\Delta t)-L(t)|}{L(t)}\right)
+  \approx \alpha \Delta t \epsilon,
+\end{align*}
+regardless of the order $k$.  That is, with this scaling of $\alpha$,
+the method tries to commit the same amount of error per time step,
+independent of the time stepping order.
+
+The parameters $\alpha$, $\beta_{\up}$, and $\beta_{\down}$  affect the
+overall efficiency of the method.  For instance, if $\alpha$ is too
+large, then $\Delta t_{\new}$ may be too large and the time steps will
+be rejected too often.  However, if it is too small, the bounds
+in~\eqref{e:errorBounds} will not be tight which will increase the
+total number of time steps.  We have experimented with different values
+and have had success with $\alpha = 0.9$, $\beta_{\up} = 1.5$ and
+$\beta_{\down} = 0.6$.  These values are used for all the numerical
+examples.  We point out that if a sufficiently small tolerance
+$\epsilon$ is requested, the estimate~\eqref{e:optimalEstimate2} will
+be much more accurate, and $\beta_{\up}$ and $\beta_{\down}$ will not
+play a role since only small changes to the time step size will be
+made.  However, when larger tolerances are
+requested,~\eqref{e:optimalEstimate2} is less accurate, and without
+$\beta_{\up}$ and $\beta_{\down}$, the algorithm may choose
+unreasonable time step sizes.
+

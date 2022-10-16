@@ -1,0 +1,51 @@
+Reviewer #1: The paper extends a current publication of the authors
+(JCP 274 (2014) 245-267) by considering a different time
+discretization. Efficient time discretizations are an important issue
+for simulations of vesicle suspensions. However, there are certain
+aspects, which should be addressed before publication:
+
+- several parts of the introduction are more or less copied from the
+earlier paper
+
+- the paper is hard to read as a stand alone paper, as even the
+system of equations to be solved is not written down
+
+- it is nice to see a statement of limitations of the method,
+however it is not understandable, why several limitations
+mentioned in the earlier paper, should have gone away, e.g.
+transient and inertia effects
+
+- what is highlighted here as an innovative criteria for
+adaptive time stepping, is just a phenomenological indicator,
+it is certainly good to control area and interface length,
+but it does not say anything about the quality of the
+solution (a constant in time solution would do the job, but
+would be wrong for most examples). Here I miss computational
+results, demonstrating that the used error indicators are
+indeed sufficient to control the error of the solution. At
+least for the relaxation flow the stationary shape and the
+evolution to it are known and can be used as a criteria.
+Otherwise you could use criteria such as circularity or
+center of mass position to validate your solution. Can you
+show that the energy is decreasing for all the chosen time
+steps?
+
+- the comparison in 5.1 remains unclear, is the BDF the
+second order scheme from your previous paper or is it a
+different method, how does SDC compare with the results in
+the previous paper? As already mentioned in the text an
+improvement of SDC can not really be observed for the
+second order scheme
+
+- as almost the same examples are used as in the previous
+paper, a follow up paper should at least used the same
+complexity of the examples and demonstrate an improvement
+in computing time, much better would be to show an
+improvement in complexity of the problem solvable, in 5.4
+the complexity is even reduced, which is not acceptable
+
+- last, it is the second algorithmic paper of the authors
+on the subject, any meaningful biophysical question,
+which could be answered by the simulations, is not even
+asked, and should be added and answered in a revised
+version  

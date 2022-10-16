@@ -1,0 +1,148 @@
+\begin{tikzpicture}[scale=0.85]
+
+\begin{axis}[
+  xmode = log,
+  xmin = 3,
+  xmax = 4300,
+  xtick = {4,16,64,256,1024,4096},
+  xticklabels = {4,16,64,256,1024,4096},
+  xlabel = $N_{t}$,
+  ymode = log,
+  ymin = 1E-10,
+  ymax = 1E-1,
+  ytick = {1E-11,1E-9,1E-7,1E-5,1E-3,1E-1},
+  yticklabels = {$1$E$-11$,$1$E$-9$,$1$E$-7$,$1$E$-5$,$1$E$-3$,$1$E$-1$},
+  ylabel = {Error},
+  ylabel style = {yshift = 10pt},
+  label style = {font=\Large},
+  legend entries = {{$n_{\sdc}=0$, $p=2$},{$n_{\sdc}=1$, $p=2$},{$n_{\sdc}=2$, $p=3$},{$n_{\sdc}=3$, $p=3$},{$n_{\sdc}=10$, $p=3$}},
+  legend cell align=left,
+%  legend style={at={(1.55,0.8)},anchor=east},
+  legend pos = south west,
+  legend style = {draw=none},
+  title = {\Large{Error}}
+  ]
+
+
+% first-order
+% error for nsdc=0, p=2
+\addplot [mark=*,blue,line width=1.5] table{
+4 7.61e-3
+8 5.97e-3
+16 4.37e-3
+32 3.02e-3 
+64 1.98e-3
+128 1.24e-3
+256 7.42e-4
+512 4.25e-4
+1024 2.35e-4
+2048 1.26e-4
+4096 6.56e-5
+};
+
+% second-order
+% error for nsdc=1, p=2
+\addplot [mark=square*,red,line width=1.5] table{
+4 1.31e-2
+8 5.65e-3
+16 2.35e-3
+32 9.38e-4
+64 3.57e-4
+128 1.30e-4
+256 4.46e-5
+512 1.45e-5
+1024 4.48e-6
+2048 1.31e-6
+4096 3.63e-7
+};
+
+% third-order
+% error for nsdc=2, p=3
+\addplot [mark=diamond*,green,line width=1.5] table{
+4 5.25e-3
+8 1.92e-3
+16 6.57e-4
+32 2.08e-4
+64 6.03e-5
+128 1.59e-5
+256 3.77e-6
+512 7.93e-7
+1024 1.41e-7
+2048 1.53e-8
+4096 5.05e-9
+};
+
+% fourth-order
+% error for nsdc=3, p=3
+\addplot [mark=triangle*,magenta,line width=1.5] table{
+4 8.63e-3
+8 2.96e-3
+16 9.10e-4
+32 2.52e-4
+64 6.24e-5
+128 1.36e-5
+256 2.57e-6
+512 3.98e-7
+1024 4.07e-8
+2048 5.22e-9
+4096 5.82e-9
+};
+
+% fourth-order
+% error for nsdc=10, p=3
+\addplot [mark=star,mark size=3.5pt,cyan,line width=1.5] table{
+4 2.17e-2
+8 8.27e-3
+16 2.22e-3
+32 4.76e-4
+64 9.81e-5
+128 1.96e-5
+256 3.57e-6
+512 5.71e-7
+1024 7.36e-8
+2048 2.36e-9
+4096 7.36e-9
+% old values from using GMRES 
+%1024 7.36e-8
+%2048 3.52e-9
+%4096 7.36e-9
+};
+
+\addplot [mark=none,black,line width=1.0] table{
+1024 4.5e-4
+4096 4.5e-4
+4096 1.125e-4
+1024 4.5e-4
+};
+
+\addplot [mark=none,black,line width=1.0] table{
+1024 1e-5
+4096 1e-5
+4096 6.25e-7
+1024 1e-5
+};
+
+\addplot [mark=none,black,line width=1.0] table{
+512 1.8e-6
+1536 1.8e-6
+1536 6.67e-8
+512 1.8e-6
+};
+
+\addplot [mark=none,black,line width=1.0] table{
+512 2e-9
+512 1.62e-7
+1536 2e-9
+512 2e-9
+};
+
+\end{axis}
+
+\node at (6.65,4.05) {$1$};
+\node at (6.5,2.9) {$2$};
+\node at (5.55,2.4) {$3$};
+\node at (5.15,1.3) {$4$};
+
+\end{tikzpicture}
+
+

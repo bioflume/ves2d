@@ -1,0 +1,70 @@
+The traction jump $\ff$ minimizes the energy functional
+$\int_{\gamma}\frac{\kappa_{b}}{2}\kappa^{2}ds$ subject to the
+inextensibility constraint.  An alternative traction jump is derived by
+minimizing
+\begin{align}
+  \int_{\gamma}\frac{\kappa_{b}}{2}(\kappa - \tilde{\kappa})^{2}ds, \quad \text{subject to} \quad \|\xx_{s}\|=1,
+    \label{e:new:bending}
+\end{align}
+where $\tilde{\kappa}$ is the curvature of a prescribed intrinsic
+vesicle shape whose perimeter we are assuming is one.  By taking the
+first variation of~\eqref{e:new:bending}, the force due to bending is
+\begin{align*}
+  \mathbf{f}_{b} = \left(\kappa_{ss} + \frac{\kappa^{3}}{2} -
+    \tilde{\kappa}_{ss} - \frac{\kappa\tilde{\kappa}^{2}}{2}\right)\mathbf{n} + 
+    (\kappa-\tilde{\kappa})\tilde{\kappa}_{s}\mathbf{t}.
+\end{align*}
+It is shown in~\cite{shravan} that terms of the form
+$(h(s)\xx_{s})_{s}$ do no work for inextensible vesicles and hence
+such forces can be added to modify $\mathbf{f}_{b}$.  A convenient
+choice is $h(s) = 3/2\, \kappa^{2} - 1/2\, \tilde{\kappa}^{2}$ which
+results in the simpler traction jump
+\begin{align*}
+  \ff = \ff_{b} + \ff_{\sigma} = \kappa_{b}(-\xx_{ssss} - \tilde{\kappa}_{ss} \mathbf{n} - 
+    \kappa \tilde{\kappa}_{s}\mathbf{t}) + (\sigma \xx_{s})_{s}.
+\end{align*}
+
+We present simulations for several choices of $\tilde{\kappa}$ in
+Figure~\ref{f:newbending}.  The flow is only driven by the vesicle
+configuration since there is no background flow.  For $\tilde{\kappa}$,
+we take the curvature of an ellipse with an aspect ratio of 1 (top
+plots), 2 (middle plots), and 4 (bottom plots).  We see that the
+curvature of the vesicle tries to fit to the curvature of the intrinsic
+shape while maintaining its area and arclength.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}c@{\,}}
+    \ifInputs
+    \input{figs/newBendingAspect1Time1.tikz} &
+    \input{figs/newBendingAspect1Time2.tikz} &
+    \input{figs/newBendingAspect1Time3.tikz} &
+    \input{figs/newBendingAspect1Time4.tikz} &
+    \input{figs/newBendingAspect1Time5.tikz} &
+    \input{figs/newBendingAspect1Curvature.tikz} \\
+
+    \input{figs/newBendingAspect2Time1.tikz} &
+    \input{figs/newBendingAspect2Time2.tikz} &
+    \input{figs/newBendingAspect2Time3.tikz} &
+    \input{figs/newBendingAspect2Time4.tikz} &
+    \input{figs/newBendingAspect2Time5.tikz} &
+    \input{figs/newBendingAspect2Curvature.tikz} \\
+
+    \input{figs/newBendingAspect4Time1.tikz} &
+    \input{figs/newBendingAspect4Time2.tikz} &
+    \input{figs/newBendingAspect4Time3.tikz} &
+    \input{figs/newBendingAspect4Time4.tikz} &
+    \input{figs/newBendingAspect4Time5.tikz} &
+    \input{figs/newBendingAspect4Curvature.tikz}
+    \fi
+  \end{tabular}
+\end{center}
+\mcaption{Here we show the relaxation dynamics of a single vesicle with
+three different prescribed intrinsic curvatures $\tilde{\kappa}$. There
+is no imposed background flow.  The vesicle is discretized with $N=256$
+points and $\Delta t = 0.02$.  After 200 time steps, the vesicle is
+within $0.01 \%$ of its steady state configuration.  The final
+curvature (red) and curvature of the intrinsic shape (blue) are in the
+right plots.}{f:newbending} 
+\end{figure}
+

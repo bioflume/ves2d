@@ -1,0 +1,162 @@
+Let us first define the main variables used to model vesicle flows.
+Neglecting inertial forces, the dynamics of vesicle flows is fully
+characterized by the position of the interface $\xx(s,t) \in \gamma$,
+where $s$ is the arclength, $t$ is time, and $\gamma$ is the membrane of
+the vesicle. The position is determined by solving a moving interface
+problem that models the mechanical interactions between the viscous
+incompressible fluid in the exterior and interior of the vesicle (with
+viscosity $\mu$) and the vesicle membrane.  Given $\xx(s,t)$, derived
+variables include the fluid velocity $\uu$, the fluid stress $T$, the
+pressure $p$, and the membrane tension $\sigma$.  In addition, if $\nn$
+is the outward normal to the vesicle membrane $\gamma$, then the stress
+jump $\ff(\xx) = \llbracket T \rrbracket \mathbf{n}$, which is a
+nonlinear function of the position $\xx$, is equal to the sum of a force
+due to the vesicle membrane bending modulus $\kappa_b$ and a force due
+to the tension $\sigma$.  For wall-confined flows, additional parameters
+are the prescribed wall velocity $\mathbf{U}(\xx,t), \xx \in \Gamma$.
+
+Given these definitions, the equations for a single vesicle flow are
+given
+\begin{equation}
+\label{e:vesicles-pde}
+\begin{split}
+\mu \grad \cdot (\grad \uu + \grad \uu^{T}) - 
+\grad p(\xx) = 0, &\hspace{20pt} \xx \in \Omega\backslash\gamma, \gap
+&&\mbox{conservation of momentum},\\
+%
+ \grad \cdot \uu(\xx) = 0,  &\hspace{20pt} \xx \in \Omega \backslash
+ \gamma, \gap &&\mbox{conservation of mass}, \\
+%
+  \xx_{s} \cdot \uu_{s} = 0, &\hspace{20pt} \xx \in \gamma, \gap
+  &&\mbox{membrane inextensibility},\\
+%
+   \uu(\xx,t) = \dot{\xx}(t), &\hspace{20pt} \xx \in \gamma, \gap   &&\mbox{velocity continuity},\\
+\ff(\xx)= -\kappa_{b}\xx_{ssss}
+ + (\sigma(\xx) \xx_{s})_{s}, &\hspace{20pt} \xx \in \gamma, \gap  &&\mbox{nonzero stress jump},\\
+%
+ \uu(\xx,t) = \mathbf{U}(\xx,t), &\hspace{20pt} \xx \in \Gamma, \gap  &&\mbox{wall velocity}. \\
+\end{split}
+\end{equation}
+The viscosity contrast is taken to be constant inside each vesicle.
+However, these values can differ from the viscosity of the exterior
+fluid.  We also consider a different stress jump that corresponds to a
+prescribed intrinsic curvature for the vesicle membrane.  The
+modification to the formulation and results are reported in
+Appendix~\ref{A:AppendixC}.  In the case of a problem with $M$ vesicles
+with interfaces denoted by $\{\gamma_p\}_{p=1}^M$, we define
+\begin{align*}
+  \gamma = \mathop{\cup}_{p=1}^M \gamma_p.
+\end{align*}
+Finally, if $\Omega$ is m-ply connected, we let $\Gamma_{0}$ denote the
+connected component of $\Gamma = \Gamma_{0} \cup \Gamma_{1} \cup \cdots
+\cup \Gamma_{m}$ that surrounds all the other connected components of
+$\Gamma$.
+
+There exist many numerical methods for solving interface evolution
+equations like~\eqref{e:vesicles-pde}. Since the viscosity is piecewise
+constant with a discontinuity along the interface, we opt for an
+integral equation formulation using the Stokes free-space Green's
+function. Next, following \cite{rah:vee:bir}, we introduce integral and
+differential operators that we will need to
+reformulate~\eqref{e:vesicles-pde}. 
+
+
+
+\subsection{Integral equation formulation}
+We give the formulation for the general case in which we have viscosity
+contrast between the interior and exterior fluid ($\mu_0$ is the
+viscosity of the exterior fluid, $\mu_p$ is the viscosity of the
+interior fluid for vesicle $p$, and $\nu_p = \mu_p/\mu_0$), and solid
+boundaries with a prescribed velocity.  First we introduce $\SS_{pq}$
+and $\DD_{pq}$, the single- and double-layer potentials for Stokes flow,
+where the constant factors are chosen so that our formulation is in
+agreement with Pozrikidis~\cite[equation 2.2]{pozrikidis2001b}. The
+subscripts denote the potentials induced by a hydrodynamic density on
+the membrane of vesicle $q$ and evaluated on the membrane of vesicle
+$p$:
+\begin{align*}
+  \SS_{pq}[\ff](\xx) &:= \frac{1}{4\pi\mu_{0}}\int_{\gamma_{q}}\left(
+    -\boldsymbol{I} \log \rho
+  + \frac{\rr \otimes \rr}{\rho^{2}} \right)\ff\, ds_{\yy},
+  && \xx \in \gamma_{p}, \\
+  \DD_{pq}[\uu](\xx) &:= \frac{1-\nu_{q}}{\pi}\int_{\gamma_{q}}
+    \frac{\rr \cdot \nn}{\rho^{2}}\frac{\rr \otimes \rr}{\rho^{2}}\uu\,
+  ds_{\yy}, && \xx \in \gamma_{p},
+\end{align*}
+where $\rr = \xx - \yy,$ and $\rho = \|\rr\|_{2}$.      
+Also, we define
+\[\SS_{p} := \SS_{pp}\quad\mbox{and}\quad \DD_{p} := \DD_{pp},\]
+to indicate vesicle self-interactions.  Next, we define
+\begin{align*}
+  \EE_{pq}[\ff,\uu](\xx) &= \SS_{pq}[\ff](\xx) + \DD_{pq}[\uu](\xx), && \xx \in \gamma_{p}, \\
+  \EE_{p}[\ff,\uu](\xx) &= \sum_{q=1}^{M} \EE_{pq}[\ff,\uu](\xx), && \xx \in \gamma_{p}.
+\end{align*}
+$\BB$ is the completed double-layer operator for confined
+Stokes flow with density $\eeta$
+\begin{align*}
+  \BB[\eeta](\xx) = \DD_{\Gamma}[\eeta](\xx) + 
+    \sum_{q=1}^{M}R[\xi_{q}(\eeta),\cc_{q}](\xx) + 
+    \sum_{q=1}^{M}S[\llambda_{q}(\eeta),\cc_{q}](\xx), 
+    \quad \xx \in \gamma \cup \Gamma.
+\end{align*}
+If $\xx \in \Gamma_{0}$, the rank one modification
+$\mathcal{N}_{0}[\eeta](\xx) = \int_{\Gamma_{0}}(\nn(\xx) \otimes
+\nn(\yy)) \eeta(\yy)ds_{\yy}$ is added to $\BB$ which removes the
+one-dimensional null space of the corresponding integral
+equation~\cite{pozrikidis1992}.  The Stokeslets and rotlets are defined
+as
+\begin{align*}
+  S[\llambda_{q}(\eeta),\cc_{q}](\xx) = \frac{1}{4\pi\mu_{0}}
+    \left(\log \rho + \frac{\rr \otimes \rr}{\rho^{2}}\right)
+    \llambda_{q}(\eeta) 
+  \qquad \text{and} \qquad
+  R[\xi_{q}(\eeta),\cc_{q}](\xx) = \frac{\xi_{q}(\eeta)}{\mu_{0}}
+    \frac{\rr^{\perp}}{\rho^{2}},
+\end{align*}
+where $\cc_{q}$ is a point inside $\omega_{q}$, $\omega_{q}$ is the
+interior of vesicle $q$, $\rr=\xx - \cc_{q}$, and $\rr^{\perp} =
+(r_{2},-r_{1})$.  The operator $\BB$ satisfies the jump condition
+\begin{align*}
+  \lim_{\substack{\xx \rightarrow \xx_{0} \\ \xx \in \Omega}}
+    \BB[\eeta](\xx) = -\frac{1}{2}\eeta(\xx_{0}) + 
+    \BB[\eeta](\xx_{0}), \qquad \xx_{0} \in \Gamma,
+\end{align*}
+and the size of the Stokeslets and rotlets are
+\begin{align*}
+  \llambda_{q,i} = \frac{1}{2\pi} \int_{\gamma_{q}} 
+    \eeta_{i}(\yy) ds_{\yy}, \quad i=1,2
+  \qquad \text{and} \qquad
+  \xi_{q} = \frac{1}{2\pi}\int_{\gamma_{q}} \yy^{\perp}
+    \eeta(\yy)ds_{\yy}.
+\end{align*}
+The inextensibility constraint is written in operator form as
+\begin{align*}
+  \mathcal{P}[\uu](\xx) = \xx_{s} \cdot \uu_{s}.
+\end{align*}
+
+Putting everything together, the integral formulation equation of~\eqref{e:vesicles-pde} is
+given by~\cite{rah:vee:bir}
+\begin{subequations}
+\label{e:ves:dyn}
+\begin{align}
+  &(1+\nu_{p}) \uu(\xx) = \EE_{p}[\ff,\uu](\xx) + 
+  \BB_{p}[\eeta](\xx), \quad &&\xx \in \gamma_{p},
+  \label{e:vesicle:dynamic} \\
+  &\mathcal{P}[\uu](\xx) = 0, &&\xx \in \gamma_{p},
+  \label{e:inextensibility} \\
+  &\mathbf{U}(\xx) = -\frac{1}{2}\eeta(\xx) + \EE_{\Gamma}[\ff,\uu](\xx) + 
+    \BB[\eeta](\xx), &&\xx \in \Gamma,
+  \label{e:BIE}
+\end{align}
+\end{subequations}
+where $\ff$ is the hydrodynamic density, which in our case is the stress
+jump on the vesicle interface, which also is referred to as the traction
+jump, and is given by 
+\begin{align*}
+  \ff = -\kappa_{b}\xx_{ssss} + (\sigma \xx_{s})_{s}.
+\end{align*}
+Since $\uu = d\xx/dt$ and $\ff$ depends on $\sigma$ and
+$\xx$, \eqref{e:ves:dyn} is a system of integro-differential-algebraic equations
+for $\xx,\sigma$, and $\eeta$. 
+
+
