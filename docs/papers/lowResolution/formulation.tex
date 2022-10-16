@@ -1,0 +1,42 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Governing equations}
+We are solving
+\begin{align}
+  \frac{d\xx_{j}}{dt} &= \SS_{jj} \ff_{j} + 
+    \DD_{jj} \frac{d\xx_{j}}{dt} +
+    \sum_{k \neq j} \left(\SS_{jk} \ff_{k} +
+    \DD_{jk} \frac{d\xx_{k}}{dt} \right) + 
+    \DD_{j\Gamma} \eeta \\
+  \ff_{k} &= -\kappa \frac{d^{4}\xx_{k}}{ds^{4}} + 
+    \frac{d}{ds}\left(\sigma_{k} \frac{d\xx_{k}}{ds}\right) \\
+  0 &= \frac{d\xx_{j}}{ds} \cdot \frac{d}{ds}\frac{d\xx_{j}}{dt} \\
+  \UU &= - \frac{1}{2}\eeta + \DD_{\Gamma\Gamma} \eeta +
+    \sum_{k} \left(\SS_{\Gamma k} \ff_{k} +
+    \DD_{\Gamma k} \frac{d\xx_{k}}{dt} \right) 
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Discretization in space}
+\begin{itemize}
+  \item Fourier representation
+  \item Derivatives computed with FFT
+  \item Single-layer potential with Alpert
+  \item Double-layer potential with trapezoid rule
+  \item Near-singular integration for nearly touching vesicles
+  \item FMM to accelerate layer potential evaluations
+  \item Low-order Alpert quadrature.  With the old one, if 16 or fewer
+  points are used, the rule doesn't make sense
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Discretization in time}
+\begin{itemize}
+  \item IMEX Euler
+  \item Implicit vesicle-vesicle interactions
+  \item SDC to increase accuracy
+  \item Time adaptivity
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+

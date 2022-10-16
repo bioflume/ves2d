@@ -1,0 +1,68 @@
+We have developed and tested an adaptive time stepping method for an
+integro-differential equation formulation for the numerical simulation
+of vesicle suspensions.  Adaptive time stepping alleviates the need for
+time step size selection which increases robustness, increases the
+performance in the presence of time scales that vary significantly
+throughout the simulation, and can be used to deliver any final-time
+accuracy in a controlled way.
+
+To select the time step size, we followed the standard strategy of
+estimating the local truncation error and then adjusting the time step
+size so that the same amount of error is committed per time step.
+Standard methods require the computation of more accurate provisional
+solutions, which can be very expensive in our context. Instead, we
+introduced a technique where the error in area and length of the
+vesicles, which are invariant for vesicles, are used to estimate the
+local truncation error---basically for free.  We justified the use of
+these invariants by (empirically) showing that the error in position
+decays at the same rate as the errors in area and length.  While this
+method proved to be reliable, it can only be applied to problems with
+measurable invariants. But many other particulate flows share similar
+properties; for example, any non-permeable capsule filled with an
+incompressible fluid must preserve its volume.
+
+To allow for larger time steps and longer time horizons, we
+introduced new high-order time integrators based on spectral deferred
+corrections (SDC).  An advantage of these integrators is that, in
+contrast to our previous second-order integrator, BDF, they are
+compatible with an adaptive time step size.  This time integrator is
+accelerated using the fast multipole method and a preconditioner that
+is factored once per time step, and then frozen for all the
+Gauss-Lobatto substeps and SDC iterations.  To the best of our
+knowledge, this work is the first to apply IMEX methods coupled with
+SDC to a two-dimensional integro-differential equation.
+
+These contributions are a major step towards the development of a robust
+solver for vesicle suspensions, but several other features need to be
+introduced.
+\begin{itemize}
+  \item Theoretical results, in particular the convergence rates of
+  SDC, need to be developed.  This will allow us to take the largest
+  possible time step size given the user specified tolerance.  Since
+  the governing equations for vesicle suspension are very stiff, order
+  reduction is expected and observed.  There are methods to remove
+  order reduction such as Krylov deferred
+  correction~\cite{hua:jia:min2006, hua:jia:min2007, bu:hua:min2012,
+  bu:hua:min2009, jia:hua2008} and multilevel SDC~\cite{emm:min2012,
+  min:spe:bol:emm:rup2015, spe:rup:emm:min:bol:kra2014}.  Another
+  possible direction to accelerate the method is to use inexact
+  SDC~\cite{spe:rup:min:emm:kra2014, spe:rup:emm:min:bol:kra2014,
+  min:spe:bol:emm:rup2015}.  To the best of our knowledge, none of
+  these methods have been applied to intego-differential equations,
+  such as those that govern vesicle suspensions.
+
+  \item Many vesicle suspensions could benefit from a time integrator
+  that treats each vesicle with its own time step size, or a multirate
+  time integrator.  This is apparent in the {\em Couette} example where
+  the actual error was not very tight to the desired tolerance.
+
+  \item All of our results are two-dimensional.  However, none of the
+  methods that we have introduced in this paper are restricted to two
+  dimensions.  In particular, the volume and a surface area of a
+  three-dimensional vesicle can be accurately computed using its
+  spherical harmonic representation~\cite{vee:rah:bir:zor2011}.
+  Performing three-dimensional simulations only requires a careful
+  implementation of the methods and the development of suitable
+  preconditioners.
+
+\end{itemize}

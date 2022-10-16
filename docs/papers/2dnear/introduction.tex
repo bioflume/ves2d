@@ -1,0 +1,223 @@
+Vesicles are deformable capsules filled with a viscous fluid. The
+hydrodynamics of vesicles that are suspended in a viscous fluid
+(henceforth, ``{\em vesicle flows}'') play an important role in many
+biological phenomena~\cite{kraus1996,seifert}.  For example, they are
+used experimentally to understand properties of
+biomembranes~\cite{sackmann1996} and red blood
+cells~\cite{noguchi2005,pozrikidis1990,ghigliotti-biros-e10,kaoui-tahiri-biros-misbah-e11,misbah2006}.
+Here we discuss numerical algorithms for simulating the motion of
+vesicles in Stokesian fluids in two dimensions.  Many features of
+algorithms designed for particulate flows of vesicle suspensions find
+applications to other deformable particulate flows, for example
+deformable capsules, bubbles, drops, and elastic filaments.  Vesicle
+flows are characterized by large deformations, the local
+inextensibility of a vesicle's membrane, the conservation of enclosed
+area due to the incompressibility of the fluid inside the vesicle, and
+the stiffness related to tension and bending forces.  Efficient and
+accurate numerical methods need to address these issues.  It is known
+that rheology can be sensitive to elastic instabilities that need to be
+resolved quite accurately in long-horizon
+simulations~\cite{kaoui-biros-misbah09}. 
+
+In~\cite{pozrikidis2001a}, Pozrikidis presents integral equation
+formulations for different types of particulate and interfacial viscous
+flows.  In line with our work, integral equation methods have been
+applied to vesicle suspensions and other similar capsules in two- and
+three-dimensions by many
+groups~\cite{veerapaneni-e11,rah:vee:bir,shravan,fre:ore2011,fre:zha2010,zha:isf:ols:fre2010,zha:sha2011a,zha:sha2013a,zha:sha2013b,zha:sha:nar2012},
+to name a few.  We focus on algorithms for vesicle flows from our
+group's previous work~\cite{shravan}, where numerical algorithms for a
+boundary integral formulation of the vesicle hydrodynamics are
+presented.  In this formulation, a Stokes single-layer potential is
+coupled with the vesicle membrane forces and results in an
+integro-differential equation that is constrained by the local
+inextensibility constraint (see Section~\ref{s:formulation} for
+details).  In~\cite{rah:vee:bir}, these methods were extended to
+confined flows and problems with vesicles whose enclosed fluid has a
+viscosity contrast with the bulk fluid.  In~\cite{veerapaneni-e11}, we
+developed algorithms for three-dimensional vesicle flows.  To summarize,
+the main components of the formulation we have used in our prior work
+are the following: (1) We proposed a time-stepping method in which the
+inter-vesicle interactions are treated explicitly and the self-vesicle
+interactions are treated semi-implicitly to remove the bending and
+tension stiffness; (2) We proposed a spectrally accurate discretization
+in space for differentiation and integration of smooth functions and
+weakly singular integrals; (3) We proposed effective preconditioners for
+the self-vesicle interactions; and (4) We used the fast multipole method
+to accelerate the integral operators that capture the long range
+hydrodynamic interactions.
+
+
+\paragraph{Contributions}
+In this paper, we continue our efforts towards efficient algorithms for
+the simulation of vesicle hydrodynamics using boundary integral
+formulations.  We focus on specific issues that are common when
+simulating high concentration vesicle flows.  In particular, we look
+into stiffness due to {\em inter-vesicle} dynamics, spectrally accurate
+collision detection, near-singular integration, and calculating
+quantities like pressure and stress fields that can be used to define
+coarse-grained variables.  To make things somewhat more precise, let
+$\xx_{p}$ be the shape parametrization of the $p^{\mathit th}$ vesicle
+(e.g., Lagrangian points or Fourier coefficients), and let $\uu_{p}$ be
+its velocity. Then the evolution equation for the position of the
+boundaries of $M$ vesicles can be summarized by
+\begin{align}
+ \frac{d \xx_p}{d t} =\uu_\infty(\xx_p) + \sum_{q=1}^M \uu_{p}(\xx_{q}), \quad
+p=1,\ldots,M,
+\label{e:highlevel}
+\end{align}
+where $\uu_{p}(\xx_{q})$ is the velocity induced on vesicle $p$ due to
+forces on vesicle $q$ (via hydrodynamic interactions) and
+$\uu_\infty(\xx_p)$ is an external velocity field that drives the flow.
+The term $\uu_{p}(\xx_{p})$ is the self-interaction term for the vesicle
+$p$ and $\uu_{p}(\xx_{q})$, $q \neq p$, are the inter-vesicle
+interactions.
+
+\begin{itemize}
+\item {\bf Implicit inter-vesicle interactions.} Most research groups
+working on vesicle simulations discretize~\eqref{e:highlevel} using an
+explicit time-stepping method. However,~\eqref{e:highlevel} is quite
+stiff due to tension and bending.  For this reason, in~\cite{shravan}
+we introduced time-marching schemes that treat the self-interactions
+semi-implicitly.  For example, a first-order accurate in time scheme
+(with $\uu_\infty=0$) reads
+\begin{align*}
+  \frac{\xx_p^{t+dt}-\xx_p^t}{dt} = \tilde{\uu}_p(\xx_p^{t+dt}) + 
+    \sum_{\substack{q=1 \\ q \neq p}}^{M} \uu_{p}(\xx_{q}^{t}), 
+      \quad p=1,\ldots,M. 
+\end{align*}
+The velocity $\tilde{\uu}_{p}(\xx_{p}^{t+dt})$ indicates a linearized
+semi-implicit approximation of the vesicle self-interaction term
+$\uu_{p}(\xx_{p})$.  Thus, computing $\xx_{p}^{t+dt}$ costs one linear
+solve per vesicle.  This is sufficient to reduced bending and tension
+stiffness but can be problematic for concentrated suspensions since
+$\uu_{p}(\xx_{q})$ also introduces stiffness when vesicles $p$ and $q$
+are near each other.  In this paper, we introduce a semi-implicit
+scheme of the form
+\begin{align*}
+  \frac{\xx_p^{t+dt}-\xx_p^t}{dt} = \sum_{q=1}^M 
+    \tilde{\uu}_p(\xx^{t+dt}_{q}), \quad p=1,\ldots,M,
+\end{align*}
+that treats all coupling terms in a linear semi-implicit way.  Thus,
+one needs to solve a coupled system for all vesicles at every time
+iteration.  We examine the stability of this scheme for first- and
+second-order time-stepping and we compare it with alternative
+time-marching methods.
+
+\item {\bf Near-singular integration.} When the vesicles come closer
+together, the hydrodynamic interaction terms (e.g., $\uu_{p}(\xx_{q})$)
+require the evaluation of near-singular integrals.  This can be quite
+expensive computationally.  Here we use the two-dimensional analogue of
+the scheme introduced in~\cite{ying-biros-zorin06} which allows a
+fifth-order accurate evaluation of near interactions using optimal work.
+
+\item {\bf Spectral collision detection.} Another issue related to
+concentrated suspensions is collision detection.  While it is
+physically impossible for vesicles to collide with one another or with
+solid walls in finite time, it is important to detect collisions caused
+by numerical errors.  There exist many efficient algorithms for
+computing intersections for polygonal domains~\cite{jimenez-e13}.
+Since our spatial discretization is done in high-order accuracy and the
+vesicle boundaries are $C^\infty$ curves that are spectrally resolved,
+we propose a collision detection scheme that is based on potential
+theory and it is ideally suited for smooth geometries.  The detection
+can be done in linear time in the number of degrees of freedom used to
+represent the vesicle boundaries and requires one evaluation of the
+free-space Laplace potential.  The method is described in
+Section~\ref{s:collision}.
+
+\end{itemize}
+We test these methodologies in a variety of flows and we study the
+stability and accuracy of the overall algorithm.  As a secondary
+contribution, we also provide a scheme for computing average pressures
+and stresses in regions of interest, described in
+Section~\ref{s:aver}.  The results of our tests are described in
+Section~\ref{s:results} in which we test problems with viscosity
+contrast, confined flows, and concentrated suspension flows.
+
+\paragraph{Limitations} 
+The main limitation is that the method is developed in two dimensions.
+Although several flows can be described to good accuracy under a
+two-dimensional approximation, a lot of interesting phenomena occur
+only in three-dimensional, especially for concentrated suspensions.
+The extensions that we present in this paper do not rely on
+two-dimensions, and using these methods in three-dimensions is a
+problem of implementation.  In particular, the spectral collision
+detection scheme only relies on a standard potential theory result that
+holds in three-dimensions, and the fast multiple method.  The time
+integrators also naturally extend to three-dimensions, but more work is
+required to precondition the linear operators that appear upon time
+discretization.  The near-singular integration details have been
+discussed for generic surfaces in~\cite{ying-biros-zorin06}, but
+several optimizations are possible for shapes represented by spherical
+harmonics, which we use in our three-dimensional schemes.
+
+Another major limitation is that we do not use time and space
+adaptivity.  Those two are essential for efficient robust solvers that
+can be used by non-experts.  Currently, we select the time step size by
+a trial and error process.  We are currently working on devising time
+and space adaptive methods.
+
+Finally, the method is most suitable for Stokesian bulk fluids.  If
+inertial or viscoelastic effects are important, a boundary integral
+formulation cannot be used.
+
+\paragraph{Related work} 
+There is extensive work on vesicle simulations.  Our list here is by no
+means exhaustive, but it includes some of the work that is most relative
+to ours.  Pozrikidis offers an excellent review of numerical methods for
+interfacial dynamics in a Stokes flow~\cite{pozrikidis2001a}.  Capsules
+similar to ours have been simulated in concentrated suspensions
+in~\cite{li:poz2002,zha:sha:nar2012,zha:sha2011b,zha:isf:ols:fre2010,fre:zha2010,fre:ore2011}.
+Also, in~\cite{pra:riv:gra2012,kum:riv:gra2014,kum:gra2011}, high
+concentration suspensions of a different kind of capsule are considered,
+but these capsules do not resist bending; therefore, the governing
+equations are far less stiff.  While some of these methods use spectral
+methods, most of them use an explicit time stepping method which results
+in a strict restriction on the time step size.  In order to allow for
+larger time steps, a Jacobian-free Newton method outlined
+in~\cite{dim:hig1997} was applied to an implicit discretization of
+droplets submerged in a Stokes flow~\cite{dim2007}.  While this allows
+for larger time steps, it requires the solution of nonlinear equations
+which can be computationally expensive, and this technique has not been
+tested on vesicle suspensions.  Work that uses a combination of implicit
+and explicit methods to study the dynamics of a single vesicle
+include~\cite{zha:sha2013a,zha:sha2009}, but both these methods require
+multiple solves per time step since they use a predictor-corrector
+scheme.  In this paper, we remove the stiffness with a semi-implicit
+method which only requires solving one linear equation per time step.
+These methods have been applied to a single vesicle
+in~\cite{zha:sha2009,sal:mik2012} and are extended to multiple vesicles,
+where the only the self-interactions are treated semi-implicitly
+in~\cite{rah:vee:bir,shravan,zha:sha2013b}.  However, with multiple
+vesicles, we are unaware of any work that couples all the vesicles and
+solid walls implicitly and  achieves more than first-order accuracy in
+time.
+
+Evaluating layer potentials close to their sources is an active area of
+research.  Popular methods to evaluate near-singular integrals include
+upsampling or high-order quadrature
+rules~\cite{helsing-ojala08,kro1999}, and singularity subtraction or
+partitions of unity~\cite{poz1999,fre:zha2010,zha:isf:ols:fre2010}.
+Some of these methods claim to achieve up to third-order accuracy, but
+they do not report timings or accuracies.  Therefore, the cost required
+to achieve the accuracies we desire is unclear.  Moreover, these methods
+often depend on the dimension of the problem and nature of the
+singularity.  A more recent technique is QBX~\cite{klo:bar:gre:one2012}
+which can deliver arbitrary accuracy, but is difficult to implement and
+we anticipate it will be too expensive for problems with moving
+boundaries.  The method we use naturally extends to three dimensions and
+we have successfully used it for a variety of near-singular integrals.
+
+\paragraph{Outline of the paper} 
+In Section~\ref{s:formulation}, we summarize the formulation of our
+problem. In Section~\ref{s:method}, we discuss the spatio-temporal
+discretization including the new scheme that semi-implicitly couples the
+vesicle updates, the near-singular evaluation
+(Section~\ref{s:near-singular}), and the collision detection
+(Section~\ref{s:collision}) .  The average pressure and stress
+calculations are in Section~\ref{s:aver} and the results are described
+in Section~\ref{s:results}.
+
+
+

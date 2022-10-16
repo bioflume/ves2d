@@ -1,0 +1,441 @@
+\documentclass[11pt]{article}
+
+
+\usepackage{fullpage}
+\usepackage{amsmath,amsfonts,amssymb,stmaryrd}
+\usepackage{color}
+\newcommand{\comment}[1]{{\color{blue} #1}}
+\newcommand{\todo}[1]{{\color{red} #1}}
+\newcommand{\note}[1]{{\color{green} #1}}
+\newcommand{\grad}{{\triangledown}}
+\newcommand{\nn}{{\mathbf{n}}}
+\newcommand{\uu}{{\mathbf{u}}}
+\newcommand{\xx}{{\mathbf{x}}}
+\newcommand{\DD}{{\mathcal{D}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+
+\begin{document}
+
+\section*{Reviewer 1}
+
+\comment{The authors cite their 2010 paper for much of the background
+material.  This has several problems:}
+\begin{itemize}
+  \item While we understand the reviewers concern, the majority of our
+  current work focuses on algorithms that extend our 2010 work to
+  concentrated suspensions.  It was not our intention to cite our 2010
+  paper for the background material.  We did state that the literature
+  had been reviewed in our previous work, and we referred the readers
+  to these papers for a formal literature review.
+
+  \item We have decided to do a much more complete literature review
+  in this work that cites work listed in our 2010 paper and other
+  older and more recent work.
+\end{itemize}
+
+\comment{
+There are extensive simulations of high-volume fraction
+configurations in two dimensions (Pozrikidis, Freund, Higdon), some of
+which have use spectral methods. The authors even go so far as to
+presume that their methods ``will enable simulations with concentrated
+suspensions.'' This blatantly denies the studies that others have
+already done this.}
+\begin{itemize}
+  \item Several citations that involve concentrated suspensions are
+  now mentioned. The reviewer was correct to point out that previous
+  work has been done. Our goal is to enable larger time steps and
+  hopefully faster algorithms. 
+\end{itemize}
+
+\comment{This fails to appreciate that there have also been extensive
+successful simulations of vesicle suspensions even in three dimensions
+(Shaqfeh, Graham, Freund).}
+\begin{itemize}
+  \item Several citations that discuss vesicle suspensions, both in
+  the concentrated and dilute limit, and in two- and three-dimensions,
+  are now included. Actually, our group was the first to develop
+  semi-implicit algorithms for vesicles in three dimensions, reference
+  [41].  Freund has not worked on vesicles before (deformable capsules
+  are different from vesicles because they have shear resistance). At
+  any rate, our focus here is the investigation of stiffness and the
+  need for fully implicit methods. We clarify this in the paper.
+\end{itemize}
+
+\comment{With the citations listed, the authors seem to credit themselves
+for development of the Stokes-flow boundary integral formulation and
+fundamental phenomenology such as tank treading of the vesicle
+membrane.}
+
+That was not our intention. In our earlier work, reference [27], we
+give a detailed overview of the prior work in this field. Our
+introduction has been modified to clarify this:
+\begin{itemize}
+  \item For tank treading, we now cite {\em V. Kantsler and V.
+  Steinberg ``Transition to tumbling and two regimes of tumbling motion
+  of a vesicle in shear flow'', Physical Review Letters, 96(3), 2006}
+  and {\em C. Misbah ``Vacillating breathing and tumbling of vesicles
+  under shear flow'', Physical Review Letters, 96 (2), 2006}.  These
+  references were used in our group's earlier work where we simulated
+  tank treading and tumbling.
+
+  \item Also we cite {\em C. Pozrikidis ``Interfacial dynamics for
+  Stokes flow'' Journal of Computational Physics'', 169:250-–301,
+  2001} in the second paragraph of the paper and also include a list
+  of references that have applied integral equations to vesicle
+  suspensions.
+\end{itemize}
+
+\comment{Others have used near-singular formulations for vesicle
+simulations (Higdon, Zhao).}
+
+\begin{itemize}
+  \item These works are very recent, are third-order schemes, and we
+  expect that they would be computationally prohibitive if a
+  higher-order scheme were used. There exist other sophisticated methods
+  developed by our and other groups, but either they are expensive or
+  they do not generalize in 3D.  (In 2D the problem is solved by
+  Helsing, reference [9]. Unfortunately it doesn't generalize to 3D.)
+  We have included a list of references that discuss high-order
+  quadrature, singularity subtraction, partitions of unity, and
+  quadrature by expansion (QBX).  Some of these references address
+  near-singular integrals in the context of interfacial dynamics.
+  \end{itemize}
+
+\comment{Others have developed time-implicit methods
+(Zhao,Dimitrakopoulos)}
+\begin{itemize}
+  \item Dimitrakopoulos did not study vesicles but droplets.  The
+  governing equations are different and we are unaware of an work that
+  uses a Jacobian-free Newton method to simulate vesicle suspensions.
+
+  \item Zhao has developed implicit schemes for a single vesicle in
+  {\em Hong Zhao and Eric S.~G.~Shaqfeh ``The shape stability of a
+  lipid vesicle in a uniaxial extensional flow'', Journal of Fluid
+  Mechanics, 719, 2013} and {\em H.~Zhao and E.~S.~G.~Shaqfeh ''The
+  dynamics of a vesicle in shear flow" 2009}.  Multiple vesicles were
+  considered in {\em Hong Zhao and Eric S.~G.Shaqfeh ``The dynamics of
+  a non-dilute vesicle suspension in a simple shear flow" Journal of
+  Fluid Mechanics, 725, 2013}, but their time integrator is
+  first-order, treats inter-vesicle interactions explicitly, and
+  requires two solves since they use a predictor-corrector scheme.
+
+  \item Indeed, we are not aware of any other implicit schemes for
+  vesicle flows that treat inter-vesicle interactions implicitly.  We
+  have included a list of references that discuss fully-implicit and
+  semi-implicit methods. Our goal is to study the stability of the
+  schemes.
+  \end{itemize}
+
+\comment{Given that so many others are already doing effective
+simulations in three dimensions, this extension needs to be addressed
+more completely. Extension to three-dimensions should be discussed more
+explicitly after the present formulation is presented.}
+\begin{itemize}
+  \item We have mentioned at several locations ({\em Limitations} and
+  {\em Conclusions}) that  our scheme does not depend on
+  the number of spatial dimensions.  In particular, near-singular
+  integration, fast spectral collision detection, and semi-implicit
+  inter-vesicle interactions can all be trivially formulated in 3D.  The
+  issue is one of a careful implementation that takes advantage of the
+  spherical harmonics we use to represent the surfaces.
+
+  \item The larger challenge in 3D is preconditioning the linear system
+  resulting from our new time integrator.  We mention this problem and
+  do not address it further in this work.
+  \end{itemize}
+
+\comment{Page 5: $f$ seems to be a linearized constitutive model. How
+important is this for the implicit scheme? This must be addressed,
+especially since others have done so many successful simulations
+(including implicit) with significantly nonlinear finite-deformation
+constitutive models.}
+\begin{itemize}
+  \item The constitutive law for the elasticity of the membrane is
+  nonlinear in the position of the membrane, but the elastic energy is
+  a simple quadratic of the sum of curvature and  tension.  We now state
+  that $f$ is nonlinear in the position. Note that this is not our
+  model, but a standard constitutive scheme that has been used for
+  vesicles for many years and has been experimentally validated.
+
+  \item The main challenge with fully implicit is the global coupling
+  with the fluid and making sure the algorithm is fast enough.  We have
+  mentioned this in the text.
+\end{itemize}
+
+\comment{Page 6: in 2d, others have removed the singularity and treated
+it analytically. Why isn’t this done here? It would seem to then provide
+spectral accuracy. The remaining sharpish though $C^{\infty}$ integrand
+could then be treated spectrally with the present method. (I do not
+think, however, that this would extend to three dimensions.)}
+\begin{itemize}
+  \item Singularity subtraction by itself does not provide spectral
+  accuracy.  A high-order quadrature rule is also required.  However,
+  if adaptive quadrature is used, especially when the vesicles are
+  nearly touching, the scheme may become overly expensive.  Also,
+  singularity subtraction usually depends on the kernel.  We are
+  interested in a near-singular integration technique that can robustly
+  be applied to all they layer potentials required (single- and
+  double-layer for Stokes, double-layer for Laplace, pressure and
+  stress of Stokes).  In addition, our near-singular integration
+  technique is fast, easy to implement, and the trapezoid rule is the
+  only quadrature formula required. 
+
+  \item We have included additional references for near-singular
+  integration in the {\em Related work} section, including singularity
+  subtraction.
+\end{itemize}
+
+\comment{Before (1): $\gamma_{p}$ seems to be introduced prematurely}
+\begin{itemize}
+  \item $\gamma_{p}$ is not defined until just before Equation (2)
+  where it is first used.
+\end{itemize}
+
+\comment{It would be good to state from the outset that collision detection is
+only needed to counteract numerical errors. Physical collisions should
+not occur in the Stokes limit.}
+\begin{itemize}
+  \item This is mentioned in the introduction
+\end{itemize}
+
+\comment{Page 3. $f(\xx) = [T]\nn$ does not seem to be well formed. Is
+$f$ a stress or a force, vector or rank-2 tensor, ...?}
+\begin{itemize}
+  \item $f$ is the sum of two forces: one due to bending and the other
+  due to tension.  This has been clarified.
+\end{itemize}
+
+
+\comment{Equation (2): $\Delta$ is some sort of vector Laplacian? It’s
+not a usual scalar Laplacian. I personally prefer $\mu\grad \cdot
+(\grad \uu + (\grad \uu)^{T})$, but this is not a big deal.}
+\begin{itemize}
+  \item The correct statement is what the one you suggest. In fact, for
+  certain boundary conditions, the two are not mathematically
+  equivalent. We had used Laplacian for simplicity.  We have now changed
+  it. 
+\end{itemize}
+
+
+\comment{Equation (2): The authors seem to use both $\sigma$ and $T$ for
+stress.}
+\begin{itemize}
+  \item $T$ represents the stress of the fluid while $\sigma$
+  represents the tension of the vesicle.  This is explained in the
+  paragraph leading up to Equation (2).
+\end{itemize}
+
+
+
+\comment{Page 4: The definition of $\Gamma_{0}$ is unclear/ill-formed.}
+\begin{itemize}
+  \item This has been clarified.
+\end{itemize}
+
+
+\comment{Definition of $\SS_{pq}$: ``$-I \log \rho$'' would be more
+clear.}
+\begin{itemize}
+  \item Both instances of this notation have been changed.
+\end{itemize}
+
+
+\comment{Are we sure there is no $4$ in front of the $\pi$ in the
+definition of $D_{pq}$?}
+\begin{itemize}
+  \item We used equation (2.2) from {\em Effect of membrane bending
+  stiffness on the deformation of capsules in simple shear flow,
+  Pozrikidis}.  By multiplying the equation by $(1+\lambda)$, we arrive
+  at Equation 3a from our paper.
+\end{itemize}
+
+
+\comment{Page 5: ``$\omega_{1}$ is the interior of vesicle $q$''. This
+must be misrepresented.}
+\begin{itemize}
+  \item Fixed
+\end{itemize}
+
+
+\comment{Page 5: $\nu_{p}$ is repeatedly defined}
+\begin{itemize}
+  \item It is now only defined once.
+\end{itemize}
+
+
+\comment{Page 5: what is meant by ``hydrodynamic density''? Is this the
+local surface traction density?}
+\begin{itemize}
+  \item The hydrodynamic density refers to the function that
+  is used in the single-layer potential.  In our case, it is the jump in
+  the stress across the vesicle which is also the traction density. It
+  is a standard terminology in potential theory. 
+
+  \item We have mentioned on page 5 that the stress jump may also be
+  referred to as the traction jump.
+
+  \item We also changed the language in Section {\em Computing Local
+  Averages of Pressure and Stress}.  Previously, we use ``traction
+  jump'' which is inaccurate since, in our work, the density function
+  can be defined on the solid walls (for confined flows) or be the
+  velocity on the vesicle (for viscosity contrasts).
+\end{itemize}
+
+
+\comment{Page 6: ``fully decoupled'' should be explained more explicitly.
+Clearly, it is not literally true for the physical system.}
+\begin{itemize}
+  \item We have clarified that the vesicles and solid walls being fully
+  decoupled is an artifact of the numerical method.
+
+  \item We have also clarified that equation (5) is also an
+  approximation of the governing equations (3), but the benefit of (5)
+  is the additional stability.
+\end{itemize}
+
+
+\comment{Page 7: ``Then number of GMRES....''}
+\begin{itemize}
+  \item Fixed
+\end{itemize}
+
+
+\comment{Footnote 3: This is usually presented as a dynamic condition
+based upon the lubrication limit of the flow equations. I do not think
+that the streamline condition can sufficiently explain evolution in
+time.  (By their argument nothing should ever contact if separated by an
+incompressible continuum, but that failed to appreciate the dynamics
+associated with that continuum, which must be viscous, I think.)}
+\begin{itemize}
+  \item For an incompressible continuum two solid surfaces cannot touch
+  in finite time.  The reason that in reality objects touch is that the
+  incompressibility assumption (first) and then the continuum hypothesis
+  (second), break down.  Lubrication theory just gives an approximation
+  for the forces between the particles.  See {\em Bachelor,
+  "Introduction to Fluid Mechanics," pages 75--79}, for steady-state
+  incompressible flow fields.  We also state that lubrication theory
+  could be used to study the forces between nearly touching vesicles. 
+\end{itemize}
+
+
+\comment{Section 5. I find the use of area and length to be acceptable
+in assessing performance, but the authors should more explicitly
+explain that these are dominated by relatively low-order moments of the
+shape and therefore very easy to compute accurately. I request that
+convergence of some harder quantity be added, at least for one example,
+though it will be less definitive without an exact solution. I would
+really like to know how the wall-vesicle distance converges for the
+stenosis.}
+
+\begin{itemize}
+  \item It is true that they are low-order moments of the shape and are
+  easy to compute accuratly.  However, that does not automatically
+  imply that a numerical method will easily maintain these quantities.
+  In fact this is not always the case.  Most methods that use penalty
+  to enforce local inextensibility must constantly correct the shape
+  and length otherwise the methods diverge quickly.  We provide
+  experimental evidence that maintaining high accuracy on the shape is
+  a good proxy on the overall accuracy since we are not do any
+  numerical corrections.  However, the reviewer is right, maintaining
+  area and length does not imply convergence. The convergence of the
+  overall formulation has been shown in our earlier work,  references
+  [33], [40], and [41]. 
+
+  \item We added the comment that the area and length are low-order
+  moments of the shape. We have found them to be very reliable for
+  estimating errors.  This is also now mentioned in the text.
+
+  \item For the extensional example, we now report the error in the gap
+  size rather than the actual gap size.  The ``true'' solution is found
+  by taking $N=256$ points per vesicle and a sufficiently small time
+  step that the error in area and length is at least a full order of
+  magnitude smaller than the most accurate reported solution.
+
+  \item We looked at the minimum wall to vesicle distance for the
+  reported runs and a convergence rate was inconclusive.  Therefore, we
+  ran additional runs with the finest spatial resolution and multiple
+  time step sizes.  We do observe first-order convergence, but not
+  until 16,000 time steps are taken.  Without an exact solution,
+  we are not able to conclusively achieve second-order convergence.
+  However, we do show that the minimum distance is resolved up to at
+  least three digits.
+\end{itemize}
+
+
+\comment{Stenosis: what is the exact shape of the wall used. It’s also
+unclear how the flow is imposed. This should be explained in detail.}
+\begin{itemize}
+  \item A parameterization of the solid walls along with estimates for
+  the trapezoid rule applied to the double-layer potential are now
+  included in the text.
+
+  \item The boundary condition on the solid wall is plotted and
+  explained in the text.
+
+\end{itemize}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Reviewer 2}
+\comment{In section 3.4 a spectrally accurate collision detector is
+described. How does it handle close-to-touching vesicles? It seems like
+it could suffer from inaccuracy due to near singular integrands in such
+cases (for example for high concentration examples such as the one in
+Fig. 10). Is there a specific reason why you don't use your scheme for
+near-singular integration here? Using an adaptive time-stepper would
+likely remove this problem, so in the long run it is perhaps not a big
+deal, but it could perhaps be beneficial for the reader to add some
+comments about this}
+\begin{itemize}
+  \item The reviewer is correct that the collision detector suffers
+  from the same inaccuracy due to near-singular integrands.  In fact,
+  we do use near-singular integration, but this was not clear in the
+  original submission.
+
+  \item We have clarified that the collision detection uses
+  near-singular integration, and, therefore, placed the collision
+  detection section after the near-singular integration section
+\end{itemize}
+
+\comment{The first-order and second-order plots in the shear flow
+examples are very similar. Perhaps one of the figures could be used to
+to display additional data? For example difference between first and
+second order distances over time, or area and length errors.}
+\begin{itemize}
+  \item We agree that no additional information was being provided by
+  the two figures.  After looking at the errors in area and length, and
+  looking at the difference between the first- and second-order
+  distances, we felt that between the figures captions and Tables 4 and
+  5, nothing new could be offered by a new plot.  Therefore, we have
+  merged Figures 3 and 4 and the redundancy is removed.
+\end{itemize}
+
+\comment{How does the length and area errors vary with time in the
+stenosis example? For $t = 5$ the vesicle has highly varying curvature,
+do the errors increase at this stage or are they roughly constant? A
+figure isn't necessary, but some comments would be appreciated.}
+\begin{itemize}
+  \item In fact, the errors jump closer to $t=3$ when the vesicle is
+  more or less centered in the constriction.  We have added a paragraph
+  to describe the nature of the error.
+\end{itemize}
+
+\comment{The reference blue circle in Fig. 10 seems to be missing.}
+\begin{itemize}
+  \item This comment is removed.  The boundary condition on the solid
+  walls is described in the caption. 
+\end{itemize}
+
+\comment{Some minor textual mistakes (search for N\"{y}strom,  integralr
+and ``of the its area'' in your tex file)}
+\begin{itemize}
+  \item Fixed
+
+  \item We have done several additional reads for grammar and textual
+  errors.
+\end{itemize}
+
+\end{document}

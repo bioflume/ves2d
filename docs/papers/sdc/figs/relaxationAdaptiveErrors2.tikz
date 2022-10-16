@@ -1,0 +1,72 @@
+\begin{tikzpicture}[scale=0.55]
+
+\begin{axis}[
+  xmode = log,
+  xmin = 8e-9,
+  xmax = 1.2e-6,
+  xtick = {1E-8,1E-7,1E-6},
+  xticklabels = {$1$E$-8$,$1$E$-7$,$1$E$-6$,$1$E$-5$},
+  xlabel = {Tolerance},
+  ymode = log,
+  ymin = 8E-10,
+  ymax = 7.0E-5,
+  ytick = {1E-9,1E-8,1E-7,1E-6,1E-5,1E-4},
+  yticklabels = {$1$E$-9$,$1$E$-8$,$1$E$-7$,$1$E$-6$,$1$E$-5$,$1$E$-4$},
+  ylabel = {Error},
+  ylabel style = {yshift = 10pt},
+  label style = {font=\Large},
+  legend entries = {$\max(e_{A},e_{L})$\\$e_{P}$\\},
+  legend cell align = left,
+  legend pos = north west, 
+  legend style = {draw=none},
+  title = {\huge{$n_{\sdc} = 2$}}
+  ]
+
+%% desired tolerance
+%\addplot [mark=none,black,line width=1.5,dashed] table{
+%0 1.0e-7
+%1 1.0e-8
+%2 1.0e-9
+%3 1.0e-10
+%};
+
+% maximum error in area and length
+\addplot [mark=*,blue,line width=1.5,solid] table{
+1e-6 1.90e-7
+1e-7 5.73e-8
+1e-8 2.09e-9
+
+%1e-6 1.20e-7
+%1e-7 4.80e-8
+%1e-8 6.61e-9
+%1e-9 7.63e-10
+
+%1e-7 4.29e-8
+%1e-8 6.52e-9
+%1e-9 7.74e-10
+%1e-10 8.36e-11
+};
+
+% error in position
+\addplot [mark=square*,red,line width=1.5,solid] table{
+1e-6 7.76e-6
+1e-7 3.37e-6
+1e-8 8.56e-7
+
+%1e-6 3.97e-6
+%1e-7 2.15e-6
+%1e-8 6.61e-7
+%1e-9 4.13e-8
+
+%1e-7 1.26e-6
+%1e-8 3.40e-7
+%1e-9 8.40e-8
+%1e-10 6.30e-9
+};
+
+
+\end{axis}
+
+\end{tikzpicture}
+
+

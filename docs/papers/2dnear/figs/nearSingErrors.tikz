@@ -1,0 +1,66 @@
+\begin{tikzpicture}[scale=1]
+
+\begin{axis}[
+  width=2.8in, height=2.5in,
+  xmin = 16,
+  xmax = 512,
+  ymin = 1e-14,
+  ymax = 1e0,
+  xlabel = {$N$},
+  ylabel = {Error},
+  xtick = {16,32,64,128,256,512},
+  xticklabels = {$16$,$32$,$64$,$128$,$256$,$512$},
+  ytick = {1e-12,1e-8,1e-4,1e0},
+  yticklabels = {$10^{-12}$,$10^{-8}$,$10^{-4}$,$10^{0}$},
+  label style = {font=\small},
+  xmode = log,
+  ymode = log,
+  grid,
+  legend entries = {Extensional,Stokeslet,Arbitrary Density,Slope = 5},
+  legend pos = north east,
+  legend style = {draw=none,font=\tiny},
+  legend cell align = left 
+  ]
+
+\addplot [mark=*,mark size=1pt,green,line width=1.5] table{
+16 4.66e-2
+32 2.65e-10
+64 4.08e-13
+128 5.77e-13
+256 7.51e-13
+512 8.34e-13
+};
+
+\addplot [mark=*,mark size=1pt,blue,line width=1.5] table{
+16 2.59e-2
+32 2.45e-5
+64 1.56e-6
+128 9.60e-8
+256 4.10e-9
+512 8.01e-11
+};
+
+\addplot [mark=*,mark size=1pt,black,line width=1.5] table{
+16 6.50e-2
+32 1.33e-6
+64 6.59e-8
+128 2.93e-9
+256 1.05e-10
+512 1.73e-12
+};
+
+\addplot [mark=none,red,line width=1.5] table{
+%16 9.5367e-4
+%32 2.9802e-5
+64 9.3132e-7
+128 2.9104e-8
+256 9.0949e-10
+%512 2.8422e-11
+};
+
+\end{axis}
+
+%\draw[gray,thin] (0,0) grid +(3,4);
+
+\end{tikzpicture}
+

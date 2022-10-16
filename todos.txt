@@ -1,0 +1,58 @@
+March 13, 2019
+---------------
+
+STATUS:
+[] Machine-learning-augmented reduced model codes are in ./learnVes/
+[] DNNManyVes2DwJigg.m is the main code where flow parameters are entered, 
+   whether near field interactions are ignored, or regularized and used, or
+   evaluated accurately and used.
+[] DNNManyVes2DwJigg.m is for confined flow simulations (only Taylor-Couette).
+   It uses dnnToolsManyVesNoLoop.m (will be renamed as dnnToolsManyVes.m).
+[] DNN1Ves2D.m is for single vesicle simulations in free-space flows.It uses
+   dnnTools.m
+[] For ground truth simulations, True1Ves2D.m and TrueManyVes2D.m are used.
+[] DNNManyVes2DwJigg.m uses (already) saved initial conditions for VFs = 10%,
+   20%, 30% and 35%. It randomly generates initial configurations for smaller
+   VFs, clustered vesicles.
+[] Relaxation network depends on bending rigidity and time step size. 
+   We have networks for bending rigidity = 1, 1E-1. For 1, we have networks
+   for time step size = 1E-5, 5E-5, 1E-4, 5E-4, 1E-3. For 1E-1, for time step
+   size = 1E-4, 5E-5. Couette apparatus has inner radius of 1 and outer radius
+   of 2.2. The inner circle's velocity is scaled by 100 in most of the
+   simulations in the paper. For that, the time step size of 1E-4 is stable.
+[] Jiggling currently allows vesicles to come to 2h/3 proximity with h being
+   the arc-length spacing. This scheme is stable for N = 32 points per vesicle
+   for now. Its parameters (number of points to move, filtering) need to be
+   adjusted for different resolutions.
+[] Relaxation network needs data to be generated for different flow
+  parameters. prepareRelaxData.m is the code for that. Once data is prepared,
+  the PCA basis should be found using preparePCAData.m. For training, use
+  fcNet_relax_PCA.m
+[] prepareVelTrainFFT.m is for generating data for MVinf networks.
+   resNet_velPrediction.m is the code for training.
+[] prepareTensionData.m prepares data for tension networks.
+  fcNet_tenMatOnBend.m is for training the self-tension term.
+  fcNet_tenMatTimesFFT is for training tension for other components term.
+
+TODOs:
+[] There must be only one driver (separated from flow parameters). It should
+   have options for using near interactions, jiggling, repulsion. It should
+   input flow parameters. 
+[] Different flows (Couette, Taylor-Green, parabolic, DLD, ...) should have
+   separate drivers. It should allow single vesicle or multiple vesicles.
+[] There must be a scaling (arclength of a vesicle) in approximating MVinf,
+   currently this is not an issue since we use vesicles of arclength 1. This
+   should be tested and fixed.
+[] Jiggling should be done parameter-free by finding an automatic way to
+   adjust its parameters depending on spatial resolution.
+[] Networks trained better (longer, with smaller losses) are needed to
+   increase accuracy.
+[] Do not use low-resolution solve at all in the simulations. So remove that
+   option.
+[] Prepare another driver for high-fidelity simulations. The driver for an
+  example should have an option to solve using either MLARM or high-fidelity
+  scheme or low-fidelity scheme (same-DOF, same-cost). Use repulsion in
+  low-fidelity scheme.
+[] Driver for DLD example, and MLARM simulations of dense suspensions in DLD
+   need to be done.
+ 

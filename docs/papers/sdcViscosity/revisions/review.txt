@@ -1,0 +1,32 @@
+This is a very nice, very interesting paper which is clearly written.
+It will make an excellent addition to the Proceedings. I recommend that
+it be accepted with minor corrections. I ask the authors to please
+attend to the following points:
+
+- define the jump notation [[ ]] used in line 6 of section 2.
+
+- state explicitly that gamma_j is the surface of the jth vesicle in
+gamma, the union of all vesicles.
+
+- define s_y in the integral in the first equation of p. 3.
+
+- line 2 above equation (2): change sigma to sigma_k.
+
+- insert `updated' before `provisional' in step 4 of the SDC
+iteration in section 3.
+
+- should it say `A first-order approximation of (2)' [i.e. not (3)]
+in the first line of section 3.1?
+
+- give a suitable book reference for the Runge phenomenon alluded
+to on page 5.
+
+- define `reduced area' (first line of section 4).
+
+- In section 4.1 say how the N=96 points are distributed.
+
+- p. 7, line 3> Suggest change `in excess of' to `better than'.
+
+- Table 1, 2: Insert `m' after `number' in the table captions.
+Give the time units for CPU time.
+

@@ -1,0 +1,78 @@
+\documentclass[preprint, 10pt]{elsarticle}
+
+%% labeling 
+%%   equations \label{e:equation_name}
+%%   sections  \label{s:section_name}
+%%   tables    \label{t:table_name}
+%%   figures   \label{f:figure_name}
+%%   alagorithms \label{a:algorithm_name}
+%%   Apendix \label{A:appendix_name}
+
+%% bibtex names: all lower case
+%%   one author: biros89, ghattas91, ghattas91a, ghattas91b, ghattas91c 
+%%   up to three authors:  biros-ghattas-smith99
+%%   more than three authors:  biros-e98
+%%
+%% for graphs and figures:
+%%    tikz (best) or  one of the following: matlab, xfig, ggplot,
+%%     see: http://www.texample.net/tikz/examples/
+
+
+\newif\ifInputs
+%\Inputstrue
+\Inputsfalse
+
+\input{preambles.tex}
+\usepackage{lineno}
+
+\newcommand{\mcaption}[2]{\caption{\small \em #1}\label{#2}}
+\newcommand{\secref}[1]{\ref{#1}}
+
+\begin{document}
+
+\title{Low resolution simulations of 2D vesicle suspensions}
+
+\author[ut]{Bryan Quaife} \ead{quaife@ices.utexas.edu}
+\author[ut]{George Biros}\ead{gbiros@acm.org}
+\address[ut]{Institute of Computational Engineering and Sciences,\\
+  The University of Texas at Austin, Austin, TX, 78712.}
+
+\begin{abstract} 
+In our previous works~\cite{}, we have developed several algorithms to
+build towards a black-box solver for two-dimensional vesicle
+suspensions.  To consider even more interesting suspensions, and to
+extend these algorithms to 3D, the resolution of these simulations must
+be reduced.  Therefore, we must address issues such as aliasing, cluster
+of Lagrangian tracers, and local corrections to the vesicle shape.
+\end{abstract}
+
+\begin{keyword}
+  words \sep words \sep words
+\end{keyword}
+
+\maketitle
+
+\section{Introduction\label{s:introduction}}
+\input introduction.tex
+
+\section{Formulation\label{s:formulation}}
+\input formulation.tex
+
+\section{Method\label{s:method}}
+\input method.tex
+
+\section{Results\label{s:results}}
+\input results.tex
+
+\section{Conclusions\label{s:conclusions}}
+\input conclusions.tex
+
+
+\begin{appendices}
+\end{appendices}
+
+
+\bibliographystyle{plainnat} 
+\bibliography{refs}
+\biboptions{sort&compress}
+\end{document}

@@ -1,0 +1,52 @@
+clear all;
+clc;
+
+addpath ../src/
+
+NbdExt = 4056;
+NbdInt = 48;
+nbd    = 448; % (interiors + 1(exterior))
+numRowM11 = 2*NbdExt+2*NbdInt*(nbd-1);
+numRowM22 = 3*(nbd-1);
+
+if 1
+  fileM11 = '/scratch/gokberk/DLD_Matrices/DLDN24/wallMatM11.bin';
+  fileM12 = '/scratch/gokberk/DLD_Matrices/DLDN24/wallMatM12.bin';
+  fileM21 = '/scratch/gokberk/DLD_Matrices/DLDN24/wallMatM21.bin';
+  fileM22 = '/scratch/gokberk/DLD_Matrices/DLDN24/wallMatM22.bin';
+
+  fid = fopen(fileM11,'r');
+  M11 = fread(fid,'double');
+  M11 = reshape(M11,numRowM11,numRowM11);
+  fclose(fid);
+  fprintf('M11 is extracted\n');
+
+  fid = fopen(fileM12,'r');
+  M12 = fread(fid,'double');
+  M12 = reshape(M12,numRowM11,numRowM22);
+  fclose(fid);
+  fprintf('M12 is extracted\n');
+
+  fid = fopen(fileM21,'r');
+  M21 = fread(fid,'double');
+  M21 = reshape(M21,numRowM22,numRowM11);
+  fclose(fid);
+  fprintf('M21 is extracted\n');
+
+  fid = fopen(fileM22,'r');
+  M22 = fread(fid,'double');
+  M22 = reshape(M22,numRowM22,numRowM22);
+  fclose(fid);
+  fprintf('M22 is extracted\n');
+end
+
+
+if 0
+  file = '/scratch/gokberk/DLD_Matrices/DLDN24/wallMatInv.bin';
+  fid = fopen(file,'r');
+  Minv = fread(fid,'double');
+  Minv = reshape(Minv,numRowM11+numRowM22,numRowM11+numRowM22);
+  fclose(fid);
+  fprintf('Inverse of M is extracted\n');
+end
+
