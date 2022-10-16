@@ -1,0 +1,57 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{algorithm,algorithmic}
+
+\begin{document}
+
+\begin{algorithm}
+  \caption{Given $M$ vesicles $\Gamma_{i}$ with $N$ points and density functions $F_{i}$}
+  \begin{algorithmic}
+    \FOR{$i=1,\ldots,M$}
+    \STATE $h_{i} = \mathtt{length}(\Gamma_{i})/N$
+    \STATE $[\widetilde{\Gamma_i},\tilde{F_{i}}] =$ \texttt{fourierinterp}$(\Gamma_{i},F_{i})$
+    \ENDFOR
+    \FOR {$j=1,\ldots,M$}
+    \FOR {$k=1,\dots,M$}
+    \IF {$k \neq j$} 
+    \STATE $\mathtt{SLP} _{i}=$ \texttt{exact\_stokes2}$(\Gamma_{j},F_{j},
+    \widetilde{\Gamma}_{j},\widetilde{F}_{j},\Gamma_{i},h_{j})$
+    \ENDIF
+    \ENDFOR
+    \ENDFOR
+    \STATE
+    \RETURN $\mathtt{SLP}$
+  \end{algorithmic}
+\end{algorithm}
+
+
+
+\begin{algorithm}
+  \caption{$\mathtt{val}_{\mathbf{x}} = \mathtt{exact\_stokes2}(\Gamma_{j},F_{j},
+    \widetilde{\Gamma}_{j},\widetilde{F}_{j},\Gamma_{i},h)$}
+  \begin{algorithmic}
+    \FORALL {$\mathbf{x} \in \Gamma_{i}$}
+    \STATE $\mathtt{region} = \mathtt{bin\_pt}(\mathbf{x},\Gamma_{j},h)$
+    \IF {$\mathtt{region == far}$}
+    \STATE $\mathtt{val}_{\mathbf{x}} = \mathtt{Nystrom}(N,\Gamma_{j},F_{j})$
+    \ELSIF {$\mathtt{region == intermediate}$}
+    \STATE $\mathtt{val}_{\mathbf{x}} =\mathtt{Nystrom}(N^{3/2},\widetilde{\Gamma}_{j},\widetilde{F}_{j})$
+    \ELSE
+    \STATE $\mathbf{x}_{0} = \mathtt{closest\_point}(\mathbf{x},\widetilde{\Gamma}_{j})$
+    \STATE $f_{0} = \mathtt{polynomial\_interp}(\widetilde{\Gamma}_{j},\mathbf{x}_{0}$
+    \STATE $\mathbf{x}_{k} = \mathtt{lagrange\_nodes}(\mathbf{x},\mathbf{x_{0}})$
+    \FOR {$k=1,\ldots,4$}
+    \STATE $f_{k} = \mathtt{Nystrom}(\mathbf{x}_{k},\widetilde{\Gamma}_{j},\widetilde{F}_{j})$
+    \ENDFOR
+    \STATE $\mathtt{val}_{\mathbf{x}} = \mathtt{lag\_interp}(\mathbf{x},\mathbf{x}_{k},\vec{f})$
+    \ENDIF
+    \ENDFOR
+  \end{algorithmic}
+
+\end{algorithm}
+
+
+
+
+\end{document}

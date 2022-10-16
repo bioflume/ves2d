@@ -1,0 +1,60 @@
+ nboxes=        2621
+ ns =       10000
+ err vel =   7.0822105804825536E-015
+ err Re(vel)=   7.7985009837545873E-015
+ err grada=   2.2271042736140233E-015
+ err gradaa=   4.5870291855633422E-015
+ err vel targ=   4.3917140054522735E-015
+ err Re(vel) targ=   4.4161229832823200E-015
+ err grada targ=   3.6928469340000121E-015
+ err gradaa targ=   4.0905990200732884E-015
+ 
+ 
+ nboxes=         311
+ ns =        1200
+ err vel =  2.089653339510608E-015
+ err Re(vel)=  2.198053769701232E-015
+ err grada=  9.043570760454090E-016
+ err gradaa=  2.616460204415147E-016
+ err vel targ=  1.000404885839606E-015
+ err Re(vel) targ=  9.964614169991009E-016
+ err grada targ=  1.430396500333897E-015
+ err gradaa targ=  1.993108202966459E-015
+ 
+ 
+ nboxes=        2352
+ ns =        1200
+ err vel =  3.082061252118953E-002
+ err Re(vel)=  1.896866785249249E-002
+ err grada=  2.886814752393280E-006
+ err gradaa=  1.079720622771370E-005
+ err vel targ=  6.880768534837305E-003
+ err Re(vel) targ=  5.879179362486082E-003
+ err grada targ=  2.093456841671281E-002
+ err gradaa targ=  0.158449630749418     
+ 
+ 
+ nboxes=       23624
+ ns =       12000
+ err vel =  1.934541881060824E-002
+ err Re(vel)=  6.486888573009686E-003
+ err grada=  9.404209550989669E-007
+ err gradaa=  2.583407600483021E-006
+ err vel targ=  8.212166355019901E-003
+ err Re(vel) targ=  6.276533971982263E-003
+ err grada targ=  1.734780963162700E-002
+ err gradaa targ=  0.167913475602576     
+ 
+ 
+ nboxes=        3085
+ ns =       12000
+ err vel =  1.424902252306918E-015
+ err Re(vel)=  9.978040739023941E-016
+ err grada=  4.166841938020317E-016
+ err gradaa=  5.537733523476889E-016
+ err vel targ=  3.619533282344345E-015
+ err Re(vel) targ=  3.633013073075656E-015
+ err grada targ=  5.866753202269056E-015
+ err gradaa targ=  3.024251762403725E-015
+ 
+ 

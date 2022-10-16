@@ -1,0 +1,243 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Tank-treading vesicle}
+We start by considering a single vesicle of reduced area $0.66$ in a
+shear flow.  Given our choice of parameters, this vesicle tank-treads
+for viscosity contrasts less than $\nu_{c} \approx 4.1$, and without any
+remeshing of the vesicle, this can easily cause the discretization
+points to cluster or even cross.  We discretize the vesicle with $N=16$
+points distributed equally in arclength.  We take a long time horizon of
+$T=100$ so that the vesicle tank-treads approximately $4.5$ times.
+
+We start by showing that without locally correcting the vesicles shape,
+the errors in area and length grow uncontrollably.  In
+Figure~\ref{f:shearShapeCorrect}, we plot the maximum error in area and
+length (top row), snapshots of the vesicle configuration without (middle
+row) and with (bottom row) a local correction to the vesicle's shape.
+We do obtain first-order convergence, but with such a long time horizon,
+the results are not reasonable (say, less than a $20\%$ error) until
+$m=8000$ time steps are taken.  \todo{Why can't I just do second-order
+such as BDF}  However, by fixing the area and length at each time step,
+the method remains stable and accurate even with large time step sizes.
+
+\begin{figure}[htpb]
+  \centering
+  \begin{tabular}{cccc}
+    \input{figs/shearNofix_m1000Error.tikz} &
+    \input{figs/shearNofix_m2000Error.tikz} &
+    \input{figs/shearNofix_m4000Error.tikz} &
+    \input{figs/shearNofix_m8000Error.tikz} \\
+    \input{figs/shearNofix_m1000.tikz} &
+    \input{figs/shearNofix_m2000.tikz} &
+    \input{figs/shearNofix_m4000.tikz} &
+    \input{figs/shearNofix_m8000.tikz} \\
+    \input{figs/shearfix_m1000.tikz} &
+    \input{figs/shearfix_m2000.tikz} &
+    \input{figs/shearfix_m4000.tikz} &
+    \input{figs/shearfix_m8000.tikz}
+  \end{tabular}
+  \mcaption{The effect of correcting the vesicle's area and length.  The
+  top plots are the maximum error in area and length, when the vesicle's
+  shape is not locally corrected.  The middle plots show snapshots of
+  the corresponding vesicle configuration.  In the bottom row, the
+  vesicle shape is corrected so that it has the correct area and
+  length.}{f:shearShapeCorrect}
+\end{figure}
+
+We now demonstrate that redistribution of the curve is required to
+maintain stability.  At each time step, we compute the Jacobian of the
+vesicle's shape, and we redistribute the points on the vesicle if it
+differs from its average value by a tolerance.  We again run the
+examples in Figure~\ref{f:shearShapeCorrect} with a local correction to
+the area and length, but we take a larger time step size.  In
+Figure~\ref{f:shearEquiArclength}, we see that if the vesicle is not
+reparameterized, then tracker points start to cluster and the method
+becomes unstable.  However, by redistributing the tracker points, the
+simulation successfully completes.
+
+\begin{figure}[htpb]
+  \centering
+  \begin{tabular}{ccccccc}
+    $\Delta t = 0.4$ &
+    \input{figs/shearNoArclength_m250Time1.tikz} & 
+    \input{figs/shearNoArclength_m250Time2.tikz} & 
+    \input{figs/shearNoArclength_m250Time3.tikz} & 
+    \input{figs/shearNoArclength_m250Time4.tikz} & 
+    \input{figs/shearNoArclength_m250Time5.tikz} & 
+    \input{figs/shearNoArclength_m250Time6.tikz} \\
+    $\Delta t = 0.2$ &
+    \input{figs/shearNoArclength_m500Time1.tikz} & 
+    \input{figs/shearNoArclength_m500Time2.tikz} & 
+    \input{figs/shearNoArclength_m500Time3.tikz} & 
+    \input{figs/shearNoArclength_m500Time4.tikz} & 
+    \input{figs/shearNoArclength_m500Time5.tikz} & 
+    \input{figs/shearNoArclength_m500Time6.tikz} \\
+    $\Delta t = 0.4$ &
+    \input{figs/shearArclength_m250Time1.tikz} & 
+    \input{figs/shearArclength_m250Time2.tikz} & 
+    \input{figs/shearArclength_m250Time3.tikz} & 
+    \input{figs/shearArclength_m250Time4.tikz} & 
+    \input{figs/shearArclength_m250Time5.tikz} & 
+    \input{figs/shearArclength_m250Time6.tikz} \\
+    $\Delta t = 0.2$ &
+    \input{figs/shearArclength_m500Time1.tikz} & 
+    \input{figs/shearArclength_m500Time2.tikz} & 
+    \input{figs/shearArclength_m500Time3.tikz} & 
+    \input{figs/shearArclength_m500Time4.tikz} & 
+    \input{figs/shearArclength_m500Time5.tikz} & 
+    \input{figs/shearArclength_m500Time6.tikz}
+  \end{tabular}
+  \mcaption{The effect of equally redistributing points in arclength.
+  In the top two rows, the time step size is $\Delta t = 0.4$ and
+  $\Delta t = 0.2$, and points are not redistributed in arclength.  We
+  see that tracker points start to cluster and results in an
+  instability.  In the last two rows, the same time step size is used,
+  but points are redistributed in arclength.  With this additional
+  feature, the simulation remains stable.}{f:shearEquiArclength}
+\end{figure}
+
+We now demonstrate that our last proposed technique for low resolution
+simulations is required.  That is, we look at the effect of aliasing
+errors.  \todo{Get a fixed time step run that shows that aliasing is
+necessary?}
+
+Now that we have demonstrated that it is key to correct the area and
+length, redistribute points to maintain equi-arclength, and remove some
+of the aliasing errors, we look at a global effect of these techniques.
+In particular, we look at how the inclination angle depends on the
+viscosity contrast for a vesicle that is discretized with $N=16$ points.
+We use our adaptive time stepping strategy~\cite{qua:bir2014b}
+\todo{Discuss how I find reference solution}
+
+
+%We first form an accurate description of the vesicle's inclination angle
+%versus the viscosity contrast.   This high-accurate solution is formed
+%by taking $N=64$ points on the vesicle, and using our second-order
+%adaptive time integrator with a tolerance of 1e-4~\cite{qua:bir2014b,
+%qua:bir2014c}.  The simulation is stopped when the rate of change of the
+%inclination angle $\beta(t)$ stagnates near $1e-4$.  To compute $\beta$,
+%we use the eigenvectors of the moment of inertia tensor as is outlined
+%in~\cite{rah:vee:bir2010}.  In Figure~\ref{f:exactInclineAngle}, we plot
+%this highly accurate inclination angle as a function of viscosity
+%contrast.
+%
+%\begin{figure}[htpb]
+%\input{figs/inclineAngles.tikz}
+%\mcaption{The inclination angle of a single vesicle in a shear flow
+%using $N=64$ points and an adaptive time step size with a tolerance
+%of 1e-4.  The dynamics transition from tank-treading to tumbling near
+%$\nu_{c} = 4.1$.}{f:exactInclineAngle}
+%\end{figure}
+%
+%
+%
+%%We consider a single vesicle in a shear flow with no viscosity
+%%contrast.  It is well-known~\cite{} that the resulting vesicle
+%%will undergo tank-treading dynamics.  In the past~\cite{}, we have used
+%%the error in area and length to report convergence results.  However,
+%%one of the algorithms that we have introduced fixes the area and length
+%%of the vesicle at each time step.  Therefore, we need a new estimate
+%%for the error.  We use the inclination angle which we form using an
+%%overrefined spatial grid and adaptive time stepping with a tolerance of
+%%$10^{-5}$.  The resulting inclination angle is $3.6780 \times 10^{-1}$.
+%%
+%%\input{figs/tankTreadingErrors.tikz}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Slippers}
+\begin{itemize}
+  \item Look at bifurcation of slippers, bullets, and parachutes.  Can
+  we capture these with a coarse grid?
+  \item First look at the fix in area and length at a reasonable
+  resolution so that aliasing isn't an issue
+  \item $N=64$, gmres tolerance = 1e-10
+  \item Trying to reproduce Figure 2 from {\em Why Do Red Blood Cells
+  Have Asymmetric Shapes Even in a Symmetric Flow}
+\end{itemize}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Extensional}
+\begin{itemize}
+  \item Look at the distance between the two vesicles as a function of
+  time for different viscosity contrasts.  Can we capture this with a
+  coarse grid?
+  \item Look at the drainage \todo{not sure what George means by this}
+  \item Look at effect of using low-order FMM
+  \item Look at effect of using less accurate gmres tolerance
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Shear}
+\begin{itemize}
+  \item Look at two vesicles with left one slightly elevated.  
+  \item Look at distance between the two of them
+  \item Can we capture this distance using a low-order accurate FMM?
+  \item Maybe should report the number of required GMRES iterations
+  \item Should also consider changing GMRES tolerance.  This'll control
+  the accuracy of the near field and give us an idea of how accurate the
+  near field needs to be done.
+\end{itemize}
+\todo{This is old results which need to looked at again}
+We consider two vesicles, each discretized with $N=64$ points, in a
+shear flow and consider the effect of using different tolerances for
+the FMM.  We start with a solution, which we take as ground truth,
+computed using our adaptive time with a tolerance of $10^{-5}$.  In
+Table~\ref{t:FMMerror}, we report the error in the minimum distance,
+and the time where the minimum distance occurs, for several choices of
+the FMM tolerance.
+
+\begin{table}
+\centering
+\begin{tabular}{c|cc|cc|cc|cc}
+& \multicolumn{2}{c|}{$5e-1$} & \multicolumn{2}{c|}{$5e-4$} &
+\multicolumn{2}{c|}{$5e-7$} & \multicolumn{2}{c}{$5e-10$} \\ 
+$\Delta t$ & $t_{\min}$ & dist & $t_{\min}$ & dist & $t_{\min}$ & dist
+& $t_{\min}$ & dist \\
+\hline
+8e-2 & 7.68 & 6.10e-2 & 7.68 & 8.14e-2 & 7.68 & 8.14e-2 \\
+4e-2 & 7.64 & 2.42e-2 & 7.64 & 4.09e-2 & 7.64 & 4.09e-2 \\
+2e-2 & 7.60 & 6.44e-3 & 7.62 & 2.06e-2 & 7.62 & 2.06e-2 \\
+1e-2 & 7.60 & 2.39e-3 & 7.62 & 1.03e-2 & 7.62 & 1.03e-2 \\
+5e-3 & 7.59 & 6.78e-3 & 7.62 & 5.14e-3 & 7.62 & 5.13e-3
+\end{tabular}
+\caption{\label{t:FMMerror} The error in the minimum distance between
+the two vesicles and the time when this distance is achieved.  Four
+different FMM tolerances which is the accuracy of the far field.  The
+GMRES tolerance is 1e-10.}
+\end{table}
+
+
+\begin{table}
+\centering
+\begin{tabular}{c|cc|cc|cc|cc}
+& \multicolumn{2}{c|}{$5e-1$} & \multicolumn{2}{c|}{$5e-4$} &
+\multicolumn{2}{c|}{$5e-7$} & \multicolumn{2}{c}{$5e-10$} \\ 
+$\Delta t$ & $t_{\min}$ & dist & $t_{\min}$ & dist & $t_{\min}$ & dist
+& $t_{\min}$ & dist \\
+\hline
+8e-2 &  & e- & 7.60 & 1.02e-2 &  & e- \\
+4e-2 &  & e- & 7.60 & 6.66e-2 &  & e- \\
+2e-2 &  & e- & 7.60 & 5.92e-2 &  & e- \\
+1e-2 &  & e- & 7.59 & 7.36e-2 &  & e- \\
+5e-3 &  & e- & 7.60 & 1.21e-1 &  & e-
+\end{tabular}
+\caption{\label{t:FMMerror} The error in the minimum distance between
+the two vesicles and the time when this distance is achieved.  Four
+different FMM tolerances which is the accuracy of the far field.  The
+GMRES tolerance is 1e-3.}
+\end{table}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{High concentration Couette}
+\begin{itemize}
+  \item Present some statistics for the dense couette example that is
+  currently running.  Can look at cell-free region between the solid
+  wall and the couette boundaries.
+\end{itemize}

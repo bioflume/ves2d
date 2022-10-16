@@ -1,0 +1,141 @@
+2016/02/09 
+- Time adaptivity for N=8, N=16, it works with no problems as long as
+the area/length tolerance per time step is small enough so that the
+area-fixing algorithm can work. 
+
+/******************************************************/
+
+Goal: be able to do concentrated suspensions with 8--16 points or less
+per vesicle without breaking the code. 
+
+[[]] test cases 
+- 1 vesicle in shear  - DONE, it doesn't fail for N=8, viscosity
+contrast up to 20; no need for reparameteration. 
+But we still need to check accuracy. Time adaptivity helps for
+viscosity constrast=100, but then it gets stuck: bryan should look.
+
+For moderate viscosity constrast 1,10: check accuracy for N=8 with and
+without reparmemeterization and effect of repulsion.
+
+- error: final position; and perhaps center and orientation err
+Ground truth N=96 and second-order time-stepping with sufficiently
+small time step. For example if the error in the final positions with
+N=64, dt=1E-3 and N=96, and dt=5E-4 is less than 0.1% we're okay.
+
+- 2 vesicles in extensional - DONE with repulsion
+- 4 vesicles in Taylor-Vortex fluid
+- Couette flow
+
+[[]] REPULSION  - GOKBERK
+- Immediate priority; form of repulsion [coordinate
+with dhairya)], treat it implicitly. Use negative of adhesion term that
+Bryan has implemented, study stiffeness.  
+Dhairya uses 1/r *exp(-r^2/s^2),  s sets the length scale. 
+- Update: it is done, but would be nice to figure out exact scaling:
+1) estimate position of maximum force and set it to 1/2 sqrt(h). 
+2) Try to use information from upsampled force and perhaps match force
+moments (high-frequency). 
+
+
+[[]] REPARAMETERIZATION - GOKBERK  -DONE
+- Check why vanilla arc-length redistribution of points doesn't work
+- quantify difference with shelley-hou trick.
+* Should we consider 3D algorithm (in addition to keeping points
+  close, we also smooth the shape to make sure that most of the energy
+  is in the low specturm.
+CONCLUSION: it is unclear that reparemeterization improves stability, perhaps
+
+
+
+[[]] TIME STEPPING - GOKBERK - DONE
+Use IMEX Backward-Euler (cheapest)
+Solve full system, no Schur decmposition
+- area correction/smoothing, followed by arc-length reparameterization to avoid
+  error accumulation,
+- adaptivity based on area and volume (or perhaps local
+  inextensibility error? TODO)
+
+- Better initial guess: perhaps use shravan's block-diagonal lagged
+ system  (page 7, Scheme II in doi:10.1016/j.jcp.2008.11.036
+  with accurate block diagonal solves for velocity and
+  tension as initial guess for GMRES of the full system. 
+
+* Problem when we try to solve with very small GMRES tolerance, no
+ steps are taken (or if we take only a fixed number of GMRES
+ steps). So a better initial guess is needed perhaps? It seems
+ hard to get something with inexact solves.
+
+
+- ideally, we should have a minimum time-step below which we introduce
+  more hacks like allowing vesicles to cross and then "uncrossing
+  them" or something else. Not sure how to formalize this.
+
+[[]] OPERATORS
+- Never build matrices instead use matrix-free algos for matrix-vector multiplication
+- Block-diagonal preconditioner in which we build the exact matrix: it is affective but too expensive,
+  especially for large number of vesicles and points. So we need to avoid it and
+	use other approximations. But it should be ok if number of points is
+	less that 16 I guess.
+- Apply operators for all vesicles at the same time (I think this is already done)
+  to get better performance. 
+- Full system should use just one application of bending and tension
+  operators (do not repeat for tension row in the  matrix).
+
+[[]] PRECONDITIONING
+- Check performance of spectral preconditioner  vs current block
+  preconditioner for small problem size but for large number of
+  vesicles.  
+- Check integration by parts preconditioners 
+-- Current block diagonal. 
+-- analytic+regularization
+-- multiply/devide with sphere and then epsilong-approximate sphere so you can get
+   forth-order-derivatives. But unless the resulting matrix can be factorized
+	 quickly (that is it admits good sparse approximation) this
+	 methodology want work). 
+
+[[]] Near-singular integrals
+- Are we upsampling enough to resolve near-singular integrals when we
+have very fiew number of points?
+
+[[]] ADAPTIVE UPSAMPLING - DONE
+- upsampling for derivatives (adaptively, already done) - Done, 
+  and layer potentials, and then project down to discretization.
+
+[[]] COMPLEX GEOMETRIES
+- Enable very complex geometries by coupling to fast direct solver and  FMM. 
+
+[[]] ERROR MEASURE
+[] effective viscosity 
+[] PDF of velocity 
+[] LCS and Approximate invariance sets			
+[] margination effects 
+[] mixing efficiency	
+
+
+------------------------------- NEXT STEPS
+- multirate time-stepping
+- check for viscosity contrast
+- polydisperse suspensions (platelets, other cells), support for
+   variability in shape and viscosity contrast. 
+
+
+
+QUESTIONS:
+- Bryan: at your poster at the top-right figure:
+--- if you reparameterize to arc length at each time step, why do
+particles cluster? This clustering indicates severe errors in the
+inextensibility constrains. I'm not sure why you need the Shelley
+trick. 
+
+--- View bending-dynamics matrix  to check if it admits sparse
+    approximation (have we done this in the past?) which can be
+    factorized quickly? If this is the case then we can precondition.
+
+--- Can we bound the overall complexity of our scheme?
+
+
+VISUALIZATION/MEASURES
+[] Measure  and plot local extensibility error as a function of time (to
+make sure that this is satisfied. 
+
+[]

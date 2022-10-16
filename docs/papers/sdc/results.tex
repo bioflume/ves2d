@@ -1,0 +1,1928 @@
+We discuss the behaviour of our different constant and adaptive time
+step size integrators for confined and unconfined flows.  We are
+particularly interested in comparing our two second-order time
+integrators: BDF and $n_{\sdc}=1$.  However, it is important to note
+that only $n_{\sdc}=1$ is compatible with an adaptive time step size.
+We are interested in problems whose dynamics exhibit multiple time
+scales, and problems with long time horizons.  For such problems, it is
+beneficial that the largest possible time step is taken and that no
+trial-and-error procedure to achieve a desired tolerance is required.
+The main parameters are the number of points per vesicle, $N$, the
+number of points on the solid walls, $N_{\mathrm{wall}}$, the number of
+constant size time steps, $N_{t}$, the number of SDC iterations,
+$n_{\sdc}$, the number of Gauss-Lobatto quadrature points, $p$, and the
+safety parameters, $\beta_{\up}$, $\beta_{\down}$, and $\alpha$ defined
+in Section~\ref{s:adaptive}.
+
+The simulations are performed in Matlab on a six-core 2.67GHz Intel Xeon
+processor with 24GB of memory.  We use the following four numerical
+examples of increasing complexity.
+
+\begin{itemize}
+\item{{\bf Relaxation flow}
+(Tables~\ref{t:noSDCrelaxation}--\ref{t:SDC34relaxation} and
+Figures~\ref{f:relaxationConvergence}--\ref{f:relaxationAdaptive}):} We
+consider stiffness due to self-interactions by simulating a single
+vesicle in a Stokes fluid with no background velocity.  Motivated by
+Proposition~\ref{pro:convergence}, we would like each additional SDC
+iteration to result in an additional order of accuracy.  The errors in
+area, length, and position are all reported. This example highlights the
+behavior of the scheme in the case of single-vesicle dynamics.
+
+\item{{\bf Extensional flow}
+(Tables~\ref{t:noSDCextensional}--\ref{t:adaptiveThirdOrderExtensional}
+and Figures~\ref{f:extensionalGeom}--\ref{f:extensionalSummary}):} We
+consider stiffness due to vesicle-vesicle interactions by simulating two
+vesicles approaching each other in an extensional flow.  We check the
+convergence of different time integrators and compare constant time step
+sizes and adaptive time step sizes. This example highlights the
+behavior of the scheme in the presence of vesicle-vesicle interactions.
+
+\item{{\bf Stenosis flow} (Table~\ref{t:adaptiveSecondOrderStenosis} and
+Figures~\ref{f:stenosisGeom}--\ref{f:stenosisSummary}):} We consider
+stiffness due to vesicle-wall interactions by simulating a single
+vesicle in a confined tube with a parabolic-profile flow at the intake
+and outtake.  The vesicle passes through a narrow region where a
+smaller time step should be taken.  We compare BDF with our new
+adaptive second-order time integrator. This example highlights the
+effect of different flow regimes on the time-stepper.
+
+
+\item{{\bf Couette}
+(Tables~\ref{t:couette42BDF}--\ref{t:adaptiveSecondOrderCouette150}
+and Figures~\ref{f:couette42Geom}--\ref{f:couette150Errors}):} We
+consider two different different vesicle suspensions in a Couette
+apparatus, one with 42 vesicles and the other with 150 vesicles.
+These examples involve all the stiff terms in the evolution equations.
+\end{itemize}
+
+We again emphasize that when using adaptive time stepping, no
+trial-and-error procedure is required to guarantee that the desired
+tolerance is achieved.  Moreover, by using the area and length as
+estimates for the local truncation error, multiple numerical solutions
+do not need to be formed.  We report results using our previously
+introduced time integrators~\cite{qua:bir2014b}, $n_{\sdc}=0$
+(first-order) and BDF (second-order), as well as results from our new
+time integrators, $n_{\sdc}>0$ (order $n_{\sdc}+1$).  In our new time
+integrators, we use the fewest number of substeps so that the accuracy
+of the quadrature is at least as large as the expected accuracy of the
+time integrator.  The BDF time-stepping scheme is incompatible with an
+adaptive time step size since it can become unstable if the time step
+size changes too rapidly~\cite{dah:lin:nev1983}.  Therefore, all the
+BDF runs are done with a constant time step size, which has been
+selected by trial-and-error.
+
+In our results we report the number of calls to the FMM (the \#fmm
+column in the tables), which are used in the computation of the
+hydrodynamic interactions (vesicle-vesicle and vesicle-wall) and are
+the most expensive part of our calculation. The second most expensive
+part is the factorization of the block-diagonal preconditioner. This
+part is amortized over the SDC iteration as it is computed exactly once
+per time step and used at all Gauss-Lobatto substeps.
+
+All linear systems are solved with GMRES without restarts to a tolerance
+of $1$E$-10$.  We have experimented with smaller tolerances, but found
+that the condition number of the linear system is too large to justify
+using a smaller tolerance.  We choose $N$ and $N_{\wall}$ large enough
+so that the aliasing errors and quadrature error from the layer
+potentials are negligable.  In this manner, as long as the error is not
+less than $1$E$-10$, the error due to the time integrator dominates,
+which is the focus of this work.  Finally, as described in
+Section~\ref{s:adaptive}, we set $\beta_{\up} = 1.5$, $\beta_{\down} =
+0.6$, and $\alpha = 0.9$ in all of the experiments.
+Following~\cite{hai:nor:wan1993}, we never increase the time step size
+right after a rejected time step.
+
+%Other details include:
+%\begin{itemize}
+%\item When using adaptive time stepping, no trial and error procedure
+%to find a time step size that achieves the desired error is required.
+%This is especially beneficial for simulations that require large
+%amounts of CPU time due to long time horizons or concentrated
+%suspensions.
+%
+%\item The area and length of the vesicles, which are computed with
+%spectral accuracy, should be unchanged by the incompressibility and
+%inextensibility constraints.  Therefore, we use the error in area,
+%$e_{A}$, and the error in length, $e_{L}$, to measure the error of the
+%simulation, and to estimate the local truncation error required for
+%adaptive time stepping.
+%
+%\item In the simulations we present, the interactions between the
+%vesicles and solid walls are the most expensive part of the calculation.
+%Therefore, for all examples except the first (it has no vesicle-vesicle
+%or vesicle-boundary interactions), we report the total number of FMM
+%calls (\# fmm).  
+%
+%\item For more concentrated suspensions, forming and factorizing the
+%block-diagonal preconditioner is the most expensive part of the
+%caculation.  However, it is computed only once per time step in order
+%to gurantee that the preconditioner is formed exactly once per time
+%step for all the time integrators.   When SDC is used, the
+%preconditioner formed at the first Gauss-Lobatto point is used for all
+%subsequent Gauss-Lobatto points and SDC corrections.
+%
+%\item BDF is a second-order multistep time
+%integrator~\cite{qua:bir2014b}.  It does achieve second-order accuracy,
+%but is fragile when used with adaptive time steps.  In particular, it
+%can become unstable if the time step size changes too
+%rapidly~\cite{dah:lin:nev1983}.
+%
+%\item For problems that use $n_{\sdc}=0$ or BDF, we do not use
+%Gauss-Lobatto substeps.  However, when $n_{\sdc}>0$, there are $m(p-1)$
+%time steps since the solution is required at the quadrature points to
+%estimate $\rr$.  For each simulation, we choose the smallest $p$ for
+%which the order of accuracy of the quadrature order exeeds $n_{\sdc} +
+%1$.
+%
+%\item We take larger values of $N$ than required in order to fully
+%resolve the geometry, differential operators, and the layer potentials.
+%This way, the temporal error, which is the main focus of this work,
+%dominates the spatial error.
+%
+%\item All the linear systems are solved with GMRES without restarts (no
+%GMRES solve requires more than 50 iterations) and with a tolerance of
+%$1$E$-10$.  We have experimented with tighter tolerances, but this has
+%little or no effect on the reported errors and only increases the number
+%of GMRES iterations.  The reason that the errors do not decrease is that
+%the condition number of the linear system, which for the report problems
+%is on the order of $1$E$5$, restricts the minimum achievable residual.
+%
+%\item For the adaptive time stepping results, the time step size is
+%never upscaled by more than $\beta_{\up} = 1.5$, downscaled by more
+%than $\beta_{\down} = 0.6$, and the safety scaling factor is $\alpha =
+%\sqrt{0.9}$.  In addition, the time step size is never increased
+%immediately after a rejected time step as is recommended
+%in~\cite{hai:nor:wan1993}.
+%
+%\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Relaxation flow}
+
+We consider a single vesicle, initialized as a three-to-one ellipse, in
+a Stokes fluid with no background velocity.  We discretize the vesicle
+with $N=96$ points and the time horizon is $T=2$ which is large enough
+that the vesicle comes within 10\% of its steady state solution.  In
+order to do a convergence study of the vesicle shape, we also ran the
+simulation with four SDC iterations and 4000 time steps.  The
+difference in position at the time horizon of each run with this
+``exact" solution is reported as $e_{P}$.  For this example, there are
+no calls to the FMM because the self-interactions are evaluated
+directly.  We report the errors and CPU timings in
+Tables~\ref{t:noSDCrelaxation}--\ref{t:SDC34relaxation}.
+
+We see that SDC quickly converges for a fixed $\Delta t$.  However, the
+convergence stagnates after two SDC iterations, and this is due to other
+sources of error, such as the GMRES tolerance.  As mentioned earlier,
+reducing the GMRES tolerance does not improve the results because the
+linear system that needs to be solved has a condition number around
+$1$E$+6$.  We have run the same simulation, but with a larger time
+horizon, larger time step sizes, and we used the LU decomposition of the
+system matrix rather than GMRES.  In
+Figure~\ref{f:relaxationConvergence}, we observe first- second- and
+third-order convergence.  We first attempt to achieve fourth-order
+convergence using $p=3$ Gauss-Lobatto points and 3 SDC iterations, but
+we can not conclusively observe fourth-order convergence.  Therefore, we
+also try using $p=3$ Gauss-Lobatto points and 10 SDC iterations.  In
+this manner, SDC has converged to the fully-implicit Gauss-Lobatto
+fourth-order collocation scheme of~\eqref{e:picardEqn}.  We see that
+there is no improvement compared to the 3 SDC iterations, and,
+therefore, we expect that order reduction is limiting the convergence
+rate.
+
+Achieving high-order convergence for stiff systems, such as those that
+govern vesicle suspensions, can be quite challenging.  Several groups
+have developed methods to reduce the effect of order
+reduction~\cite{min2003, wei2013, jia:hua2008,
+spe:rup:emm:min:bol:kra2014, spe:rup:min:emm:kra2014}.  These methods
+may result in asymptotic convergence rates for larger time step sizes,
+but they come at an expense of a larger memory footprint.  Therefore,
+at this point, we only use one or two SDC iterations, and, therefore,
+will not achieve more than third-order convergence.  However, we are
+able to compare our two second-order methods: BDF and $n_{\sdc}=1$ with
+and without a variable time step size.  For this particular example, we
+see that our new time integrator ($n_{\sdc}=1$) is slightly faster than
+our old time integrator (BDF).  In addition, we see that the error in
+position converges at the same asymptotic rate as the error in area and
+length.  This is also tested for an adaptive time step size in
+Figure~\ref{f:relaxationAdaptive}.  This justifies our use of the error
+in area and length to choose an adaptive time step size.
+
+
+%\begin{itemize}
+%\item  By using SDC, the accuracy is significantly improved up to 2 SDC
+%corrections.  At this point, other sources of error, such as the GMRES
+%tolerance and machine precision, start to dominate.  This order
+%reduction is observed in literature that studies SDC for stiff
+%problems~\cite{min2003, wei2013, jia:hua2008,
+%spe:rup:emm:min:bol:kra2014, spe:rup:min:emm:kra2014}
+%
+%\item The maximum of the errors in area and length asymptotically behave
+%the same as the error in position, both for a fixed and adaptive
+%(Figure~\ref{f:relaxationAdaptive}) time step size.  This justifies our
+%use of the error in area and length to choose an adaptive time step
+%size.
+%
+%%\item Comparing the left entires of Tables~\ref{t:noSDCrelaxation}
+%%and~\ref{t:SDC12relaxation}, we see that the CPU time increases by more
+%%than four-fold.  This is a result of SDC having to form the solution at
+%%the intermediate Gauss-Lobatto points.
+%
+%\item Comparing the two second-order solvers, we see that our new time
+%integrator ($n_{\sdc}=1$) is slightly faster than our old time
+%integrator (BDF).  In addition, the SDC time integrator has the luxury
+%that it is compatible with adaptive time stepping while BDF is not.
+%\end{itemize}
+
+% All tables are done on old blade compute-0-2
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{c|cccc|cccc}
+ & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+   \multicolumn{4}{c}{{\bf BDF}} \\
+$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+\hline
+$125$  & $1.05$E$-4$ & $3.43$E$-6$  & $3.40$E$-5$ & $1.0$ 
+       & $1.11$E$-6$ & $2.52$E$-8$  & $9.49$E$-7$ & $1.1$ \\
+$250$  & $5.29$E$-5$ & $1.74$E$-6$  & $1.74$E$-5$ & $1.9$ 
+       & $2.10$E$-7$ & $3.17$E$-9$  & $1.74$E$-7$ & $2.2$ \\
+$500$  & $2.67$E$-5$ & $8.75$E$-7$  & $8.83$E$-6$ & $3.6$ 
+       & $4.18$E$-8$ & $3.52$E$-10$ & $2.84$E$-8$ & $4.1$ \\
+$1000$ & $1.34$E$-5$ & $4.39$E$-7$  & $4.44$E$-6$ & $7.3$ 
+       & $9.13$E$-9$ & $8.59$E$-10$ & $4.18$E$-9$ & $8.3$ 
+\end{tabular}
+\mcaption{The errors in position, area, and length and the CPU time for
+a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+step size using $\boldnsdc{0}$ (left) and {\bf BDF} (right).  In both
+runs, $p=2$ meaning that there are no substeps.  The CPU times for
+Tables~\ref{t:noSDCrelaxation}--\ref{t:SDC34relaxation} are relative to
+the cheapest simulation ($N_{t}=125$ and $n_{\sdc}=0$) which took
+approximately 9.3 seconds.  Both methods converge at the expected
+rate.}{t:noSDCrelaxation}
+
+\begin{tabular}{c|cccc|cccc}
+ & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+   \multicolumn{4}{c}{$\boldnsdc{2}$} \\
+$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+\hline
+$125$  & $9.55$E$-7$  & $1.61$E$-7$  & $1.27$E$-7$  & $1.7$ 
+       & $6.26$E$-9$  & $8.02$E$-10$ & $2.91$E$-10$ & $4.2$ \\
+$250$  & $2.40$E$-7$  & $4.21$E$-8$  & $2.64$E$-8$  & $2.7$ 
+       & $9.44$E$-10$ & $1.22$E$-9$  & $3.89$E$-11$ & $7.7$ \\
+$500$  & $5.89$E$-8$  & $1.02$E$-8$  & $4.83$E$-9$  & $5.7$ 
+       & $1.41$E$-10$ & $1.11$E$-9$  & $4.12$E$-12$ & $14.3$ \\
+$1000$ & $1.43$E$-8$  & $1.86$E$-9$  & $7.93$E$-10$ & $11.2$ 
+       & $2.49$E$-11$ & $1.04$E$-9$  & $3.42$E$-13$ & $29.2$
+\end{tabular}
+\mcaption{The errors in position, area, and length and the CPU time for
+a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+step size using $\boldnsdc{1}$, $p=2$ (left) and $\boldnsdc{2}$, $p=3$
+(right).  We achieve second-order convergence with one SDC iteration,
+but third-order convergence is only observed for the error in length
+with two SDC iterations.  However, the errors in area and position have
+plateaued close to the GMRES tolerance.  We observe that with
+$n_{\sdc}=2$ and $N_{t}=125$, we get $6$E$-9$ error with $4.2$ CPU cost
+whereas the BDF scheme (Table~\ref{t:noSDCrelaxation}) with
+$N_{t}=1000$ time steps gets a slightly larger error ($9$E$-9$) at
+$8.3$ CPU cost, about two times more expensive.}{t:SDC12relaxation}
+
+\begin{tabular}{c|cccc|cccc}
+ & \multicolumn{4}{c|}{$\boldnsdc{3}$} & 
+   \multicolumn{4}{c}{$\boldnsdc{4}$} \\
+$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+\hline
+$125$  & $5.66$E$-10$ & $1.71$E$-9$  & $1.22$E$-11$ & $5.1$ 
+       & $1.36$E$-10$ & $7.82$E$-10$ & $1.05$E$-13$ & $9.1$ \\
+$250$  & $1.59$E$-10$ & $1.25$E$-9$  & $6.22$E$-13$ & $10.0$ 
+       & $3.39$E$-11$ & $9.52$E$-10$ & $4.89$E$-15$ & $17.8$ \\
+$500$  & $4.18$E$-11$ & $1.08$E$-9$  & $2.93$E$-13$ & $19.4$ 
+       & $8.43$E$-12$ & $9.95$E$-10$ & $4.11$E$-15$ & $39.2$ \\
+$1000$ & $1.08$E$-11$ & $1.03$E$-9$  & $1.11$E$-16$ & $37.6$ 
+       & $2.02$E$-12$ & $1.01$E$-9$  & $9.99$E$-15$ & $71.6$
+\end{tabular}
+\mcaption{The errors in position, area, and length and the CPU time for
+a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+step size using $\boldnsdc{3}$, $p=3$ (left) and $\boldnsdc{4}$, $p=4$
+(right).  For this example, additional SDC iterations do not offer
+significant advantage as we have reached accuracy limits related to the
+conditioning of the system.}{t:SDC34relaxation}
+\end{center}
+\end{table}
+
+% Aug 30, 2015: These are the results from the second submisson.  We
+% now change the value of p (number of Gauss-Lobatto points) with the
+% number of SDC iterations
+% All tables are done on old blade compute-0-7
+%\begin{table}[htp]
+%\begin{center}
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%   \multicolumn{4}{c}{{\bf BDF}} \\
+%$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $1.05$E$-4$ & $3.43$E$-6$  & $3.40$E$-5$ & $1.0$ 
+%       & $1.11$E$-6$ & $2.52$E$-8$  & $9.49$E$-7$ & $1.2$ \\
+%$250$  & $5.29$E$-5$ & $1.74$E$-6$  & $1.74$E$-5$ & $1.9$ 
+%       & $2.11$E$-7$ & $3.05$E$-9$  & $1.74$E$-7$ & $2.4$ \\
+%$500$  & $2.67$E$-5$ & $8.75$E$-7$  & $8.83$E$-6$ & $3.8$ 
+%       & $4.52$E$-8$ & $5.40$E$-10$ & $2.85$E$-8$ & $4.7$ \\
+%$1000$ & $1.34$E$-5$ & $4.38$E$-7$  & $4.45$E$-6$ & $8.2$ 
+%       & $1.33$E$-8$ & $1.37$E$-9$  & $4.43$E$-9$ & $9.2$ 
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{0}$ (left) and {\bf BDF} (right).  In both
+%runs, $p=2$ meaning that there are no substeps.  The CPU times for
+%Tables~\ref{t:noSDCrelaxation}--\ref{t:SDC34relaxation} are relative to
+%the cheapest simulation ($N_{t}=125$ and $n_{\sdc}=0$) which took
+%approximately 30 seconds.  Both methods converge at the expected
+%rate.}{t:noSDCrelaxation}
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{2}$} \\
+%$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $3.19$E$-7$ & $4.76$E$-8$  & $3.82$E$-8$  & $1.7$ 
+%       & $1.62$E$-9$ & $7.83$E$-10$ & $1.10$E$-10$ & $3.1$ \\
+%$250$  & $7.64$E$-8$ & $1.18$E$-8$  & $7.72$E$-9$  & $3.3$ 
+%       & $4.11$E$-9$ & $1.08$E$-9$  & $1.41$E$-11$ & $5.6$ \\
+%$500$  & $1.57$E$-8$ & $2.31$E$-9$  & $1.37$E$-9$  & $6.3$ 
+%       & $4.51$E$-9$ & $1.05$E$-9$  & $1.43$E$-12$ & $11.3$ \\
+%$1000$ & $1.21$E$-9$ & $1.65$E$-10$ & $2.17$E$-10$ & $13.7$ 
+%       & $4.57$E$-9$ & $1.02$E$-9$  & $1.11$E$-13$ & $22.9$
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{1}$, $p=3$ (left) and $\boldnsdc{2}$, $p=4$
+%(right).  We achieve second-order convergence with one SDC iteration,
+%but third-order convergence is only observed for the error in length
+%with two SDC iterations.  However, the errors in area and position have
+%plateaued close to the GMRES tolerance.  We observe that with
+%$n_{\sdc}=2$ and $N_{t}=125$, we get $1$E$-9$ error with $3.1$ CPU cost
+%whereas the BDF scheme (Table~\ref{t:noSDCrelaxation}) with
+%$N_{t}=1000$ time steps gets one order of magnitude larger error
+%($3$E$-8$) at $9.2$ CPU cost, over 3 times more
+%expensive.}{t:SDC12relaxation}
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{3}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{4}$} \\
+%$N_{t}$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%        & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $4.48$E$-9$ & $9.67$E$-10$ & $1.03$E$-12$ & $3.8$ 
+%       & $4.60$E$-9$ & $8.99$E$-10$ & $1.07$E$-14$ & $6.0$ \\
+%$250$  & $4.57$E$-9$ & $1.01$E$-9$  & $8.68$E$-14$ & $7.6$ 
+%       & $4.59$E$-9$ & $9.82$E$-10$ & $4.44$E$-16$ & $11.4$ \\
+%$500$  & $4.58$E$-9$ & $1.01$E$-9$  & $8.44$E$-15$ & $14.6$ 
+%       & $4.58$E$-9$ & $1.00$E$-9$  & $2.78$E$-15$ & $22.4$ \\
+%$1000$ & $4.58$E$-9$ & $1.01$E$-9$  & $4.44$E$-16$ & $29.3$ 
+%       & $4.58$E$-9$ & $1.01$E$-9$  & $2.66$E$-15$ & $47.2$
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{3}$, $p=4$ (left) and $\boldnsdc{4}$, $p=5$
+%(right).  For this example, additional SDC iterations do not offer
+%significant advantage as we have reached accuracy limits related to the
+%conditioning of the system.}{t:SDC34relaxation}
+%\end{center}
+%\end{table}
+
+%% All tables are done on new blades
+% Apr 13, 2015: These are the results from the original submisson.  We
+% now change the value of p (number of Gauss-Lobatto points) with the
+% number of SDC iterations
+%\begin{table}[htp]
+%\begin{center}
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%   \multicolumn{4}{c}{{\bf BDF}} \\
+%$m$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%    & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $1.05$E$-4$ & $3.44$E$-6$  & $3.40$E$-5$ & $1.0$ 
+%       & $2.05$E$-6$ & $6.13$E$-8$  & $1.56$E$-6$ & $1.1$ \\
+%$250$  & $5.29$E$-5$ & $1.74$E$-6$  & $1.74$E$-5$ & $2.1$ 
+%       & $4.65$E$-7$ & $1.40$E$-8$  & $3.57$E$-7$ & $2.1$ \\
+%$500$  & $2.67$E$-5$ & $8.76$E$-7$  & $8.83$E$-6$ & $4.2$ 
+%       & $1.01$E$-7$ & $3.10$E$-9$  & $7.84$E$-8$ & $4.2$ \\
+%$1000$ & $1.34$E$-5$ & $4.40$E$-7$  & $4.44$E$-6$ & $8.4$ 
+%       & $2.23$E$-8$ & $2.41$E$-10$ & $1.75$E$-8$ & $8.3$ 
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{0}$ (left) and {\bf BDF} (right).  The CPU
+%times for Tables~\ref{t:noSDCrelaxation}--\ref{t:SDC34relaxation} are
+%relative to the cheapest simulation ($m=125$ and $n_{\sdc}=0$) which
+%took approximately 38 seconds.  Both methods converge with their
+%expected rate of convergence.}{t:noSDCrelaxation}
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{2}$} \\
+%$m$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%    & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $1.36$E$-7$  & $2.75$E$-8$  & $1.30$E$-8$  & $4.6$ 
+%       & $1.96$E$-9$  & $3.99$E$-10$ & $5.29$E$-11$ & $7.2$ \\
+%$250$  & $3.38$E$-8$  & $7.28$E$-9$  & $2.58$E$-9$  & $9.0$ 
+%       & $2.96$E$-10$ & $1.98$E$-11$ & $6.54$E$-12$ & $16$ \\
+%$500$  & $8.26$E$-9$  & $1.88$E$-9$  & $4.45$E$-10$ & $17$ 
+%       & $4.37$E$-11$ & $1.04$E$-11$ & $6.37$E$-13$ & $29$ \\
+%$1000$ & $2.02$E$-9$  & $4.78$E$-10$ & $6.88$E$-11$ & $35$ 
+%       & $6.31$E$-12$ & $5.37$E$-12$ & $4.77$E$-14$ & $57$
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{1}$ (left) and $\boldnsdc{2}$ (right).  We
+%achieve second-order convergence with one SDC correction, but
+%third-order convergence is only observed for the error in length with
+%two SDC corrections.  However, the error in area has plateaued which
+%indicates that the GMRES tolerance has limited the error in
+%area.}{t:SDC12relaxation}
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{3}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{4}$} \\
+%$m$ & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU 
+%    & $e_{P}$ & $e_{A}$ & $e_{L}$ & CPU \\
+%\hline
+%$125$  & $6.26$E$-11$ & $9.77$E$-11$ & $3.94$E$-13$ & $10$ 
+%       & $6.48$E$-11$ & $1.10$E$-10$ & $1.07$E$-14$ & $13$ \\
+%$250$  & $1.02$E$-11$ & $2.03$E$-11$ & $3.13$E$-14$ & $20$ 
+%       & $1.62$E$-11$ & $2.74$E$-11$ & $3.11$E$-15$ & $26$ \\
+%$500$  & $2.51$E$-12$ & $4.30$E$-12$ & $2.22$E$-15$ & $41$ 
+%       & $4.02$E$-12$ & $6.60$E$-12$ & $1.11$E$-16$ & $49$ \\
+%$1000$ & $5.99$E$-13$ & $7.11$E$-13$ & $1.33$E$-16$ & $80$ 
+%       & $9.63$E$-13$ & $1.33$E$-12$ & $1.44$E$-15$ & $101$
+%\end{tabular}
+%\mcaption{The errors in position, area, and length and the CPU time for
+%a single vesicle in a {\bf relaxation} flow with a {\bf constant} time
+%step size using $\boldnsdc{3}$ (left) and $\boldnsdc{4}$ (right).  The
+%error in length achieves fourth-order convergence with three SDC
+%corrections, but again, the error in area has plateaued.  The error in
+%area continues to plateau with four SDC corrections, and the error in
+%length has reached machine precision.}{t:SDC34relaxation}
+%\end{center}
+%\end{table}
+
+\begin{figure}[htp]
+\begin{center}
+\ifTikz
+%\input{figs/relaxationLargeDT.tikz}
+\input{figs/relaxationLargeDT2.tikz}
+\fi
+\end{center}
+\mcaption{The maximum error in area and length for a single vesicle in
+a {\bf relaxation} flow.  We use $p=2$ Gauss-Lobatto points for
+$\boldnsdc{0}$ (first-order) and $\boldnsdc{1}$ (second-order), and
+$p=3$ Gauss-Lobatto points for $\boldnsdc{2}$ (third-order),
+$\boldnsdc{3}$ (fourth-order), and $\boldnsdc{10}$ (fourth-order).  We
+see that first- second- and third-order convergence are
+achieved.}{f:relaxationConvergence}
+\end{figure}
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{ccc}
+  \ifTikz
+  \input{figs/relaxationAdaptiveErrors0.tikz} &
+  \input{figs/relaxationAdaptiveErrors1.tikz} &
+  \input{figs/relaxationAdaptiveErrors2.tikz} 
+  \fi
+  \end{tabular}
+\end{center}
+\mcaption{The maximum error in area and length (blue), and in position
+(red) for a single vesicle in a {\bf relaxation} flow with an {\bf
+adaptive} time step size.  In all the runs, the maximum error in area
+and length are achieved, and the error in position decays at the same
+rate.}{f:relaxationAdaptive}
+\end{figure}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Extensional flow}
+
+We consider two vesicles placed symmetrically around the origin with
+the background velocity $\vv_{\infty} = (-x,y)$
+(Figure~\ref{f:extensionalGeom}).  We discretize both vesicles with
+$N=96$ points and the time horizon is $T=24$ which is long enough that
+the distance between the vesicles at the time horizon is
+$0.4\sqrt{\Delta s}$, where $\Delta s$ is the arclength spacing.  We
+report results using zero, one, and two SDC iterations, and BDF in
+Tables~\ref{t:noSDCextensional} and~\ref{t:SDC12extensional}.  Similar
+to the previous example, for some of the results, the expected
+convergence rates are not observed.  Other groups (see, for
+example,~\cite{min2003,wei2013}) have observed that for stiff systems,
+very small time steps must be taken before the asymptotic convergence
+rates are achieved.  As before, we expect that other sources of error
+will dominate once the temporal asymptotic regime is achieved.
+
+\begin{figure}[htp]
+\begin{center}
+  \begin{tabular}{ccccc}
+  \ifTikz
+  \input{figs/extensionalSnapsTime1.tikz} &
+  \input{figs/extensionalSnapsTime2.tikz} &
+  \input{figs/extensionalSnapsTime3.tikz} &
+  \input{figs/extensionalSnapsTime4.tikz} &
+  \input{figs/extensionalSnapsTime5.tikz} 
+  \fi
+  \end{tabular}
+\end{center}
+\mcaption{Two vesicles discretized with $N=96$ points.  The vesicles are
+initially placed symmetrically around the origin and the background
+velocity is $\vv_{\infty} = (-x,y)$.}{f:extensionalGeom} 
+\end{figure}
+
+As the vesicles approach one another, their shape is nearly static
+since their velocities decrease, and we expect that larger time step
+sizes can be taken.  Therefore, we test our adaptive time stepping
+strategy using zero, one, and two SDC iterations.  The errors in area
+and length, the number of accepted and rejected time steps, the number
+of FMM calls, and the CPU times are reported in
+Table~\ref{t:adaptiveFirstOrderExtensional} ($n_{\sdc}=0$),
+Table~\ref{t:adaptiveSecondOrderExtensional} ($n_{\sdc}=1$), and
+Table~\ref{t:adaptiveThirdOrderExtensional} ($n_{\sdc}=2$).  The
+adaptive time stepping strategy does a good job of attaining the
+desired tolerance while not having too many rejected time steps.  In
+Figure~\ref{f:extensionalSummary}, we plot the time step size with the
+location of the rejected time steps (top left), and the errors in area
+and length for a constant time step size and for an adaptive time step
+size (top right).  While the constant time step size commits a
+negligible amount of error shortly after the initial condition, too
+much error is accumulated at the beginning of the simulation.  This
+indicates that a smaller time step should be taken near the start of
+the simulation and then it can be increased later in the simulation,
+which is exactly what we observe.
+
+In
+Tables~\ref{t:noSDCextensional}--\ref{t:adaptiveThirdOrderExtensional}
+and the bottom plot of Figure~\ref{f:extensionalSummary}, we compare
+the results of the different constant and adaptive time step size
+integrators.  We see that our new second-order method, $n_{\sdc} = 1$,
+slightly outperforms our previous second-order method, BDF.  Moreover,
+by using an adaptive time step size, there is a further reduction in
+the required CPU time.  For example, to achieve a tolerance of $1$E$-6$
+with $n_{\sdc}=1$, a constant time step size requires about 10 times
+more CPU time than if an adaptive time step size is used.  Finally, we
+see that with our current implementation, taking two SDC iterations
+does not result in a computational speedup compared to $n_{\sdc}=1$.
+Therefore, we only use one SDC iteration from this point onwards.
+
+%\begin{itemize}
+%%  \item Unsurprisingly, the errors resulting from the first-order time
+%%  integrator are much larger than those resulting from higher-order
+%%  time integrators.  These larger errors have a very adverse effect
+%%  when using adaptive time stepping since very small time steps must be
+%%  taken to maintain the requested local truncation error.
+%%
+%  \item Contrary to the {\em relaxation} example, our new second-order
+%  method ($n_{\sdc}=1$) outperforms our previous second-order
+%  method (BDF).
+%
+%  \item  By using an adaptive time step size, the user-defined
+%  tolerance is achieved, the number of rejected time steps is small for
+%  sufficiently small tolerances, and the time to solution is reduced
+%  when compared to the fixed time step size.  These results are also
+%  summarized in Figure~\ref{f:extensionalCPUvsErr}.
+%
+%  \item The first-order method is far too slow to use with an adaptive
+%  time step size once the tolerance is less than $1$E$-3$.  By using
+%  SDC corrections, we are able to perform adaptive time stepping
+%  with second- or higher-order accuracy.  However, at the presented
+%  tolerances, doing any more than one SDC correction does not improve
+%  the time to solution.
+%\end{itemize}
+
+% These runs were done on the old blades on compute-0-2
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{c|cccc|cccc}
+ & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+   \multicolumn{4}{c}{{\bf BDF}} \\
+$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+        $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+\hline
+$300$  & $2.47$E$-4$ & $1.27$E$-3$ & $4.21$E$3$ & $1.0$
+       & $3.80$E$-5$ & $3.90$E$-4$ & $4.53$E$3$ & $1.2$ \\
+$600$  & $1.24$E$-4$ & $6.64$E$-4$ & $8.31$E$3$ & $2.1$
+       & $9.84$E$-6$ & $1.37$E$-4$ & $8.90$E$3$ & $2.0$ \\ 
+$1200$ & $6.29$E$-5$ & $3.46$E$-4$ & $1.63$E$4$ & $3.8$
+       & $2.80$E$-6$ & $4.45$E$-5$ & $1.75$E$4$ & $4.0$ \\ 
+$2400$ & $3.20$E$-5$ & $1.79$E$-4$ & $3.17$E$4$ & $7.8$
+       & $1.04$E$-6$ & $1.27$E$-5$ & $3.45$E$4$ & $7.6$
+\end{tabular}
+\mcaption{The errors in area and length and the CPU time for two
+vesicles in an {\bf extensional} flow with a {\bf constant} time step
+size using $\boldnsdc{0}$ (left) and ${\bf BDF}$ (right).  The CPU
+times for
+Tables~\ref{t:noSDCextensional}--\ref{t:adaptiveThirdOrderExtensional}
+are relative to the cheapest simulation ($N_{t}=300$ and $n_{\sdc}=0$)
+which took approximately 453 seconds.  We achieve the desired
+first-order results, but second-order results are not yet achieved.
+With additional time steps, second-order convergence is achieved (see
+Table $7$ in~\cite{qua:bir2014b}).}{t:noSDCextensional}
+
+
+\begin{tabular}{c|cccc|cccc}
+ & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+   \multicolumn{4}{c}{$\boldnsdc{2}$} \\ 
+$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+        $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+\hline
+$300$  & $4.99$E$-5$ & $2.91$E$-5$  & $1.04$E$4$ & $2.5$
+       & $2.01$E$-6$ & $4.84$E$-7$  & $2.93$E$4$ & $7.2$ \\
+$600$  & $1.63$E$-5$ & $1.04$E$-5$  & $1.96$E$4$ & $4.9$
+       & $7.35$E$-7$ & $8.14$E$-8$  & $5.58$E$4$ & $13.3$ \\ 
+$1200$ & $5.35$E$-6$ & $3.61$E$-6$  & $3.76$E$4$ & $9.2$
+       & $5.24$E$-7$ & $1.45$E$-8$  & $1.07$E$5$ & $26.0$ \\ 
+$2400$ & $1.94$E$-6$ & $1.13$E$-6$  & $7.22$E$4$ & $16.0$
+       & $5.04$E$-7$ & $2.89$E$-9$  & $2.10$E$5$ & $51.2$ \\
+$4800$ & $9.15$E$-7$ & $3.07$E$-7$  & $1.40$E$5$ & $34.9$
+       & $5.08$E$-7$ & $6.11$E$-10$ & $4.12$E$5$ & $99.1$ \\
+\end{tabular}
+\mcaption{The errors in area and length and the CPU time for two
+vesicles in an {\bf extensional} flow with a {\bf constant} time step
+size using $\boldnsdc{1}$, $p=2$ (left) and $\boldnsdc{2}$, $p=3$
+(right).  While each SDC iteration reduces the error, the desired
+asymptotic rates of convergence are not achieved.  As the ratios of
+successive errors are approaching the expected values, we expect that
+we have not taken enough time steps to observe the asymptotic rate of
+convergence.  Also, we observe that our new time integrator,
+$n_{\sdc}=1$, slightly outperforms BDF, even with a constant time step
+size (see Figure~\ref{f:extensionalSummary}).}{t:SDC12extensional}
+
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline
+$1$E$-2$ & $1.56$E$-4$ & $9.97$E$-4$ 
+         & $79$   & $16$ & $1.06$E$3$ & $0.3$ \\
+$1$E$-3$ & $3.95$E$-5$ & $2.46$E$-4$ 
+         & $549$  & $25$ & $5.11$E$3$ & $1.3$ \\
+$1$E$-4$ & $6.50$E$-6$ & $3.60$E$-5$ 
+         & $5068$ & $25$ & $4.19$E$4$ & $11.2$ 
+\end{tabular}
+\mcaption{The errors in area and length, the CPU time, and the number
+of accepted and rejected time steps for two vesicles in an {\bf
+extensional} flow with an {\bf adaptive} time step size using
+$\boldnsdc{0}$.  For the larger tolerances, the desired tolerance is
+achieved in an acceptable CPU time.  However, first-order methods
+require too small of time steps to achieve four digits of accuracy.
+With these smaller tolerances, higher-order methods should be
+used.}{t:adaptiveFirstOrderExtensional}
+
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline 
+$1$E$-2$ & $3.63$E$-4$ & $3.81$E$-3$ 
+         & $53$   & $21$  & $2.67$E$3$ & $0.6$ \\ 
+$1$E$-3$ & $2.93$E$-5$ & $4.81$E$-4$ 
+         & $60$   & $26$  & $2.97$E$3$ & $0.7$ \\ 
+$1$E$-4$ & $1.70$E$-5$ & $4.83$E$-5$ 
+         & $94$   & $25$  & $3.66$E$3$ & $0.9$ \\ 
+$1$E$-5$ & $3.91$E$-6$ & $3.89$E$-6$ 
+         & $210$  & $36$ & $6.20$E$3$ & $1.4$ \\
+$1$E$-6$ & $5.69$E$-7$ & $2.95$E$-7$ 
+         & $562$  & $73$ & $1.43$E$4$ & $3.4$ \\
+\end{tabular}
+\mcaption{The errors in area and length, the CPU time, and the number of
+accepted and rejected time steps for two vesicles in an {\bf
+extensional} flow with an {\bf adaptive} time step size and
+$\boldnsdc{1}$, $p=2$.  This second-order method is able to achieve much
+smaller tolerances than $n_{\sdc}=0$.}{t:adaptiveSecondOrderExtensional}
+
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline
+$1$E$-4$ & $1.92$E$-5$ & $2.36$E$-5$ 
+         & $59$  & $19$ & $8.72$E$3$ & $2.0$ \\
+$1$E$-5$ & $4.23$E$-6$ & $1.92$E$-6$ 
+         & $87$  & $13$ & $9.77$E$3$ & $2.3$ \\
+$1$E$-6$ & $4.82$E$-7$ & $1.12$E$-7$ 
+         & $194$ & $11$ & $1.60$E$4$ & $4.0$
+\end{tabular}
+\mcaption{The errors in area and length, the CPU time, and the number
+of accepted and rejected time steps for two vesicles in an {\bf
+extensional} flow with an {\bf adaptive} time step size using
+$\boldnsdc{2}$, $p=3$.  We see that there is no use to use more than
+one SDC iteration with our current
+implementation.}{t:adaptiveThirdOrderExtensional}
+\end{center}
+\end{table}
+
+
+%% These runs were done on the old blades on compute-0-9
+%\begin{table}[htp]
+%\begin{center}
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%   \multicolumn{4}{c}{{\bf BDF}} \\
+%$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%        $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$300$  & $2.46$E$-4$ & $1.27$E$-3$ & $4.02$E$3$ & $1.0$
+%       & $3.75$E$-5$ & $3.90$E$-4$ & $4.36$E$6$ & $1.0$ \\
+%$600$  & $1.24$E$-4$ & $6.64$E$-4$ & $8.11$E$3$ & $1.9$
+%       & $9.32$E$-6$ & $1.37$E$-4$ & $8.69$E$3$ & $2.1$ \\ 
+%$1200$ & $6.24$E$-5$ & $3.46$E$-4$ & $1.62$E$4$ & $3.7$
+%       & $2.29$E$-6$ & $4.45$E$-5$ & $1.72$E$4$ & $4.3$ \\ 
+%$2400$ & $3.15$E$-5$ & $1.79$E$-4$ & $3.15$E$4$ & $7.6$
+%       & $5.45$E$-7$ & $1.27$E$-5$ & $3.34$E$4$ & $8.2$
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for two
+%vesicles in an {\bf extensional} flow with a {\bf constant} time step
+%size using $\boldnsdc{0}$ (left) and ${\bf BDF}$ (right).  The CPU
+%times for
+%Tables~\ref{t:noSDCextensional}--\ref{t:adaptiveThirdOrderExtensional}
+%are relative to the cheapest simulation ($N_{t}=300$ and $n_{\sdc}=0$)
+%which took approximately 633 seconds.  We achieve the desired
+%first-order results, but second-order results are not yet achieved.
+%With additional time steps, second-order convergence is achieved (see
+%Table $7$ in~\cite{qua:bir2014b}).}{t:noSDCextensional}
+%
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{2}$} \\ 
+%$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%        $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$300$  & $3.56$E$-6$ & $5.71$E$-6$  & $1.96$E$4$ & $4.2$
+%       & $7.39$E$-7$ & $7.16$E$-8$  & $4.50$E$4$ & $9.0$ \\
+%$600$  & $1.76$E$-6$ & $2.42$E$-6$  & $3.74$E$4$ & $8.1$
+%       & $1.56$E$-7$ & $8.78$E$-9$  & $8.65$E$4$ & $18.3$ \\ 
+%$1200$ & $6.75$E$-7$ & $9.54$E$-7$  & $7.17$E$4$ & $15.8$
+%       & $3.27$E$-8$ & $2.23$E$-9$  & $1.69$E$5$ & $34.8$ \\ 
+%$2400$ & $2.25$E$-7$ & $3.20$E$-7$  & $1.39$E$4$ & $28.3$
+%       & $8.37$E$-9$ & $7.25$E$-10$ & $3.30$E$5$ & $70.7$ \\
+%$4800$ & $6.80$E$-8$ & $9.03$E$-8$  & $2.77$E$5$ & $60.2$
+%       & $2.95$E$-9$ & $1.94$E$-10$ & $6.58$E$5$ & $135.4$ \\
+%$9600$ & $1.89$E$-8$ & $2.15$E$-8$  & $5.59$E$5$ & $113.4$
+%       & $1.33$E$-9$ & $3.88$E$-11$ & $1.32$E$6$ & $282.8$
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for two
+%vesicles in an {\bf extensional} flow with a {\bf constant} time step
+%size using $\boldnsdc{1}$ (left) and $\boldnsdc{2}$ (right).  While
+%each SDC iteration reduces the error, the desired asymptotic rates of
+%convergence are not achieved.  As the ratios of successive errors are
+%approaching the expected values, we expect that we have not taken
+%enough time steps to observe the asymptotic rate of convergence.  Also,
+%we observe that our new time integrator, $n_{\sdc}=1$, outperforms BDF,
+%even with a constant time step size.}{t:SDC12extensional}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-2$ & $2.27$E$-4$ & $1.46$E$-3$ 
+%         & $77$   & $16$ & $1.10$E$3$ & $0.3$ \\
+%$1$E$-3$ & $3.64$E$-5$ & $2.29$E$-4$ 
+%         & $511$  & $20$ & $4.67$E$3$ & $1.3$ \\
+%$1$E$-4$ & $6.84$E$-6$ & $4.15$E$-5$ 
+%         & $4808$ & $24$ & $3.98$E$4$ & $11.1$ 
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size using
+%$\boldnsdc{0}$.  For the larger tolerances, the desired tolerance is
+%achieved in an acceptable amount of CPU time.  However, first-order
+%methods require too small of time steps to achieve four digits of
+%accuracy.  With these smaller tolerances, higher-order methods should
+%be used.}{t:adaptiveFirstOrderExtensional}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline 
+%$1$E$-2$ & $3.27$E$-3$ & $1.53$E$-3$ 
+%         & $57$   & $67$ & $9.21$E$3$ & $1.9$ \\ 
+%$1$E$-3$ & $2.00$E$-4$ & $1.52$E$-4$ 
+%         & $51$   & $46$ & $6.70$E$3$ & $1.3$ \\ 
+%$1$E$-4$ & $3.59$E$-6$ & $1.41$E$-5$ 
+%         & $71$   & $46$ & $7.85$E$3$ & $1.5$ \\ 
+%$1$E$-5$ & $2.48$E$-6$ & $1.02$E$-6$ 
+%         & $136$  & $36$ & $9.59$E$3$ & $1.9$ \\
+%$1$E$-6$ & $6.30$E$-7$ & $7.81$E$-8$ 
+%         & $366$  & $22$ & $1.85$E$4$ & $4.1$ \\
+%$1$E$-7$ & $9.09$E$-8$ & $3.25$E$-9$ 
+%         & $1118$ & $14$ & $5.33$E$4$ & $11.0$
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size and
+%$\boldnsdc{1}$.  This second-order method is able to achieve much
+%smaller tolerances than $n_{\sdc}=0$.}{t:adaptiveSecondOrderExtensional}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-5$ & $2.71$E$-6$ & $2.47$E$-6$ 
+%         & $60$  & $12$ & $1.06$E$4$ & $2.2$ \\
+%$1$E$-6$ & $6.86$E$-7$ & $8.78$E$-7$ 
+%         & $143$ & $10$ & $1.88$E$4$ & $4.1$ \\
+%$1$E$-7$ & $8.66$E$-8$ & $1.52$E$-9$ 
+%         & $430$ & $11$ & $5.21$E$4$ & $11.6$ 
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size using
+%$\boldnsdc{2}$.  We see that there is no use to use more than one SDC
+%iteration with its current
+%implementation.}{t:adaptiveThirdOrderExtensional}
+%\end{center}
+%\end{table}
+%
+
+
+
+%\begin{table}[htp]
+%\begin{center}
+%% These runs were done on the new blades
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%   \multicolumn{4}{c}{{\bf BDF}} \\
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$300$  & $2.46$E$-4$ & $1.27$E$-3$ & $3.99$E$3$ & $1.0$
+%       & $5.76$E$-5$ & $5.67$E$-4$ & $3.88$E$3$ & $0.9$ \\
+%$600$  & $1.24$E$-4$ & $6.64$E$-4$ & $7.53$E$3$ & $1.8$
+%       & $1.55$E$-5$ & $2.00$E$-4$ & $7.34$E$3$ & $1.8$ \\ 
+%$1200$ & $6.24$E$-5$ & $3.46$E$-4$ & $1.44$E$4$ & $3.6$
+%       & $4.12$E$-6$ & $6.54$E$-5$ & $1.40$E$4$ & $3.6$ \\ 
+%$2400$ & $3.15$E$-5$ & $1.79$E$-4$ & $2.75$E$4$ & $6.8$
+%       & $1.06$E$-6$ & $1.92$E$-5$ & $2.71$E$4$ & $6.7$
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for two
+%vesicles in an {\bf extensional} flow with a {\bf constant} time step
+%size using $\boldnsdc{0}$ (left) and ${\bf BDF}$ (right).  The CPU
+%times for
+%Tables~\ref{t:noSDCextensional}--\ref{t:adaptiveThirdOrderExtensional}
+%are relative to the cheapest simulation ($m=300$ and $n_{\sdc}=0$)
+%which took approximately 613 seconds.  We achieve the desired
+%first-order results, but second-order results are not yet achieved.
+%With additional time steps, second-order convergence is achieved (see
+%Table $7$ in~\cite{qua:bir2014b}).}{t:noSDCextensional}
+%
+%
+%% These runs were done on the new blades
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{2}$} \\ 
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$300$  & $1.37$E$-6$ & $3.08$E$-6$  & $2.38$E$4$ & $4.6$
+%       & $7.39$E$-7$ & $7.16$E$-8$  & $3.61$E$4$ & $7.1$ \\
+%$600$  & $1.03$E$-6$ & $1.32$E$-6$  & $4.59$E$4$ & $8.9$
+%       & $1.56$E$-7$ & $8.78$E$-9$  & $6.95$E$4$ & $14$ \\ 
+%$1200$ & $4.51$E$-7$ & $5.24$E$-7$  & $8.91$E$4$ & $18$
+%       & $3.26$E$-8$ & $2.23$E$-9$  & $1.35$E$5$ & $26$ \\ 
+%$2400$ & $1.60$E$-7$ & $1.76$E$-7$  & $1.75$E$5$ & $34$
+%       & $8.39$E$-9$ & $7.25$E$-10$ & $2.65$E$5$ & $52$ \\
+%$4800$ & $4.95$E$-8$ & $4.92$E$-8$  & $3.46$E$5$ & $67$
+%       & $2.90$E$-9$ & $1.94$E$-10$ & $5.28$E$5$ & $104$ \\
+%$9600$ & $1.39$E$-8$ & $1.16$E$-8$  & $8.62$E$5$ & $151$
+%       & $1.27$E$-9$ & $3.88$E$-11$ & $1.31$E$6$ & $235$
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for two
+%vesicles in an {\bf extensional} flow with a {\bf constant} time step
+%size using $\boldnsdc{1}$ (left) and $\boldnsdc{2}$ (right).  While
+%each SDC correction reduces the error, the desired asymptotic rates of
+%convergence are not achieved.  As the ratios of successive errors are
+%approaching the expected values, we expect that we have not taken
+%enough time steps to observe the asymptotic rate of convergence.  Also,
+%we observe that one SDC correction and BDF have comparable errors with
+%respect to computational work.}{t:SDC12extensional}
+%
+%% These runs were done on the new blades
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-2$ & $2.10$E$-4$ & $1.34$E$-3$ 
+%         & $76$   & $28$ & $1.16$E$3$ & $0.3$ \\
+%$1$E$-3$ & $3.51$E$-5$ & $2.20$E$-4$ 
+%         & $510$  & $30$ & $4.69$E$3$ & $1.4$ \\
+%$1$E$-4$ & $6.60$E$-6$ & $3.97$E$-5$ 
+%         & $4803$ & $34$ & $3.98$E$4$ & $12$ 
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size using
+%$\boldnsdc{0}$.  For the larger tolerances, the desired tolerance is
+%achieved in an acceptable amount of CPU time.  However, first-order
+%methods require too small of time steps to achieve four digits of
+%accuracy.  With these smaller tolerances, higher-order methods should
+%be used.}{t:adaptiveFirstOrderExtensional}
+%
+%% These runs were done on the new blades
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline 
+%$1$E$-2$ & $4.00$E$-3$ & $3.82$E$-4$ 
+%         & $26$  & $18$ & $5.12$E$3$ & $0.9$ \\ 
+%$1$E$-3$ & $2.84$E$-4$ & $8.33$E$-5$ 
+%         & $28$  & $16$ & $4.32$E$3$ & $0.8$ \\ 
+%$1$E$-4$ & $1.04$E$-5$ & $7.07$E$-6$ 
+%         & $45$  & $24$ & $5.90$E$3$ & $1.1$ \\ 
+%$1$E$-5$ & $6.71$E$-6$ & $4.43$E$-7$ 
+%         & $97$  & $16$ & $8.14$E$3$ & $1.5$ \\
+%$1$E$-6$ & $8.36$E$-7$ & $4.23$E$-8$ 
+%         & $289$ & $21$ & $2.13$E$4$ & $4.1$ \\
+%$1$E$-7$ & $9.03$E$-8$ & $2.97$E$-9$ 
+%         & $891$ & $24$ & $6.07$E$4$ & $12$
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number of
+%accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size and
+%$\boldnsdc{1}$.  This second-order method is able to achieve much
+%smaller tolerances than $n_{\sdc}=0$.  However, when seven digits
+%of accuracy is requested, the number of required time steps becomes
+%unacceptable.  In this case, a third-order method should be
+%used.}{t:adaptiveSecondOrderExtensional}
+%
+%% These runs were done on the new blades
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-5$ & $3.06$E$-6$ & $1.52$E$-6$ 
+%         & $59$  & $23$ & $1.06$E$4$ & $2.0$ \\
+%$1$E$-6$ & $6.86$E$-7$ & $8.71$E$-8$ 
+%         & $143$ & $33$ & $2.06$E$4$ & $4.0$ \\
+%$1$E$-7$ & $8.66$E$-8$ & $1.52$E$-9$ 
+%         & $430$ & $22$ & $4.75$E$4$ & $9.2$ 
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number of
+%accepted and rejected time steps for two vesicles in an {\bf
+%extensional} flow with an {\bf adaptive} time step size using
+%$\boldnsdc{2}$.  We see that if smaller tolerances are desired, it is
+%advantageous to use additional SDC corrections to allow for larger time
+%steps.}{t:adaptiveThirdOrderExtensional}
+%\end{center}
+%\end{table}
+
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cc}
+\ifTikz
+\input{figs/extensionalAdaptiveDT.tikz} &
+\input{figs/extensionalAdaptiveErrors.tikz} \\
+\multicolumn{2}{c}{
+\input{figs/extensionalCPUvsErr.tikz} 
+}
+\fi
+\end{tabular}
+\mcaption{Results for the {\bf extensional} flow.  Top left: The time
+step size using 4800 {\bf constant} time step sizes (dashed) and an
+{\bf adaptive} time step size (solid) with a tolerance of $1$E$-6$ and
+$\boldnsdc{1}$, $p=2$.  The open circles indicate the times when a time
+step is rejected.  Top right: The errors in area and length using {\bf
+constant} (dashed) and {\bf adaptive} (solid) time steps, and the
+desired error (black) of the adaptive time step.  Bottom: The error
+versus the required CPU time for the three different second-order time
+integrators.}{f:extensionalSummary}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Stenosis flow}
+We consider a single vesicle discretized with $N=128$ points in a
+constricted tube discretized with $N_{\mathrm{wall}} = 768$ points
+(Figure~\ref{f:stenosisGeom}).  The time horizon, $T=80$, is chosen so
+that the vesicle is forced to pass through the constriction.  In
+Figure~\ref{f:stenosisErrors}, we plot the errors in area and length
+using BDF with a constant time step size.  Unsurprisingly, the errors
+increase when the vesicle passes through the constriction.  In this
+interval, a smaller time step should be taken.  Therefore, we test our
+second-order adaptive time stepper, $n_{\sdc}=1$.  The results are
+summarized in Table~\ref{t:adaptiveSecondOrderStenosis}.  In
+Figure~\ref{f:stenosisSummary}, we plot the time step size and compare
+the two second-order time integrators.  As expected, we see that a
+small time step is taken as the vesicle passes through the
+constriction.  In fact, the time step size varies over more than three
+orders of magnitude which indicates that this example benefits greatly
+from an adaptive time step size.  This is verified in right plot of
+Figure~\ref{f:stenosisSummary} where we see that our new time
+integrator outperforms BDF.  In particular, we see that adaptive
+$n_{\sdc}=1$ achieves close to an extra digit of accuracy for a fixed
+CPU time.
+
+\begin{figure}[htp]
+\centering
+%\ifTikz
+%\input{figs/stenosisSnaps.tikz}
+%\fi
+\includegraphics{figs/stenosisSnaps.pdf}
+\mcaption{A single vesicle discretized with $N=128$ points passing
+through a constricted tube ({\bf stenosis}) discretized with
+$N_{\wall}=768$ points.  The boundary condition at the intake and
+outtake has a parabolic-profile and on the rest of the solid wall is
+zero.  On the right are magnifications of the vesicle as it passes
+through the constriction.}{f:stenosisGeom}
+\end{figure}
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cc}
+\ifTikz
+\input{figs/stenosisErrorsBDF800.tikz} &
+\input{figs/stenosisErrorsBDF6400.tikz}
+\fi
+\end{tabular}
+\mcaption{The errors in area and length for a single vesicle in a
+constricted tube ({\bf stenosis}) with a {\bf constant} time step size
+using {\bf BDF}.  Notice that the error increases sharply as the
+vesicle passes through the constriction for both time step sizes.  This
+indicates that a smaller time step size should be taken as the vesicle
+passes through the constriction.}{f:stenosisErrors}
+\end{figure}
+
+
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline
+$1$E$-1$ & $6.29$E$-3$ & $5.11$E$-3$ 
+         & $95$   & $37$ & $3.33$E$3$ & $0.5$ \\
+$1$E$-2$ & $2.59$E$-3$ & $1.37$E$-3$ 
+         & $235$  & $54$ & $7.55$E$3$ & $0.9$ \\
+$1$E$-3$ & $7.11$E$-4$ & $4.55$E$-4$ 
+         & $697$  & $46$ & $1.83$E$4$ & $2.3$ \\
+$1$E$-4$ & $6.49$E$-5$ & $5.62$E$-5$ 
+         & $2289$ & $93$ & $5.62$E$4$ & $7.2$ \\
+\end{tabular}
+\mcaption{The errors in area and length, the CPU time, and the number
+of accepted and rejected time steps for a single vesicle in a
+constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+using $\boldnsdc{1}$ and $p=2$ Gauss-Lobatto points.  The CPU times are
+relative to the cheapest simulation ($N_{t}=800$ and BDF) which took
+approximately 61 minutes.}{t:adaptiveSecondOrderStenosis}
+\end{center}
+\end{table}
+
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cc}
+\ifTikz
+\input{figs/stenosisAdaptiveDT.tikz} &
+\input{figs/stenosisCPUvsErr.tikz} 
+\fi
+\end{tabular}
+\mcaption{Results for the {\bf stenosis} flow.  Left: The time step
+size using {\bf adaptive} $\boldnsdc{1}$, $p=2$ with a tolerance of
+$1$E$-3$.  Notice that the time step size decreases as the vesicle
+passes through the constriction.  The open circles indicate the times
+when the time step size is rejected.  Right: The error versus the
+required CPU time for BDF and adaptive $\boldnsdc{1}$, $p=2$.  We see
+that with our adaptive time integrator, we are able to achieve close to
+an extra digit of accuracy for a fixed CPU time.}{f:stenosisSummary}
+\end{figure}
+
+%We consider a single vesicle discretized with $N=128$ points in a
+%constricted tube discretized with $N_{\mathrm{wall}}=256$ points
+%(Figure~\ref{f:stenosisGeom}).  At this resolution, our FMM
+%implementation of the double-layer potential is slower than a direct
+%evaluation.  Therefore, the FMM is only used for the single-layer
+%potentials.  The time horizon is $T=15$ which is sufficiently long that
+%the vesicle passes through the constriction.  We again use $p=4$
+%Gauss-Lobatto quadrature points.  We check the rates of convergence for
+%a varying number of SDC corrections in Tables~\ref{t:noSDCstenosis}
+%and~\ref{t:SDC12stenosis}.  We see that first- and second-order
+%convergence is achieved in Table~\ref{t:noSDCstenosis}.  While the
+%error continues to decrease with each SDC iteration, as before,
+%additional orders of convergence are not achieved for the presented
+%values of $\Delta t$.
+%
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{ccc}
+%\ifTikz
+%\input{figs/stenosisSnapsTime1.tikz} &
+%\input{figs/stenosisSnapsTime2.tikz} &
+%\input{figs/stenosisSnapsTime3.tikz} \\
+%\input{figs/stenosisSnapsTime4.tikz} &
+%\input{figs/stenosisSnapsTime5.tikz} &
+%\input{figs/stenosisSnapsTime6.tikz} \\
+%\input{figs/stenosisSnapsTime7.tikz} &
+%\input{figs/stenosisSnapsTime8.tikz} &
+%\input{figs/stenosisSnapsTime9.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{A single vesicle discretized with $N=128$ points passing
+%through a constricted tube discretized with $N_{\wall}=256$ points.  The
+%boundary condition at the intake and outtake has a parabolic-profile and
+%on the rest of the solid wall is zero.}{f:stenosisGeom}
+%\end{figure}
+%
+%In Figure~\ref{f:stenosisErrors}, we plot the errors in area and length
+%using $n_{\sdc}=1$ and a constant time step size.  Unsurprisingly, the
+%errors increase when the vesicle passes through the constriction.  In
+%this interval, a smaller time step should be taken.  In
+%Tables~\ref{t:adaptiveFirstOrderStenosis}--\ref{t:adaptiveThirdOrderStenosis},
+%we report results for adaptive time stepping with different tolerances
+%and different numbers of SDC corrections.  In
+%Figure~\ref{f:stenosisSummary}, we plot the errors in area and length
+%using $n_{\sdc}=1$ with and without adaptive time stepping.  We also
+%plot the time step size and the location of the rejected time steps.  As
+%expected, a much smaller time step size is taken as the vesicle passes
+%through the constriction.
+%
+%We observe similar behavior as we observed for the {\em extensional}
+%example.  In particular, \\
+%\todo{These conclusions will change ... get out of bullets}
+%\begin{itemize}
+%  \item When no SDC corrections are used, the accuracy achieved with
+%  6,000 fixed time steps is comparable to the accuracy achieved with
+%  3,397 adaptive time step sizes.  Moreover, only 21 time steps were
+%  rejected.  The resulting speed up is about 35\%.
+%%  \item To achieve three digits of accuracy with $n_{\sdc}=0$, a fixed
+%%  time step requires more than 6,000 time steps, and with adaptive time
+%%  steps, over 30,000 time steps are required.  This seems
+%%  counterintuitive, but the adaptive time step requires additional time
+%%  steps because a small time step must be taken to keep the local
+%%  truncation error below the required threshold as the vesicle passes
+%%  through the constriction (for this example, 65\% of the time steps
+%%  are smaller than $10^{-4}$).  However, with a fixed time step size,
+%%  the error is nearly flat for the entire simulation, except when the
+%%  vesicle passes through the constriction.
+%  
+%  \item By using the second-order integrator $n_{\sdc}=1$, the number of
+%  adaptive time steps is significantly reduced; adaptive time stepping
+%  requires only $172 \times 3$ adaptive time steps\footnote{Recall that
+%  $p-1=2$ substeps at each time step are required because of the
+%  intermediate Gauss-Lobatto quadrature points.} to achieve 3 digits of
+%  accuracy.  The resulting speedup is a factor of greater than 22.
+%
+%  \item Comparing the two adaptive time stepping integrators
+%  $n_{\sdc}=1$ and $n_{\sdc}=2$, six digits of accuracy can be computed
+%  with 16\% less CPU time by using $n_{\sdc}=2$.  Again, this indicates
+%  that if smaller tolerances are desired, additional SDC corrections
+%  should be used to increase the accuracy of each time step.
+%\end{itemize}
+%
+%
+%% These runs are done on compute-0-6
+%\begin{table}[htp]
+%\begin{center}
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%   \multicolumn{4}{c}{{\bf BDF}} \\
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$375$  & $$E$-$ & $$E$-$ & $$E$$ & $$ 
+%       & $8.50$E$-5$ & $4.21$E$-3$ & $5.49$E$3$ & $0.5$ \\ 
+%$750$  & $1.16$E$-2$ & $4.24$E$-2$ & $9.52$E$3$ & $1.0$ 
+%       & $1.39$E$-5$ & $5.88$E$-4$ & $1.09$E$4$ & $1.2$ \\ 
+%$1500$ & $5.96$E$-3$ & $2.12$E$-2$ & $1.89$E$4$ & $1.9$  
+%       & $1.97$E$-6$ & $8.09$E$-5$ & $2.17$E$4$ & $2.2$ \\ 
+%$3000$ & $3.03$E$-3$ & $1.06$E$-2$ & $3.77$E$5$ & $3.9$
+%       & $3.18$E$-7$ & $1.16$E$-5$ & $4.62$E$4$ & $4.9$ \\ 
+%$6000$ & $1.53$E$-3$ & $5.28$E$-3$ & $8.11$E$4$ & $8.2$
+%       & $1.29$E$-7$ & $1.66$E$-6$ & $8.70$E$4$ & $8.9$ \\ 
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for a single
+%vesicle in a constricted tube ({\bf stenosis}) with a {\bf constant}
+%time step size using $\boldnsdc{0}$ (left) and $\boldnsdc{1}$ (right).
+%The CPU times for
+%Tables~\ref{t:noSDCstenosis}--\ref{t:adaptiveThirdOrderStenosis} are
+%relative to the cheapest simulation ($m=750$ and $n_{\sdc}=0$) which
+%took approximately $2.57$E$3$ seconds.  We achieve the expected first-
+%and second-order convergence rates.}{t:noSDCstenosis}
+%
+%\begin{tabular}{c|cccc|cccc}
+% & \multicolumn{4}{c|}{$\boldnsdc{1}$} & 
+%   \multicolumn{4}{c}{$\boldnsdc{2}$} \\ 
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$750$  & $9.19$E$-5$ & $4.68$E$-5$ & $4.60$E$4$ & $4.3$ 
+%       & $2.74$E$-5$ & $1.08$E$-6$ & $1.08$E$5$ & $9.7$  \\
+%$1500$ & $2.29$E$-5$ & $8.41$E$-6$ & $9.17$E$4$ & $8.5$
+%       & $7.16$E$-6$ & $7.36$E$-8$ & $2.18$E$5$ & $20.0$ \\ 
+%$3000$ & $5.71$E$-6$ & $1.34$E$-6$ & $1.87$E$5$ & $19.5$ 
+%       & $1.83$E$-6$ & $5.31$E$-9$ & $4.31$E$5$ & $39.3$ \\
+%$6000$ & $1.42$E$-6$ & $1.99$E$-7$ & $$E$$ & $$
+%       & $$E$-$ & $$E$-$ & $$E$$ & $$  
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for a single
+%vesicle in a constricted tube ({\bf stenosis}) with a {\bf constant}
+%time step size using $\boldnsdc{2}$ (left) and $\boldnsdc{3}$ (right).
+%We do not obtain the expected convergence rates, but we do see that each
+%SDC correction does result in an increase in the accuracy.  We could
+%attempt to reach the asymptotic convergence rates, but this most likely
+%would require temporal resolutions where other sources of error will
+%dominate.}{t:SDC12stenosis}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-1$ & $1.38$E$-2$ & $4.26$E$-2$ 
+%         & $384$  & $20$ & $6.25$E$3$ & $0.7$ \\
+%$1$E$-2$ & $2.55$E$-3$ & $7.82$E$-3$ 
+%         & $3397$ & $18$ & $5.68$E$4$ & $5.6$ \\
+%$1$E$-3$ & $$E$-$ & $$E$-$ 
+%         & $$ & $$ & $$E$$ & $$ \\
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for a single vesicle in a
+%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%using $\boldnsdc{0}$.  Since the time integrator is first-order, small
+%time steps have to be taken.  The result is that the CPU time is too
+%large at the reported tolerances.}{t:adaptiveFirstOrderStenosis}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-1$ & $1.38$E$-2$ & $9.90$E$-3$ 
+%         & $31$   & $12$ & $3.33$E$3$ & $0.3$ \\
+%$1$E$-2$ & $2.54$E$-3$ & $8.62$E$-4$ 
+%         & $84$   & $32$ & $8.24$E$3$ & $0.8$ \\
+%$1$E$-3$ & $4.22$E$-4$ & $1.21$E$-4$ 
+%         & $215$  & $72$ & $2.16$E$4$ & $2.1$ \\
+%$1$E$-4$ & $6.73$E$-5$ & $1.31$E$-5$ 
+%         & $631$  & $58$ & $5.19$E$4$ & $4.9$ \\
+%$1$E$-5$ & $7.16$E$-6$ & $9.88$E$-7$ 
+%         & $1957$ & $51$ & $1.50$E$5$ & $14.1$ \\
+%$1$E$-6$ & $7.29$E$-7$ & $6.05$E$-8$ 
+%         & $6155$ & $36$ & $4.56$E$5$ & $43.2$ \\
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for a single vesicle in a
+%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%using $\boldnsdc{1}$.  This second-order method is able to take much
+%larger time steps than the first-order
+%method.}{t:adaptiveSecondOrderStenosis}
+%
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-5$ & $7.05$E$-6$ & $4.58$E$-8$ 
+%         & $830$  & $131$ & $1.69$E$5$ & $16.1$ \\
+%$1$E$-6$ & $7.49$E$-7$ & $2.45$E$-9$ 
+%         & $2558$ & $102$ & $4.63$E$5$ & $42.8$ \\
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number
+%of accepted and rejected time steps for a single vesicle in a
+%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%using $\boldnsdc{2}$.  We see that if small tolerances are desired,
+%additional SDC iterations should be used to achieve a higher-order time
+%integrator.}{t:adaptiveThirdOrderStenosis}
+%
+%\end{center}
+%\end{table}
+%
+%
+%%% These runs were done on ob which seems to do wall to vesicle
+%%% interactions twice as fast
+%%\begin{table}[htp]
+%%\begin{center}
+%%\begin{tabular}{c|cccc|cccc}
+%% & \multicolumn{4}{c|}{$\boldnsdc{0}$} & 
+%%   \multicolumn{4}{c}{$\boldnsdc{1}$} \\ 
+%%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%%\hline
+%%$750$  & $1.16$E$-2$ & $4.24$E$-2$ & $1.90$E$4$ & $1.0$ 
+%%       & $6.05$E$-5$ & $2.57$E$-5$ & $1.26$E$5$ & $6.9$ \\  
+%%$1500$ & $5.96$E$-3$ & $2.12$E$-2$ & $3.79$E$4$ & $2.2$  
+%%       & $1.50$E$-5$ & $4.48$E$-6$ & $2.50$E$5$ & $13$ \\ 
+%%$3000$ & $3.03$E$-3$ & $1.06$E$-2$ & $7.55$E$4$ & $4.2$
+%%       & $3.73$E$-6$ & $7.00$E$-7$ & $4.96$E$5$ & $26$ \\ 
+%%$6000$ & $1.53$E$-3$ & $5.28$E$-3$ & $1.51$E$5$ & $8.7$
+%%       & $9.30$E$-7$ & $1.03$E$-7$ & $9.83$E$5$ & $53$  
+%%\end{tabular}
+%%\mcaption{The errors in area and length and the CPU time for a single
+%%vesicle in a constricted tube ({\bf stenosis}) with a {\bf constant}
+%%time step size using $\boldnsdc{0}$ (left) and $\boldnsdc{1}$ (right).
+%%The CPU times for
+%%Tables~\ref{t:SDC01stenosis}--\ref{t:adaptiveThirdOrderStenosis} are
+%%relative to the cheapest simulation ($m=750$ and $n_{\sdc}=0$) which
+%%took approximately $2.30$E$3$ seconds.  We achieve the expected first-
+%%and second-order convergence rates.}{t:SDC01stenosis}
+%%
+%%\begin{tabular}{c|cccc|cccc}
+%% & \multicolumn{4}{c|}{$\boldnsdc{2}$} & 
+%%   \multicolumn{4}{c}{$\boldnsdc{3}$} \\ 
+%%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU & 
+%%      $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%%\hline
+%%$750$  & $2.74$E$-5$ & $1.08$E$-6$  & $1.94$E$5$ & $11$ 
+%%       & $3.51$E$-7$ & $4.38$E$-8$  & $2.62$E$5$ & $13$ \\ 
+%%$1500$ & $7.16$E$-6$ & $7.36$E$-8$  & $3.84$E$5$ & $21$
+%%       & $5.97$E$-8$ & $1.30$E$-9$  & $5.19$E$5$ & $27$ \\ 
+%%$3000$ & $1.83$E$-6$ & $5.31$E$-9$  & $7.60$E$5$ & $39$
+%%       & $9.30$E$-9$ & $4.60$E$-11$ & $1.03$E$6$ & $56$ \\ 
+%%$6000$ & $4.63$E$-7$ & $4.53$E$-10$ & $1.51$E$6$ & $81$
+%%       & $1.35$E$-9$ & $2.02$E$-12$ & $2.03$E$6$ & $108$  
+%%\end{tabular}
+%%\mcaption{The errors in area and length and the CPU time for a single
+%%vesicle in a constricted tube ({\bf stenosis}) with a {\bf constant}
+%%time step size using $\boldnsdc{2}$ (left) and $\boldnsdc{3}$ (right).
+%%We do not obtain the expected convergence rates, but we do see that each
+%%SDC correction does result in an increase in the accuracy.  We could
+%%attempt to reach the asymptotic convergence rates, but this most likely
+%%would require temporal resolutions where other sources of error will
+%%dominate.}{t:SDC23stenosis}
+%%
+%%\begin{tabular}{ccccccc}
+%%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%%\hline
+%%$1$E$-2$ & $2.57$E$-3$ & $7.87$E$-3$ 
+%%         & $3397$  & $21$ & $1.08$E$5$ & $5.7$ \\
+%%$1$E$-3$ & $2.95$E$-4$ & $9.44$E$-4$ 
+%%         & $33554$ & $12$ & $1.06$E$6$ & $59$ \\
+%%\end{tabular}
+%%\mcaption{The errors in area and length, the CPU time, and the number
+%%of accepted and rejected time steps for a single vesicle in a
+%%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%%using $\boldnsdc{0}$.  Since the time integrator is first-order, small
+%%time steps have to be taken.  The result is that the CPU time is too
+%%large at the reported tolerances.}{t:adaptiveFirstOrderStenosis}
+%%
+%%\begin{tabular}{ccccccc}
+%%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%%\hline
+%%$1$E$-2$ & $2.60$E$-3$ & $8.03$E$-4$ 
+%%         & $68$   & $30$ & $2.06$E$4$ & $1.2$ \\
+%%$1$E$-3$ & $5.55$E$-4$ & $1.11$E$-4$ 
+%%         & $172$  & $68$ & $4.80$E$4$ & $2.6$ \\
+%%$1$E$-4$ & $6.82$E$-5$ & $1.18$E$-5$ 
+%%         & $503$  & $63$ & $1.11$E$5$ & $5.9$ \\
+%%$1$E$-5$ & $7.20$E$-6$ & $9.08$E$-7$ 
+%%         & $1559$ & $54$ & $3.15$E$5$ & $17$ \\
+%%$1$E$-6$ & $7.35$E$-7$ & $5.60$E$-8$ 
+%%         & $4904$ & $40$ & $9.61$E$5$ & $51$ \\
+%%\end{tabular}
+%%\mcaption{The errors in area and length, the CPU time, and the number
+%%of accepted and rejected time steps for a single vesicle in a
+%%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%%using $\boldnsdc{1}$.  This second-order method is able to take much
+%%larger time steps than the first-order
+%%method.}{t:adaptiveSecondOrderStenosis}
+%%
+%%
+%%\begin{tabular}{ccccccc}
+%%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%%\hline
+%%$1$E$-5$ & $7.19$E$-6$ & $4.63$E$-8$ 
+%%         & $828$  & $136$ & $2.96$E$5$ & $16$ \\
+%%$1$E$-6$ & $7.54$E$-7$ & $2.49$E$-9$ 
+%%         & $2558$ & $105$ & $8.21$E$5$ & $43$ \\
+%%\end{tabular}
+%%\mcaption{The errors in area and length, the CPU time, and the number
+%%of accepted and rejected time steps for a single vesicle in a
+%%constricted tube ({\bf stenosis}) with an {\bf adaptive} time step size
+%%using $\boldnsdc{2}$.  We see that if small tolerances are desired,
+%%additional SDC iterations should be used to achieve a higher-order time
+%%integrator.}{t:adaptiveThirdOrderStenosis}
+%%
+%%\end{center}
+%%\end{table}
+%
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{cccc}
+%\ifTikz
+%\input{figs/stenosisErrorsSDC750.tikz} &
+%\input{figs/stenosisErrorsSDC1500.tikz} &
+%\input{figs/stenosisErrorsSDC3000.tikz} &
+%\input{figs/stenosisErrorsSDC6000.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{The errors in area and length for a single vesicle in a
+%constricted tube ({\bf stenosis}) with a {\bf constant} time step size
+%using $\boldnsdc{1}$ (right side of Table~\ref{t:SDC12stenosis}).
+%Notice that the error increases sharply as the vesicle passes through
+%the constriction for all the time step sizes.  This indicates that a
+%smaller time step size should be taken as the vesicle passes through
+%the constriction.\todo{These need updated}}{f:stenosisErrors}
+%\end{figure}
+%
+%%\begin{figure}[htp]
+%%\begin{tabular}{cc}
+%%\ifTikz
+%%\input{figs/stenosisAdaptiveDT.tikz} &
+%%\input{figs/stenosisAdaptiveErrors.tikz}
+%%\fi
+%%\end{tabular}
+%
+%\begin{figure}[htp]
+%\begin{tabular}{ccc}
+%%\ifTikz
+%\input{figs/stenosisAdaptiveDT.tikz} &
+%\input{figs/stenosisAdaptiveErrors.tikz} &
+%\input{figs/stenosisCPUvsErr.tikz} 
+%%\fi
+%\end{tabular}
+%\mcaption{Results for the {\bf stenosis} flow.  Left: The time step
+%size using 6000 {\bf constant} time step sizes (dashed) and an {\bf
+%adaptive} time step size (solid) with a tolerance of ??? and
+%$n_{\sdc}=???$.  The open circles indicate the ???  times when the time
+%step size is rejected.  Notice that the time step size decreases as the
+%vesicle passes through the constriction.  Center: The errors in area
+%and length using {\bf constant} (dashed) and {\bf adaptive} (solid)
+%time steps, and the desired error (black) of the adaptive time step.
+%When using adaptive time stepping, the error in area nearly achieves
+%the desired error everywhere except when the vesicle passes through the
+%constriction, where the error in area actually drops.  However, when
+%using a constant time step size, very little error is committed at the
+%start of the simulation, and then the majority of the error is
+%committed as the vesicle passes through the constriction.  Even though
+%the CPU savings are negligible (it is about 4\%), the adaptive time
+%stepping method did not require any trial and error to find an
+%appropriate time step size.  The user simply specifies that they desire
+%six digits accuracy and it is achieved.  In addition, by using an
+%additional SDC correction, the CPU savings is increased to 19\%.
+%Right: The error versus the amount of required CPU time for four
+%different time integrators.  The solid lines use a {\bf constant} time
+%step size while the dahsed lines use an {\bf adaptive} time step
+%size.\\ \todo{put this caption parallel to extensional
+%example.  Some of the plots need fixed}}{f:stenosisSummary}
+%\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Couette flow}
+\label{s:couette}
+As a final example, we consider two suspensions in a Couette apparatus,
+a test case we also considered in our previous
+work~\cite{qua:bir2014b}.  We first consider a suspension of 42
+vesicles where the inner and outer boundaries are not aligned.  This
+results in a narrow region that vesicles must pass through.  We take a
+time horizon of $T=10$ corresponding to one full rotation of the inner
+boundary (Figure~\ref{f:couette42Geom}).  In
+Tables~\ref{t:couette42BDF} and~\ref{t:adaptiveSecondOrderCouette42},
+we report convergence results for BDF and adaptive $n_{\sdc}=1$.  We
+can see in Figure~\ref{f:couette42Errors} that if the time step size is
+too large, then the method is either unstable or the error grows
+sharply and results in the error tolerance being exceeded.  In
+particular, there is an interaction near $t=1$ that needs to be
+resolved\footnote{This interaction is due to the blue vesicle with its
+neighboring vesicles and the solid wall.} with a time size smaller than
+$\Delta t = 3$E$-2$.  However, at later times, a larger time step size
+can be chosen.  By taking an adaptive time step size, all the
+interactions are resolved appropriately, no trial-and-error procedure
+to find the required time step size is used, and the total error
+committed per time step is controlled.  The time step size is
+illustrated in the left plot of Figure~\ref{f:couette42Errors}.
+
+Finally, we consider 150 vesicles in a Couette apparatus with a longer
+time horizon (Figure~\ref{f:couette150Geom}); the inner boundary makes
+five full revolutions.  In Tables~\ref{t:couette150BDF}
+and~\ref{t:adaptiveSecondOrderCouette150}, we report the convergence
+results for BDF and adaptive $n_{\sdc}=1$.  Similar to the 42 vesicle
+simulation, in Figure~\ref{f:couette150Errors}, we see that the errors
+exceed the tolerance or have sharp jumps if the time step size is
+constant\footnote{The sharp jump near $t=6$ is due to the interaction of
+the blue vesicle with its neighboring vesicles and the solid wall.}, and
+this shortcoming is removed by using an adaptive time step size.  The
+time step size is illustrated in the right plot of
+Figure~\ref{f:couette150Errors}.  Notice that the time step size is
+small near $t=6$, indicating that there is at least one vesicle that is
+committing a large error if too large of a time step is taken.  The left
+plot of Figure~\ref{f:couette150Errors} indicates that this is exactly
+the case.  Also notice that the BDF scheme is sensitive on the time step
+size.  If we select $N_{t}=900$ (Table~\ref{t:couette150BDF}), we fail
+at almost the cost of a successful simulation which is $N_{t}=920$.  Of
+course one can take much larger number of time steps, but the cost may
+be too expensive and the accuracy achieved may be unnecessary on an
+actual science run.  On the other hand, the adaptive SDC behaves in a
+controlled way and delivers the desired accuracy.
+
+In these simulations, if we could guess the right time step size a
+priori, a constant time step BDF scheme will be slightly faster than
+the adaptive SDC scheme. The main reason is that these flows do not
+have multiple time scales, two vesicles are always nearby or near the
+wall, thus dictating the same time step across the simulation.  Indeed,
+in the adaptive time stepping results, the local truncation error is
+estimated by taking the maximum error committed over all the vesicles.
+Therefore, the time step size is set by the vesicle that commits the
+most error.  We could easily change the setup (e.g., by making the
+rotation velocity of the Couette apparatus to be time dependent with
+large variation) to introduce multiple time scales, but we think our
+point of robustness is clear and has been demonstrated in the stenosis
+and extensional flow examples.  Perhaps a faster method can be
+developed by allowing each vesicle to have its own time step size, that
+is, using a multirate time integrator, but this is beyond the scope of
+this paper.
+
+% GB:TODO; if the paper gets accepted, in the final version we should
+% put the discussion on the order reduction or the fudging parameters
+% $\beta$ and $\alpha$. But for the time being, I don't want anything
+% that can provoke reaction.
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cccccc}
+%\ifTikz
+%\input{figs/couette42SnapsTime1.tikz} &
+%\input{figs/couette42SnapsTime2.tikz} &
+%\input{figs/couette42SnapsTime3.tikz} &
+%\input{figs/couette42SnapsTime4.tikz} &
+%\input{figs/couette42SnapsTime5.tikz} &
+%\input{figs/couette42SnapsTime6.tikz}
+%\fi
+\includegraphics{figs/couette42SnapsTime1.pdf} &
+\includegraphics{figs/couette42SnapsTime2.pdf} &
+\includegraphics{figs/couette42SnapsTime3.pdf} &
+\includegraphics{figs/couette42SnapsTime4.pdf} &
+\includegraphics{figs/couette42SnapsTime5.pdf} &
+\includegraphics{figs/couette42SnapsTime6.pdf}
+\end{tabular}
+\mcaption{42 vesicles in a {\bf Couette} apparatus.  The outer boundary
+is stationary and the inner boundary has constant angular velocity and
+has completed one full rotation at $T=10$.  A single vesicle is colored
+in blue to help with the visualization.}{f:couette42Geom}
+\end{figure}
+
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{ccccc}
+$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+\hline
+$160$  & \multicolumn{2}{c}{tolerance exceeded at $t=0.8$} 
+       & $7.76$E$4$ & $0.1$ \\
+$240$  & \multicolumn{2}{c}{tolerance exceeded at $t=0.8$}
+       & $1.13$E$4$ & $0.2$ \\
+$280$  & \multicolumn{2}{c}{tolerance exceeded at $t=1.1$}
+       & $1.39$E$4$ & $0.2$ \\
+$286$  & \multicolumn{2}{c}{tolerance exceeded at $t=2.0$}
+       & $1.79$E$4$ & $0.3$ \\
+$288$  & $5.10$E$-4$ & $9.94$E$-2$ & $4.01$E$4$ & $1.0$ \\
+$320$  & $3.76$E$-3$ & $7.92$E$-2$ & $4.34$E$4$ & $1.1$ \\
+$640$  & $9.48$E$-5$ & $8.60$E$-4$ & $8.34$E$4$ & $2.1$ \\
+$1144$ & $2.80$E$-4$ & $2.17$E$-5$ & $1.71$E$5$ & $4.4$
+%$20$  & \multicolumn{2}{c}{tolerance exceeded at $t=1.0$} 
+%      & $6.42$E$1$ & $0.03$ \\
+%$40$  & \multicolumn{2}{c}{tolerance exceeded at $t=1.0$}
+%      & $1.17$E$3$ & $0.06$ \\
+%$80$  & \multicolumn{2}{c}{tolerance exceeded at $t=1.6$}
+%      & $2.33$E$3$ & $0.11$ \\
+%$160$ & \multicolumn{2}{c}{tolerance exceeded at $t=2.8$}
+%      & $6.03$E$3$ & $0.29$ \\
+%$200$ & $1.45$E$-3$ & $4.76$E$-2$ & $2.06$E$4$ & $1.0$ \\
+%$220$ & $1.03$E$-3$ & $1.35$E$-2$ & $2.23$E$4$ & $1.1$ \\
+%$320$ & $3.41$E$-4$ & $2.90$E$-3$ & $3.24$E$4$ & $1.6$ \\
+%$640$ & $5.73$E$-5$ & $1.47$E$-3$ & $6.48$E$4$ & $3.1$ \\
+\end{tabular}
+\mcaption{The errors in area and length and the CPU time for 42
+vesicles in a {\bf Couette} apparatus with a {\bf constant} time step
+size using {\bf BDF}.  The CPU times for Tables~\ref{t:couette42BDF}
+and~\ref{t:adaptiveSecondOrderCouette42} are relative to the cheapest
+simulation which took approximately 4 hours and 45 minutes.  We
+demonstrate how a user often has to do several runs with different time
+step sizes before a desired tolerance (for this example, $1$E$-1$) is
+achieved.}{t:couette42BDF}
+
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline
+$1$E$-1$ & $1.24$E$-2$ & $2.53$E$-2$ 
+         & $69$  & $23$ & $3.07$E$4$ & $0.7$ \\
+$1$E$-2$ & $3.51$E$-3$ & $2.15$E$-3$ 
+         & $155$ & $42$ & $7.07$E$4$ & $1.7$ \\
+%$1$E$-1$ & $2.57$E$-2$ & $1.03$E$-2$ 
+%         & $42$  & $13$ & $2.46$E$4$ & $1.1$ \\
+%$1$E$-2$ & $3.03$E$-3$ & $2.58$E$-4$ 
+%         & $125$ & $34$ & $6.35$E$4$ & $2.8$ \\
+\end{tabular}
+\mcaption{The errors in area and length, the CPU time, and the number of
+accepted and rejected time steps for 42 vesicles in a {\bf Couette}
+apparatus with an {\bf adaptive} time step size using $\boldnsdc{1}$.
+Our new time integrator commits slightly less error for a fixed CPU
+time, but, more importantly, only a single simulation is required to
+achieve the desired tolerance.}{t:adaptiveSecondOrderCouette42}
+\end{center}
+\end{table}
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cc}
+\ifTikz
+\input{figs/couette42AdaptiveDT.tikz} 
+\input{figs/couette42Errors.tikz} & 
+\fi
+\\
+\end{tabular}
+\mcaption{Left: The time step size using {\bf adaptive} $\boldnsdc{1}$,
+$p=2$ with a tolerance of $1$E$-2$.  The open circles indicate the
+locations where a time step size is rejected.  Right: The error of {\bf
+BDF} and {\bf adaptive} $\boldnsdc{1}$ for 42 vesicles in a {\bf
+Couette} apparatus.  If a user specifies too large of a time step, then
+the error exceeds the tolerance of $1$E$-1$.  By using an {\bf
+adaptive} time step size, the error committed per time step is
+controlled.}{f:couette42Errors}
+\end{figure}
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cccccc}
+\includegraphics{figs/couette150SnapsTime1.pdf} &
+\includegraphics{figs/couette150SnapsTime2.pdf} &
+\includegraphics{figs/couette150SnapsTime3.pdf} &
+\includegraphics{figs/couette150SnapsTime4.pdf} &
+\includegraphics{figs/couette150SnapsTime5.pdf} &
+\includegraphics{figs/couette150SnapsTime6.pdf}
+%\ifTikz
+%\input{figs/couette150SnapsTime1.tikz} &
+%\input{figs/couette150SnapsTime2.tikz} &
+%\input{figs/couette150SnapsTime3.tikz} &
+%\input{figs/couette150SnapsTime4.tikz} &
+%\input{figs/couette150SnapsTime5.tikz} &
+%\input{figs/couette150SnapsTime6.tikz}
+%\fi
+\end{tabular}
+\mcaption{150 vesicles in a {\bf Couette} apparatus.  The outer boundary
+is stationary and the inner boundary has constant angular velocity and
+has completed five full rotations at $T=50$.  A single vesicle is
+colored in blue to help with the visualization.}{f:couette150Geom}
+\end{figure}
+
+\begin{table}[htp]
+\begin{center}
+\begin{tabular}{ccccc}
+$N_{t}$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+\hline
+$500$  & \multicolumn{2}{c}{tolerance exceeded at $t=1.2$}
+       & $7.35$E$4$ & $0.01$ \\
+$750$  & \multicolumn{2}{c}{tolerance exceeded at $t=5.7$}
+       & $1.76$E$5$ & $0.19$ \\
+$850$  & \multicolumn{2}{c}{tolerance exceeded at $t=7.5$}
+       & $2.29$E$5$ & $0.24$ \\
+$900$  & \multicolumn{2}{c}{tolerance exceeded at $t=38.1$}
+       & $6.94$E$5$ & $0.78$ \\
+$920$  & $1.55$E$-2$ & $7.15$E$-2$ & $8.91$E$5$ & $1.0$ \\
+$1000$ & $8.21$E$-3$ & $4.42$E$-2$ & $8.71$E$5$ & $1.1$ \\
+\end{tabular}
+\mcaption{The errors in area and length and the CPU time for 150
+vesicles in a {\bf Couette} apparatus with a {\bf constant} time step
+size using {\bf BDF}.  The CPU times for Tables~\ref{t:couette150BDF}
+and~\ref{t:adaptiveSecondOrderCouette150} are relative to the cheapest
+successful simulation ($N_{t}=920$) which took approximately 71.7 hours.
+We demonstrate how a user often has to do several runs with different
+time step sizes before a desired tolerance (for this example, $1$E$-1$)
+is achieved.}{t:couette150BDF}
+
+\begin{tabular}{ccccccc}
+Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+\hline
+$3$E$-1$ & $3.77$E$-2$ & $5.13$E$-2$ 
+         & $469$ & $135$ & $1.25$E$6$ & $1.5$ \\
+$1$E$-1$ & $1.65$E$-2$ & $1.50$E$-2$ 
+         & $803$ & $153$ & $2.00$E$6$ & $2.1$ \\
+\end{tabular}
+\\
+\todo{redo this last run}
+\mcaption{The errors in area and length, the CPU time, and the number
+of accepted and rejected time steps for 150 vesicles in a {\bf Couette}
+apparatus with an {\bf adaptive} time step size using
+$\boldnsdc{1}$.}{t:adaptiveSecondOrderCouette150}
+\end{center}
+\end{table}
+
+\begin{figure}[htp]
+\centering
+\begin{tabular}{cc}
+\ifTikz
+\input{figs/couette150AdaptiveDT.tikz}
+\input{figs/couette150Errors.tikz} &
+\fi
+\end{tabular}
+\mcaption{Left: The time step size as a function of time for the {\bf
+adaptive} $\boldnsdc{1}$ with a tolerance of $3$E$-1$.  The open circles
+indicate the locations where a time step size is rejected.  Right: The
+error of {\bf BDF} and {\bf adaptive} $\boldnsdc{1}$ for 150 vesicles in
+a {\bf Couette} apparatus.  If a user specifies too large of a time
+step, then the error exceeds the tolerance of $1$E$-1$.  Moreover, even
+if the tolerance is not exceeded, there still are instances when the
+error quickly grows.  For instance, near times $t=2$ and $t=6$.  By
+using an {\bf adaptive} time step size, the amount of error committed
+per time step is controlled.}{f:couette150Errors}
+\end{figure}
+
+
+%\label{s:couette}
+%We consider eight vesicles discretized with $N=192$ points in a couette
+%apparatus where each wall is discretized with $N_{\mathrm{wall}}=512$
+%points (Figure~\ref{f:couetteGeom}).  At this resolution, our FMM
+%implementation of the double-layer potential is faster than a direct
+%evaluation.  Therefore, we use the FMM to evaluate all the single- and
+%double-layer potentials.  We use $p=4$ Gauss-Lobatto quadrature points
+%and take the long time horizon $T=50$.  At the time horizon, the inner
+%boundary has made five complete rotations with a constant velocity, and
+%the outer boundary is stationary.  The inner and outer boundaries are
+%aligned so that there is a narrow region that the vesicles must pass
+%through.  As a vesicle passes through this region, a smaller time step
+%should be taken.  We check the convergence rates with a constant time
+%step size using zero and one SDC correction in
+%Tables~\ref{t:SDC0couette} and~\ref{t:SDC1couette}.  For both time
+%integrators, the expected first- and second-order convergence rates are
+%achieved.
+%
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{cccccc}
+%\ifTikz
+%\input{figs/couetteSnapsTime1.tikz} &
+%\input{figs/couetteSnapsTime2.tikz} &
+%\input{figs/couetteSnapsTime3.tikz} &
+%\input{figs/couetteSnapsTime4.tikz} &
+%\input{figs/couetteSnapsTime5.tikz} &
+%\input{figs/couetteSnapsTime6.tikz} \\
+%\input{figs/couetteSnapsTime7.tikz} &
+%\input{figs/couetteSnapsTime8.tikz} &
+%\input{figs/couetteSnapsTime9.tikz} &
+%\input{figs/couetteSnapsTime10.tikz} &
+%\input{figs/couetteSnapsTime11.tikz} &
+%\input{figs/couetteSnapsTime12.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{Eight vesicles discretized with $N=192$ points in a couette
+%apparatus whose solid walls are each discretized with $N_{\wall}=512$
+%points.  The outer boundary is stationary and the inner boundary has
+%constant angular velocity and has completed five full rotations at
+%$T=50$.  A single vesicle is colored in blue to help with visualization.
+%The interactions between the vesicles and the solid walls complicate and
+%simplify throughout the simulation and the simulation benefits from
+%adaptive time stepping.}{f:couetteGeom}
+%\end{figure}
+%
+%In Figure~\ref{f:couetteErrors}, we plot the errors in area and length
+%using $n_{\sdc}=1$ with a constant time step size.  If $500$ time steps
+%are taken, the error in length has a sharp jump caused by the blue
+%vesicle in Figure~\ref{f:couetteGeom}.  By reducing the time step size,
+%the errors decrease at the expected rate, but there is still a jump in
+%the errors near $t=2$.  In Table~\ref{t:adaptiveSecondOrderCouette}, we
+%report results for $n_{\sdc}=1$ with adaptive time step sizes and two
+%different tolerances.  In Figure~\ref{f:couetteSummary}, we plot the
+%errors in area and length with and without adaptive time stepping.  We
+%also plot the time step size and the locations of rejected time steps.
+%We see that a small time step is taken initially as the vesicles smooth,
+%and then much larger time steps can be taken once the vesicles are
+%smooth and separated from one another and the solid walls.
+%
+%While the desired error is achieved, the final error is much smaller
+%than the tolerance when compared to the {\em extensional} and {\em
+%stenosis} examples.  This is a result of having more vesicles since the
+%local truncation error is estimated with the maximum change in error,
+%where the maximum is taken over all the vesicles.  In contrast to the
+%previous two examples, different vesicles commit the largest error at
+%different times.  The result is that the global error of our adaptive
+%time stepping method is much less than the desired tolerance.  A
+%possible solution to this problem is to adjust the allowable truncation
+%error at each time step.  In particular, if we again assume that the
+%time horizon is $T=1$ and the desired tolerance is $\epsilon$, then
+%condition~\eqref{e:errorBounds} is replaced with
+%\begin{align*}
+%  |A(t + \Delta t) - A(t)| \leq A(t) \frac{\Delta t}{1-t} 
+%    \left(\epsilon - \frac{|A(t) - A(0)|}{A(0)} \right),
+%\end{align*}
+%and a similar condition for the length.  Using this new strategy with
+%the time integrator from Table~\ref{t:adaptiveSecondOrderCouette}, with
+%a tolerance of $1$E$-1$, the final error is $5.14$E$-2$, the number of
+%accepted time steps is reduced to 222, but 84 time steps are rejected.
+%Using a tolerance of $1$E$-2$, the final error is $9.62$E$-3$ with 583
+%accepted time steps, and the number of rejected time steps is only
+%slightly increased to 74.  While this strategy does offer a speedup, we
+%expect that multirate time integrators, where each vesicle's time step
+%size can differ from the others', will overall result in a more robust
+%solver.
+%
+%We have also run the same simulation with a coarser discretization.  We
+%leave all the parameters unchanged with the exception of $N=92$ points
+%per vesicle and $N_{\wall}=192$ points per solid wall.   Using adaptive
+%time stepping with one SDC correction, a tolerance of $1$E$-1$ and
+%$5$E$-2$ are attainable.  However, with a tolerance of $1$E$-2$, the
+%error condition~\eqref{e:errorBounds} can not be satisfied at the
+%initial condition for all $\Delta t$.  Therefore, the spatial error is
+%too large for condition~\eqref{e:errorBounds} to be satisfied.  We also
+%ran this resolution at a later time when the vesicle shapes are
+%smoothed.  There, the desired local truncation error is attainable and
+%the simulation can successfully complete.  This indicates that spatial
+%adaptivity is required, and this is a current extension we are
+%developing.
+%
+%Our conclusions from this example are:
+%\begin{itemize}
+%
+%\item Considering the time integrator $n_{\sdc}=1$, to achieve one
+%digit of accuracy, adaptive time stepping is at least 33\% faster.
+%However, to achieve two digits accuracy, with our current limitations
+%(fixed spatial resolution, and each vesicle having the same time step
+%size), adaptive time stepping does not conclusively offer a speedup.
+%However, unlike the simulations with fixed time step size, no trial and
+%error procedure to choose a time step size that results in the desired
+%global error is required.
+%
+%\item With multiple vesicles, it is harder to achieve the desired
+%global error.  By adjusting the allowable local truncation error
+%throughout the simulation, the final error is much closer to the
+%tolerance.  However, each vesicle must still have the same time step
+%size.  We plan to develop integrators that use different time step
+%sizes for each vesicle.
+%
+%\item Without spatial adaptivity, excessively large resolutions are
+%required for the entirety of the simulation.
+%
+%\end{itemize}
+%
+%% These runs were done on ob which seems to do wall to vesicle
+%% interactions twice as fast
+%\begin{table}[htp]
+%\begin{center}
+%
+%\begin{tabular}{c|cccc}
+% \multicolumn{4}{c}{$\boldnsdc{0}$} \\ 
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU \\ 
+%\hline
+%2000 & $1.24$E$-1$ & $3.50$E$-1$ & $2.73$E$5$ & $1.0$ \\
+%4000 & $2.04$E$-2$ & $1.21$E$-1$ & $5.28$E$5$ & $2.1$ \\
+%8000 & $5.99$E$-3$ & $5.79$E$-2$ & $1.05$E$6$ & $3.8$
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for eight
+%vesicles in a {\bf couette} apparatus with a {\bf constant} time step
+%size using $\boldnsdc{0}$.  The CPU for
+%Tables~\ref{t:SDC0couette}--\ref{t:adaptiveSecondOrderCouette} are
+%relative to the cheapest simulation ($m=2000$ and $n_{\sdc}=0$) which
+%took approximately $1.44$E$5$ seconds.  We achieve the expected
+%first-order convergence.}{t:SDC0couette}
+%
+%\begin{tabular}{c|cccc}
+% & \multicolumn{4}{c}{$\boldnsdc{1}$} \\ 
+%$m$ & $e_{A}$ & $e_{L}$ & \# fmm & CPU \\
+%\hline
+%$500$  & $7.14$E$-3$ & $5.39$E$-2$ & $4.27$E$5$ & $1.5$ \\
+%$1000$ & $2.79$E$-3$ & $4.68$E$-5$ & $8.28$E$5$ & $2.9$ \\
+%$2000$ & $7.04$E$-4$ & $9.34$E$-6$ & $1.69$E$6$ & $6.0$  
+%\end{tabular}
+%\mcaption{The errors in area and length and the CPU time for eight
+%vesicles in a {\bf couette} apparatus with a {\bf constant} time step
+%size using $\boldnsdc{1}$.  At the reported resolutions, we are just
+%beginning to achieve second-order convergence.}{t:SDC1couette}
+%
+%\begin{tabular}{ccccccc}
+%Tolerance & $e_{A}$ & $e_{L}$ & Accepts & Rejects & \# fmm & CPU \\
+%\hline
+%$1$E$-1$ & $2.65$E$-2$ & $2.07$E$-2$ 
+%         & $256$ & $68$ & $2.90$E$5$ & $1.0$ \\
+%$1$E$-2$ & $4.21$E$-3$ & $3.86$E$-4$ 
+%         & $780$ & $65$ & $6.97$E$5$ & $2.5$
+%\end{tabular}
+%\mcaption{The errors in area and length, the CPU time, and the number of
+%accepted and rejected time steps for eight vesicles in a {\bf couette}
+%apparatus with an {\bf adaptive} time step size using
+%$\boldnsdc{1}$.}{t:adaptiveSecondOrderCouette}
+%\end{center}
+%\end{table}
+%
+%
+%
+%\begin{figure}[htp]
+%\centering
+%\begin{tabular}{ccc}
+%\ifTikz
+%\input{figs/couetteErrorsSDC500.tikz} &
+%\input{figs/couetteErrorsSDC1000.tikz} &
+%\input{figs/couetteErrorsSDC2000.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{The errors in area and length for eight vesicles in a {\bf
+%couette} apparatus with a {\bf constant} time step size using
+%$\boldnsdc{1}$.  For all the time step sizes, there is a sharp increase
+%in the errors around $t=2$ which is committed by the vesicle colored in
+%blue in Figure~\ref{f:couetteGeom}.  Adaptive time stepping
+%automatically resolves these sharp jumps and avoids the need to use
+%trial and error to find an appropriate time step size.}{f:couetteErrors}
+%\end{figure}
+%
+%\begin{figure}[htp]
+%\begin{tabular}{cc}
+%\ifTikz
+%\input{figs/couetteAdaptiveDT.tikz} &
+%\input{figs/couetteAdaptiveErrors.tikz}
+%\fi
+%\end{tabular}
+%\mcaption{Results for the {\bf couette} apparatus using
+%$\boldnsdc{1}$.  Left: The time step size using a {\bf constant} time
+%step (dashed) and an {\bf adaptive} time step size (solid).  The open
+%circles indicate the 65 times when the time step size is rejected.  We
+%see that the time step size is smallest when the error is large (near
+%$t=2$) and is largest when the vesicles and walls are well-separated
+%(near $t=15$ and $t=30$).  Right: The errors in area and length using
+%{\bf constant} (dashed) and {\bf adaptive} (solid) time steps, and the
+%desired error (black) of the adaptive time step.  Since each vesicle
+%must use the same time step size, the actual error does not closely
+%follow the desired error.}{f:couetteSummary}
+%\end{figure}

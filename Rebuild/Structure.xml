@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<DataClasses>
+	<Class>
+		<Name> Params </Name>
+		<Desc> Modeling parameters </Desc>
+		<Members>
+			<Member> 
+				<Name> T </Name>
+				<Type> double </Type>
+				<Desc> The total runtime </Desc>
+			</Member>
+			<Member> 
+				<Name> m </Name>
+				<Type> int </Type>
+				<Desc> I think this is the total number of timesteps? </Desc>
+			</Member>
+			<Member> 
+				<Name> n </Name>
+				<Type> int </Type>
+				<Desc> I think this is the number of points per vesicle? </Desc>
+			</Member>
+			<Member> 
+				<Name> nv </Name>
+				<Type> int </Type>
+				<Desc> This is the number of vesicles in the simulation? </Desc>
+			</Member>
+			<Member> 
+				<Name> Case </Name>
+				<Type> String/Function Handle </Type>
+				<Desc> This defines the problem to solve, is it possible to describe the cases in a general enough way that a function handle (or even a text file describing the setup) can be passed to the solver instead of a hardcoded function name. </Desc>
+			</Member>
+			<Member> 
+				<Name> viscCont </Name>
+				<Type> ??? </Type>
+				<Desc> ??? </Desc>
+			</Member>
+			<Member> 
+				<Name> kappa </Name>
+				<Type> double </Type>
+				<Desc> I think this is a measure of vesicle stiffness </Desc>
+			</Member>
+			<Member> 
+				<Name> order </Name>
+				<Type> short int </Type>
+				<Desc> I think this is the solver order </Desc>
+			</Member>
+			<Member> 
+				<Name> Incompressibility </Name>
+				<Type> boolean </Type>
+				<Desc> I think this toggles the compressibility of the fluid </Desc>
+			</Member>
+			<Member> 
+				<Name> vInf </Name>
+				<Type> functional </Type>
+				<Desc> This describes the far field fluid boundary condition </Desc>
+			</Member>
+		</Members>
+		<Functions>
+			<Function>
+				<Name> init </Name>
+				<Accepts> Some combination of the members </Accepts>
+				<Desc> Constructor for the Params class </Desc>
+			</Function>
+		</Functions>
+	</Class>
+
+	<Class>
+		<Name> Options </Name>
+		<Desc> Modeling options </Desc>
+		<Members>
+			<Member> 
+				<Name> GmresTol </Name>
+				<Type> double </Type>
+				<Desc> System solver tolerance </Desc>
+			</Member>
+			<Member> 
+				<Name> UsePlot </Name>
+				<Type> boolean </Type>
+				<Desc> Toggles whether or not the plot is displayed during/after solution </Desc>
+			</Member>
+			<Member> 
+				<Name> AxesHandle </Name>
+				<Type> Axes </Type>
+				<Desc> I'm not sure if this will be necessary after we port the code (maybe use gnuPlot instead of MATLAB?) </Desc>
+			</Member>
+			<Member> 
+				<Name> axisOn </Name>
+				<Type> boolean </Type>
+				<Desc> This controls whether the axis are drawn on the plot. It is a MATLAB plotting specific parameter </Desc>
+			</Member>
+			<Member> 
+				<Name> track </Name>
+				<Type> boolean? </Type>
+				<Desc> ??? </Desc>
+			</Member>
+			<Member> 
+				<Name> showAngle </Name>
+				<Type> boolean? </Type>
+				<Desc> ??? </Desc>
+			</Member>
+			<Member> 
+				<Name> axis </Name>
+				<Type> rectangle </Type>
+				<Desc> Defines the plotting window. This is MATLAB specific but will have to be recreated in some fashion. </Desc>
+			</Member>
+			<Member> 
+				<Name> saveFig </Name>
+				<Type> boolean </Type>
+				<Desc> ??? </Desc>
+			</Member>
+			<Member> 
+				<Name> progressBar </Name>
+				<Type> boolean </Type>
+				<Desc> toggles display of progress bar during solution </Desc>
+			</Member>
+			<Member> 
+				<Name> saveData </Name>
+				<Type> boolean </Type>
+				<Desc> ??? </Desc>
+			</Member>
+			<Member> 
+				<Name> showError </Name>
+				<Type> boolean </Type>
+				<Desc> I think this controls the display of MATLAB errors and warnings </Desc>
+			</Member>
+		</Members>
+		<Functions>
+			<Function>
+				<Name> init </Name>
+				<Accepts> Some combination of the members </Accepts>
+				<Desc> Constructor for the Options class </Desc>
+			</Function>
+		</Functions>
+	</Class>
+</DataClasses>

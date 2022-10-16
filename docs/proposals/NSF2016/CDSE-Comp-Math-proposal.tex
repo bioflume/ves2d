@@ -1,0 +1,106 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{color}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{pgfplots}
+\usepackage{rotating}
+\usepackage{siunitx}
+\usepackage{todonotes}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usepackage{wrapfig}
+%\sisetup{output-exponent-marker=\textsc{e},
+%bracket-negative-numbers,open-bracket={\text{-}}, close-bracket={}}
+\sisetup{
+    output-exponent-marker = \text{e},
+    table-format=+1.4e+2,
+    exponent-product={},
+    retain-explicit-plus
+}
+
+\usepackage[sort,nocompress]{cite}
+
+\addtolength{\oddsidemargin}{-0.75in}
+\addtolength{\evensidemargin}{-0.75in}
+\addtolength{\textwidth}{1.5in}
+\addtolength{\topmargin}{-0.75in}
+\addtolength{\textheight}{1.5in}
+% For 11pt size
+
+\newcommand{\bd}{\partial}
+\newcommand{\bigO}{\mathcal{O}}
+\newcommand{\dlp}{{\mathrm{dlp}}}
+\newcommand{\ff}{\mathbf{f}}
+\newcommand{\mcaption}[2]{\caption{\small \em #1}\label{#2}}
+\newcommand{\nn}{\mathbf{n}}
+\newcommand{\pderiv}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pphi}{{\boldsymbol{\phi}}}
+\newcommand{\rr}{{\mathbf{r}}}
+\newcommand{\RR}{{\mathbb{R}}}
+\newcommand{\slp}{{\mathrm{slp}}}
+\newcommand{\ssigma}{{\boldsymbol{\sigma}}}
+\renewcommand{\SS}{{\mathcal{S}}}
+\newcommand{\ttau}{{\boldsymbol{\tau}}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\yy}{\mathbf{y}}
+
+\newif\ifTikz
+\Tikztrue
+%\Tikzfalse
+
+\pagestyle{fancy}
+\lhead{\footnotesize Bryan Quaife and George Biros}
+\chead{\footnotesize Finding structure in complex viscous fluids}
+\rhead{\footnotesize \thepage}
+\cfoot{}
+
+%\usepgfplotslibrary{external}
+%\tikzexternalize
+
+\begin{document}
+\begin{center}
+\Large
+{\bf Finding structure in complex viscous fluids} \\
+Bryan Quaife and George Biros\\
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\todo[inline]{Lagrangian coherent structures}
+\todo[inline]{Average pressures and stresses}
+\todo[inline]{Upscaled parameters}
+\todo[inline]{Effetive viscosity}
+\todo[inline]{Coarse graining}
+\todo[inline]{Finding structure with topological methods}
+\todo[inline]{Mixing}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Suspensions of Capsules}
+\subsection{Vesicle suspensions}
+\cite{qua-bir2014a}
+\todo[inline]{New work of Gokberk ... tie into Petro's work}
+
+\subsection{Rigid body suspensions}
+\todo[inline]{Bryan's work with Sachin and Lukas}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Stokesian Fluids in Porous Media}
+\cite{dea-qua-bir-jua2016}
+\todo[inline]{Bryan's preliminary work with Jose Mendoza-Cortes}
+\todo[inline]{Bryan's work with Nick Moore}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\setcounter{page}{1}
+\section{References}
+\begingroup
+\renewcommand{\section}[2]{}%
+\bibliographystyle{plain} 
+\bibliography{refs}
+\endgroup
+
+\end{document}

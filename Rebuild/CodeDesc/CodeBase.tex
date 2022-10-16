@@ -1,0 +1,52 @@
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage[top=2.5cm, bottom=2.5cm, left=1.8cm, right=1.8cm]{geometry}
+\usepackage{graphicx}
+\usepackage[numbered,framed]{mcode}
+\usepackage{amssymb,amsmath}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{palatino}
+\usepackage{hyperref}
+
+\hypersetup{breaklinks=true,colorlinks=true,citecolor=black,linkcolor=black}
+\urlstyle{rm}
+
+\def\thesection{\arabic{section}}
+\setcounter{secnumdepth}{3}
+
+\begin{document}
+
+\pagestyle{fancy}
+\lhead{ASR}
+\chead{}
+\rhead{ \thepage/\pageref{LastPage}}
+\lfoot{}
+\cfoot{}
+\rfoot{}
+\setlength{\headheight}{17pt}
+
+\title{Ves2D Code Listing and Explanation}
+\author{Alexander S Rattner}
+\maketitle
+\newpage 
+
+\tableofcontents
+
+\newpage
+
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+\section{Code Description}
+
+
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+% Code Listing
+\input{mfiles.tex}
+%\subsection{avgStress.m}
+%\lstinputlisting{../src/avgStress.m}
+
+
+\end{document}
