@@ -12,7 +12,7 @@ IA = pi/2; % initial inclination angle
 %tube_height = 6;
 %min_height = 3;
 %contraction_width = 2;
-Nwall = 512;
+Nwall = 1024;
 
 
 % Physics parameters
@@ -36,13 +36,13 @@ options.order = 1;                % time stepping order
 % Either 'explicit' or 'implicit'
 options.near = true;        % near-singular integration
 options.antiAlias = true;
-options.fmm = false;
-options.fmmDLP = false;
+options.fmm = true;
+options.fmmDLP = true;
 % use FMM to compute single-layer potential
 
-options.logFile = ['./output/' runName '.log'];
+options.logFile = ['/work2/03353/gokberk/frontera/stenosisRuns/' runName '.log'];
 % Name of log file for saving messages
-options.dataFile = ['./output/' runName 'Data.bin'];
+options.dataFile = ['/work2/03353/gokberk/frontera/stenosisRuns/' runName 'Data.bin'];
 % Name of binary data file for storing vesicle information
 
 options.profile = false;
@@ -50,10 +50,10 @@ options.profile = false;
 % ADD-ONS
 options.alignCenterAngle = ~true;
 options.correctShape = true;
-options.reparameterization = ~true;
+options.reparameterization = true;
 prams.maxReparamIter = 5;
 
-options.repulsion = true;
+options.repulsion = ~true;
 prams.minDist = 0.3; %0.3
 prams.minSpecRatio = 90; %30
 prams.repStrength = 90; %90
