@@ -12,11 +12,11 @@ IA = pi/2; % initial inclination angle
 %tube_height = 6;
 %min_height = 3;
 %contraction_width = 2;
-Nwall = 1024;
+Nwall = 2048;
 
 
 % Physics parameters
-prams.N = 96;                           % points per vesicle
+prams.N = 128;                           % points per vesicle
 prams.Nbd = Nwall;                     % points per wall
 prams.nvbd = 1;                        % number of solid walls
 prams.nv = 1;                          % number of vesicles
@@ -50,7 +50,7 @@ options.profile = false;
 % ADD-ONS
 options.alignCenterAngle = ~true;
 options.correctShape = true;
-options.reparameterization = true;
+options.reparameterization = ~true;
 prams.maxReparamIter = 5;
 
 options.repulsion = ~true;
