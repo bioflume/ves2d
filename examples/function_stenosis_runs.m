@@ -129,7 +129,7 @@ X(end/2+1:end) = X(end/2+1:end) + Xg(2);
 %%
 
 % Print some information about the run
-runInfoFile = ['./output/' runName '_runInfo.log'];
+runInfoFile = ['/work2/03353/gokberk/frontera/stenosisRuns/' runName '_runInfo.log'];
 fid = fopen(runInfoFile,'w');
 fprintf(fid,'%s\n',['Tube length is ' num2str(tube_length)]);
 fprintf(fid,'%s\n',['Tube height is ' num2str(tube_height)]);

@@ -89,9 +89,9 @@ end
 % Load weights that are required near the log singularity
 
 if antiAlias
-  if o.N < 128
+  if o.N <= 128
     o.LPuprate = 8;%ceil(sqrt(o.N));
-  elseif o.N >= 128 && o.N <= 1536
+  elseif o.N > 128 && o.N <= 2048
     o.LPuprate = 4;
   else
     o.LPuprate = 2;
