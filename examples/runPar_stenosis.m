@@ -12,6 +12,7 @@ contraction_width = 2; % 2; 3; 6; 12
 iRunID = 0;
 
 VCs = [1;5;10;50];
+VCs = [1];
 [mm,vv] = meshgrid(min_heights,VCs);
 
 parfor i = 1 : numel(mm(:))

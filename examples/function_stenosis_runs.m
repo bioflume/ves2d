@@ -53,7 +53,7 @@ options.correctShape = true;
 options.reparameterization = ~true;
 prams.maxReparamIter = 5;
 
-options.repulsion = ~true;
+options.repulsion = true;
 prams.minDist = 0.3; %0.3
 prams.minSpecRatio = 90; %30
 prams.repStrength = 90; %90
