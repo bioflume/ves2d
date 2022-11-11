@@ -12,7 +12,7 @@ IA = pi/2; % initial inclination angle
 %tube_height = 6;
 %min_height = 3;
 %contraction_width = 2;
-Nwall = 2048;
+Nwall = 4096;
 
 
 % Physics parameters
@@ -53,7 +53,7 @@ options.correctShape = true;
 options.reparameterization = ~true;
 prams.maxReparamIter = 5;
 
-options.repulsion = true;
+options.repulsion = ~true;
 prams.minDist = 0.3; %0.3
 prams.minSpecRatio = 90; %30
 prams.repStrength = 90; %90
@@ -63,11 +63,11 @@ prams.rtolArea = 1e-3;
 prams.rtolLength = 1e-3;
 
 prams.dtMax = 1e-2/Vinf;
-prams.dtMin = 1e-4/Vinf;
+prams.dtMin = 1e-8/Vinf;
 prams.betaInc = 1e-2;
 prams.betaDec = 5e-2;
 prams.betaUp = 1.5;
-prams.betaDown = 0.5;
+prams.betaDown = 0.2;
 prams.alpha = 0.9;
 
 
