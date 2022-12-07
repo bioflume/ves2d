@@ -9,10 +9,10 @@ tube_length = 90;
 tube_height = 6;
 min_heights = (0.5:0.5:4)'; % 8 runs in parallel
 contraction_width = 3; % 2; 3; 6; 12
-iRunID = 32;
+iRunID = 40;
 
 VCs = [1;5;10;50];
-VCs = [5];
+VCs = [10];
 [mm,vv] = meshgrid(min_heights,VCs);
 
 parfor i = 1 : numel(mm(:))
