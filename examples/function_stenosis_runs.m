@@ -16,7 +16,7 @@ Nwall = 4096;
 
 
 % Physics parameters
-prams.N = 128;                           % points per vesicle
+prams.N = 256;                           % points per vesicle
 prams.Nbd = Nwall;                     % points per wall
 prams.nvbd = 1;                        % number of solid walls
 prams.nv = 1;                          % number of vesicles
