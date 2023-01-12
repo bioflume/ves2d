@@ -1,5 +1,5 @@
 clear; clc;
-rID = 1;
+rID = 91;
 filename = ['./stenosisRuns/runID' num2str(rID) 'Data.bin'];
 % Load data
 [posx,posy,wallx,wally,~,~,~,~,time,N,nv] = loadFile(filename); 
