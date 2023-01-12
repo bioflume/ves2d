@@ -1,5 +1,5 @@
 clear; clc;
-rID = 3;
+rID = 1;
 filename = ['./stenosisRuns/runID' num2str(rID) 'Data.bin'];
 % Load data
 [posx,posy,wallx,wally,~,~,~,~,time,N,nv] = loadFile(filename); 
@@ -16,7 +16,7 @@ for k = 1 : ntime
 end
 count = 1;
 frameFile = ['frames/image'];
-for k = 1 : 20 : ntime
+for k = 1 : 800 : ntime
   figure(1); clf;
   if ~isempty(wallx)
   plot(wallx, wally, 'k', 'linewidth', 2);
