@@ -542,7 +542,7 @@ end
 % Plot a tracker point at the first and middle point
 % so that we can observe features like trank-treading
 if o.track
-  plot(x,y,'bo','markersize',20)
+  plot(x(1),y(1),'bo','markersize',5)
 %  plot(x(1,:),y(1,:),'b.','markersize',20)
 %  plot(x(N/2+1,:),y(N/2+1,:),'b.','markersize',20)
 end

@@ -7860,6 +7860,11 @@ elseif any(strcmp(varargin,'invParabolic'))
 elseif any(strcmp(varargin,'rotate'))
   vInf = [y;-x];
 
+elseif any(strcmp(varargin,'taylorCouette'))
+  velx = -(y)./(x.^2 + y.^2 );
+  vely =  (x)./(x.^2 + y.^2 );
+  vInf = [velx; vely];
+
 elseif any(strcmp(varargin,'freeCouette'))
   % defined in 10<= r <= 20
   velx = y/3.*(1-400./(x.^2+y.^2));
@@ -8013,9 +8018,6 @@ elseif any(strcmp(varargin,'figureEight'))
   vInf(sdown,:) = vInf(sdown,:) .* mollifier;
   % increase the velocity in a smooth fashion near the middle
   % of the solid walls
-
-elseif any(strcmp(varargin,'shear'))
-  vInf = [y;zeros(N,nv)];
 
 elseif any(strcmp(varargin,'diffuser'));
   vInf = zeros(2*N,nv);
