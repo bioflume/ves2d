@@ -8,7 +8,7 @@ viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
 radius = 1; % micro meters
-Npoints = 128;
+Npoints = 32;
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
@@ -50,7 +50,7 @@ while time < time_horizon
   % calculate the K matrix
   K = bb.calc_K_matrix();
   K = K(:,:,1);
-  KT = bb.calc_KT_matrix();
+  KT = bb.calc_KT_matrix(bb.sa);
   KT = KT(:,:,1);
 
   % calculate the single and double layer matrices

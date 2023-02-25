@@ -70,11 +70,9 @@ for iv = 1 : o.nv
   cx = mean(o.X(1:o.N,iv));
   cy = mean(o.X(o.N+1:end,iv));  
   for ij = 1 : o.N
-    ix = ij;
-    iy = ij+o.N;
     x = o.X(ij,iv)-cx; y = o.X(ij+o.N,iv)-cy;
-    K(ix,:,iv) = [1 0 y];
-    K(iy,:,iv) = [0 1 -x];
+    K(ij,:,iv) = [1 0 y];
+    K(ij+o.N,:,iv) = [0 1 -x];
   end% ij
 end% iv
 
@@ -82,7 +80,7 @@ end % calc_K_matrix
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function K = calc_KT_matrix(o)
+function K = calc_KT_matrix(o,sa)
 % Adjoint of K matrix
 
 K = zeros(3,2*o.N,o.nv);
@@ -91,14 +89,13 @@ for iv = 1 : o.nv
   cx = mean(o.X(1:o.N,iv));
   cy = mean(o.X(o.N+1:end,iv));  
   for ij = 1 : o.N
-    ix = ij;
-    iy = ij+o.N;
     x = o.X(ij,iv)-cx; y = o.X(ij+o.N,iv)-cy;
-    K(:,ix,iv) = [1;0;y];
-    K(:,iy,iv) = [0;1;-x];
+    K(:,ij,iv) = [1;0;y];
+    K(:,ij+o.N,iv) = [0;1;-x];
   end% ij
 end% iv
-K = K * 2*pi/o.N;
+sa = [sa;sa]';
+K = K .* sa(ones(3,1),:) * 2*pi/o.N;
 
 end % calc_KT_matrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
