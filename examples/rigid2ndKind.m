@@ -8,7 +8,7 @@ viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
 radius = 1; % micro meters
-Npoints = 32;
+Npoints = 64;
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
@@ -49,34 +49,41 @@ while time < time_horizon
 
   % calculate the K matrix
   K = bb.calc_K_matrix();
-  K = K(:,:,1);
   KT = bb.calc_KT_matrix(bb.sa);
-  KT = KT(:,:,1);
 
   % calculate the single and double layer matrices
   SLP = ker.stokesSLmatrixAlpert(bb,viscosity);  
-  DLP = ker.stokesDLmatrix2(bb);
-  DLPT = ker.stokesDLTmatrix2(bb);
-  SLP = SLP(:,:,1);
-  DLP = DLP(:,:,1);
-  DLPT = DLPT(:,:,1);
+  DLP = ker.stokesDLmatrix(bb);
+  DLPT = ker.stokesDLTmatrix(bb);
 
   % form RHS
   RHS = zeros(2*Npoints+3,1);
   RHS(2*Npoints+1:end) = -[ext_force;ext_torque];
     
-  % form the mass matrix
-  MAT = [SLP                            (-0.5*eye(2*Npoints)-DLP)*K;...
-        KT*(-0.5*eye(2*Npoints)-DLPT)   zeros(3)];
+  % form the LHS matrix
+  MAT = [SLP              -0.5*K-DLP*K;...
+        -0.5*KT-KT*DLPT   zeros(3)];
 
   % solve the system
-  sol = MAT\RHS;
-  
+  sol = gmres(MAT,RHS);
+
+  % If we want to check the N matrix:
+  Ktil = 0.5*K+DLP*K;
+  KtilT = 0.5*KT+KT*DLPT;
+  Nmat = (KtilT*(SLP\eye(size(SLP)))*Ktil)\eye(3);
+
   % dissect the solution
   traction = sol(1:2*Npoints);
   ui = sol(2*Npoints+1:2*Npoints+2);
   wi = sol(2*Npoints+3);
   U = [ui;wi];
+  
+
+  figure(2);clf;
+  plot([X(1:end/2);X(1)],[X(end/2+1:end);X(end/2+1)],'linewidth',2)
+  hold on
+  quiver(X(1:end/2),X(end/2+1:end),traction(1:end/2),traction(end/2+1:end))
+  axis equal
 
   % update the position and orientation
   center = bb.center;

@@ -55,26 +55,33 @@ while time < time_horizon
 
   % calculate the single and double layer matrices
   SLP = ker.stokesSLmatrixAlpert(bb,viscosity);  
-  SLP = SLP(:,:,1);
-  
+%   SLP = ker.stokesSLmatrixKR(bb,viscosity);
+%   SLP = ker.stokesSLmatrixNoCorr(bb,viscosity);
 
   % form RHS
   RHS = zeros(2*Npoints+3,1);
   RHS(2*Npoints+1:end) = -[ext_force;ext_torque];
     
+  if 0
   % form the mass matrix
   MAT = [SLP  -K;...
         -KT  zeros(3)];
 
   % solve the system
   sol = MAT\RHS;
-  
-  % dissect the solution
   traction = sol(1:2*Npoints);
   ui = sol(2*Npoints+1:2*Npoints+2);
   wi = sol(2*Npoints+3);
   U = [ui;wi];
-
+  else
+  Nmat = KT*(SLP\eye(size(SLP))*K);
+  sol = Nmat\[ext_force;ext_torque];
+  ui = sol(1:2); wi = sol(3);
+  U = [ui; wi];
+  end
+  % dissect the solution
+  
+  
   % update the position and orientation
   center = bb.center;
     

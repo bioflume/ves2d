@@ -122,19 +122,11 @@ oc = curve;
 % Vesicle positions
 constTerm = 1/(viscosity);
 
-if vesicle.N > o.N
-  Nquad = numel(o.qwUp);
-  qw = o.qwUp(:,ones(vesicle.N,1));
-  qp = o.qpUp;
-  Rbac = o.RbacUp;
-  Rfor = o.RforUp;
-else
-  Nquad = numel(o.qw);
-  qw = o.qw(:,ones(vesicle.N,1));
-  qp = o.qp;
-  Rbac = o.Rbac;
-  Rfor = o.Rfor;
-end
+Nquad = numel(o.qw);
+qw = o.qw(:,ones(vesicle.N,1));
+qp = o.qp;
+Rbac = o.Rbac;
+Rfor = o.Rfor;
 % number of quadrature points including the extra terms that Alpert's
 % rule brings into the quadrature
 
@@ -185,20 +177,80 @@ for k=1:vesicle.nv  % Loop over curves
   G12 = Gves'.*sa;
   % (1,2)-term
   
-  if vesicle.N > o.N
-    G(1:o.N,1:o.N,k) = o.Restrict_LP * G11 * o.Prolong_LP;
-    G(1:o.N,o.N+1:end,k) = o.Restrict_LP * G12 * o.Prolong_LP;
-    G(o.N+1:end,1:o.N,k) = G(1:o.N,o.N+1:end,k);
-    G(o.N+1:end,o.N+1:end,k) = o.Restrict_LP * G22 * o.Prolong_LP;
-  else
-    G(1:o.N,1:o.N,k) = G11;
-    G(1:o.N,o.N+1:end,k) = G12;
-    G(o.N+1:end,1:o.N,k) = G(1:o.N,o.N+1:end,k);
-    G(o.N+1:end,o.N+1:end,k) = G22;
-  end
+
+  G(1:o.N,1:o.N,k) = G11;
+  G(1:o.N,o.N+1:end,k) = G12;
+  G(o.N+1:end,1:o.N,k) = G(1:o.N,o.N+1:end,k);
+  G(o.N+1:end,o.N+1:end,k) = G22;
 end
 G = constTerm * G;
 end % stokesSLmatrixAlpert
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function G = stokesSLmatrixNoCorr(o,vesicle,viscosity)
+% G = stokesSLmatrixNoCorr(vesicle) computes stokes single layer potential
+% matrix without any quadrature. This corresponds to the way SLP FMM
+% computes the SLP. Its counterpart is stokesDLmatrixNoCorr
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+% Vesicle positions
+N = vesicle.N;
+% points per vesicle
+G = zeros(2*N,2*N,vesicle.nv);
+% initialize space for single-layer potential matrix
+
+for k = 1:vesicle.nv
+  xx = x(:,k);
+  yy = y(:,k);
+  % locations
+      
+  sa = vesicle.sa(:,k)';
+  sa = sa(ones(N,1),:);
+  % Jacobian
+
+  xtar = xx(:,ones(N,1))'; 
+  ytar = yy(:,ones(N,1))'; 
+  % target points
+
+  xsou = xx(:,ones(N,1)); 
+  ysou = yy(:,ones(N,1));
+  % source points
+
+  diffx = xtar - xsou;
+  diffy = ytar - ysou;
+  rho2 = (diffx.^2 + diffy.^2).^(-1);
+  % one over the distance squared
+  rho = sqrt(diffx.^2 + diffy.^2);
+  logpart = -log(rho);
+  % sign changed to positive because rho2 is one over distance squared
+
+  G11 = (logpart + diffx.^2.*rho2);
+  G12 = (diffx.*diffy.*rho2);
+  G22 = (logpart + diffy.^2.*rho2);
+  % don't need negative sign in front of log since rho2 is one over
+  % distance squared
+
+  % Zero out the self term and add regularization
+  G11(1:N+1:N^2) = 0;
+  tot = sum(G11,2);
+  G11(1:N+1:N^2) = tot;
+  
+  G12(1:N+1:N^2) = 0;
+  tot = sum(G12,2);
+  G12(1:N+1:N^2) = tot;
+
+  G22(1:N+1:N^2) = 0;
+  tot = sum(G22,2);
+  G22(1:N+1:N^2) = tot;
+
+  G(:,:,k) = [G11 G12; G12 G22];
+  % build matrix with 4 blocks
+  G(:,:,k) = 1/4/pi/viscosity*G(:,:,k); 
+  % scale with the arclength spacing and divide by 4*pi
+end
+
+end % stokesSLmatrixNoCorr
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function D = stokesDLmatrix(o,vesicle)
@@ -215,224 +267,13 @@ N = vesicle.N;
 D = zeros(2*N,2*N,vesicle.nv);
 % initialize space for double-layer potential matrix
 
-if vesicle.N > o.N
-  N = o.LPuprate*N;
-end
-
-for k=1:vesicle.nv  % Loop over curves
-  if (vesicle.viscCont(k) ~= 1)
-    const_coeff = -(1-vesicle.viscCont(k));
-    % constant that has the d\theta and scaling with the viscosity
-    % contrast
-    xx = x(:,k);
-    yy = y(:,k);
-    % locations
-
-    if vesicle.N > o.N
-      xx = interpft(xx,N); yy = interpft(yy,N);
-      vesicleUp = capsules([xx;yy],[],[],...
-          vesicle.kappa,vesicle.viscCont(k),true);
-      % upsampled single versicle
-      [tx,ty] = oc.getXY(vesicleUp.xt);
-      % Vesicle tangent
-      sa = vesicleUp.sa';
-      % Jacobian
-      cur = vesicleUp.cur';
-    else
-      [tx,ty] = oc.getXY(vesicle.xt);
-      tx = tx(:,k); ty = ty(:,k);
-      % Vesicle tangent
-      sa = vesicle.sa(:,k)';
-      % Jacobian
-      cur = vesicle.cur(:,k)';
-      % curvature
-    end
-
-    xtar = xx(:,ones(N,1))';
-    ytar = yy(:,ones(N,1))';
-    % target points
-
-    xsou = xx(:,ones(N,1));
-    ysou = yy(:,ones(N,1));
-    % source points
-
-    txsou = tx';
-    tysou = ty';
-    % tangent at srouces
-    sa = sa(ones(N,1),:);
-    % Jacobian
-
-    diffx = xtar - xsou;
-    diffy = ytar - ysou;
-    rho4 = (diffx.^2 + diffy.^2).^(-2);
-    rho4(1:N+1:N.^2) = 0;
-    % set diagonal terms to 0
-
-    kernel = diffx.*(tysou(ones(N,1),:)) - ...
-            diffy.*(txsou(ones(N,1),:));
-    kernel = kernel.*rho4.*sa;
-    kernel = const_coeff*kernel;
-
-    D11 = kernel.*diffx.^2;
-    % (1,1) component
-    D11(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*txsou.^2;
-    % diagonal limiting term
-
-    D12 = kernel.*diffx.*diffy;
-    % (1,2) component
-    D12(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*txsou.*tysou;
-    % diagonal limiting term
-
-    D22 = kernel.*diffy.^2;
-    % (2,2) component
-    D22(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*tysou.^2;
-    % diagonal limiting term
-
-    if vesicle.N > o.N
-      D11 = o.Restrict_LP * D11 * o.Prolong_LP; 
-      D12 = o.Restrict_LP * D12 * o.Prolong_LP; 
-      D22 = o.Restrict_LP * D22 * o.Prolong_LP; 
-    end
-    % move to grid with vesicle.N points by applying prolongation and
-    % restriction operators
-
-    D(:,:,k) = [D11 D12; D12 D22];
-    % build matrix with four blocks
-    D(:,:,k) = D(:,:,k)*2/N;
-    % scale with the arclength spacing and divide by pi
-
-  end
-end % k
-
-end % stokesDLmatrix
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function D = stokesDLTmatrix(o,vesicle)
-% D = stokesDLTmatrix(vesicle), generate adjoint of double-layer potential for 
-% Stokes vesicle is a data structure defined as in the capsules class
-% D is (2N,2N,nv) array where N is the number of points per curve and 
-% nv is the number of curves in X 
-
-oc = curve;
-[x,y] = oc.getXY(vesicle.X);
-% Vesicle positions
-N = vesicle.N;
-% number of points per vesicles
-D = zeros(2*N,2*N,vesicle.nv);
-% initialize space for double-layer potential matrix
-
-for k=1:vesicle.nv  % Loop over curves
-  if (vesicle.viscCont(k) ~= 1)
-    const_coeff = -1;
-    % constant that has the d\theta and scaling with the viscosity
-    % contrast
-    xx = x(:,k);
-    yy = y(:,k);
-    % locations
-
-    if vesicle.N > o.N
-      xx = interpft(xx,N); yy = interpft(yy,N);
-      vesicleUp = capsules([xx;yy],[],[],...
-          vesicle.kappa,vesicle.viscCont(k),true);
-      % upsampled single versicle
-      [tx,ty] = oc.getXY(vesicleUp.xt);
-      % Vesicle tangent
-      sa = vesicleUp.sa';
-      % Jacobian
-      cur = vesicleUp.cur;
-      normal = vesicleUp.normal;
-    else
-      [tx,ty] = oc.getXY(vesicle.xt);
-      tx = tx(:,k); ty = ty(:,k);
-      % Vesicle tangent
-      sa = vesicle.sa(:,k)';
-      % Jacobian
-      cur = vesicle.cur(:,k);
-      % curvature
-      normal = vesicle.normal(:,k);
-    end
-
-    xtar = xx(:,ones(N,1))';
-    ytar = yy(:,ones(N,1))';
-    % target points
-    
-    normx = normal(1:N,ones(N,1));
-    normy = normal(N+1:2*N,ones(N,1));
-
-    % normal points
-    xsou = xx(:,ones(N,1));
-    ysou = yy(:,ones(N,1));
-    % source points
-
-    txtar = tx;
-    tytar = ty;
-    % tangent at srouces
-    sa = sa(ones(N,1),:);
-    % Jacobian
-
-    diffx = xtar - xsou;
-    diffy = ytar - ysou;
-    rho4 = (diffx.^2 + diffy.^2).^(-2);
-    rho4(1:N+1:N.^2) = 0;
-    % set diagonal terms to 0
-    
-    kernel = diffx.*normx + diffy.*normy;
-    kernel = kernel.*rho4.*sa;
-    kernel = const_coeff*kernel;
-
-    D11 = kernel.*diffx.^2;
-    % (1,1) component
-
-    D11(1:N+1:N.^2) = 0.5*const_coeff*cur'.*sa(1,:).*txtar'.^2;
-    % diagonal limiting term
-
-    D12 = kernel.*diffx.*diffy;
-    % (1,2) component
-    D12(1:N+1:N.^2) = 0.5*const_coeff*cur'.*sa(1,:).*txtar'.*tytar';
-    % diagonal limiting term
-
-    D22 = kernel.*diffy.^2;
-    % (2,2) component
-    D22(1:N+1:N.^2) = 0.5*const_coeff*cur'.*sa(1,:).*tytar'.^2;
-    % diagonal limiting term
-
-    if vesicle.N > o.N
-      D11 = o.Restrict_LP * D11 * o.Prolong_LP; 
-      D12 = o.Restrict_LP * D12 * o.Prolong_LP; 
-      D22 = o.Restrict_LP * D22 * o.Prolong_LP; 
-    end
-    % move to grid with vesicle.N points by applying prolongation and
-    % restriction operators
-
-    D(:,:,k) = [D11 D12; D12 D22];
-    % build matrix with four blocks
-    D(:,:,k) = -D(:,:,k)*2/N;
-    % scale with the arclength spacing and divide by pi
-
-  end
-end % k
-
-end % stokesDLTmatrix
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function D = stokesDLmatrix2(o,vesicle)
-% D = stokesDLmatrix(vesicle), generate double-layer potential for 
-% Stokes vesicle is a data structure defined as in the capsules class
-% D is (2N,2N,nv) array where N is the number of points per curve and 
-% nv is the number of curves in X 
-
-oc = curve;
-[x,y] = oc.getXY(vesicle.X);
-% Vesicle positions
-N = vesicle.N;
-% number of points per vesicles
-D = zeros(2*N,2*N,vesicle.nv);
-% initialize space for double-layer potential matrix
-
 
 for k=1:vesicle.nv  % Loop over curves
   if (vesicle.viscCont(k) ~= 1)
     
+    constCoeffOffD = -1/pi;
+    constCoeffOnD = 1/(2*pi);
+
     % constant that has the d\theta and scaling with the viscosity
     % contrast
     xx = x(:,k);
@@ -451,12 +292,12 @@ for k=1:vesicle.nv  % Loop over curves
     normx = vesicle.normal(1:N,k)';
     normy = vesicle.normal(N+1:2*N,k)';
 
-    xtar = xx(:,ones(N,1))';
-    ytar = yy(:,ones(N,1))';
+    xtar = xx(:,ones(N,1));
+    ytar = yy(:,ones(N,1));
     % target points
 
-    xsou = xx(:,ones(N,1));
-    ysou = yy(:,ones(N,1));
+    xsou = xx(:,ones(N,1))';
+    ysou = yy(:,ones(N,1))';
     % source points
 
     txsou = tx';
@@ -472,21 +313,21 @@ for k=1:vesicle.nv  % Loop over curves
     % set diagonal terms to 0
 
     kernel = diffx.*normx(ones(N,1),:) + diffy.*(normy(ones(N,1),:));
-    kernel = kernel.*rho4.*sa;
+    kernel = kernel.*rho4;
 
-    D11 = 1/pi*kernel.*diffx.^2;
+    D11 = constCoeffOffD*kernel.*diffx.^2.*sa;
     % (1,1) component
-    D11(1:N+1:N.^2) = -0.5/pi*cur.*sa(1,:).*txsou.^2;
+    D11(1:N+1:N.^2) = constCoeffOnD*cur.*sa(1,:).*txsou.^2;
     % diagonal limiting term
 
-    D12 = 1/pi*kernel.*diffx.*diffy;
+    D12 = constCoeffOffD*kernel.*diffx.*diffy.*sa;
     % (1,2) component
-    D12(1:N+1:N.^2) = -0.5/pi*cur.*sa(1,:).*txsou.*tysou;
+    D12(1:N+1:N.^2) = constCoeffOnD*cur.*sa(1,:).*txsou.*tysou;
     % diagonal limiting term
 
-    D22 = 1/pi*kernel.*diffy.^2;
+    D22 = constCoeffOffD*kernel.*diffy.^2.*sa;
     % (2,2) component
-    D22(1:N+1:N.^2) = -0.5/pi*cur.*sa(1,:).*tysou.^2;
+    D22(1:N+1:N.^2) = constCoeffOnD*cur.*sa(1,:).*tysou.^2;
     % diagonal limiting term
 
     D(:,:,k) = [D11 D12; D12 D22];
@@ -497,10 +338,11 @@ for k=1:vesicle.nv  % Loop over curves
   end
 end % k
 
-end % stokesDLmatrix2
+end % stokesDLmatrix
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function D = stokesDLTmatrix2(o,vesicle)
+function D = stokesDLTmatrix(o,vesicle)
 % D = stokesDLTmatrix(vesicle), generate adjoint of double-layer potential for 
 % Stokes vesicle is a data structure defined as in the capsules class
 % D is (2N,2N,nv) array where N is the number of points per curve and 
@@ -516,7 +358,9 @@ D = zeros(2*N,2*N,vesicle.nv);
 
 for k=1:vesicle.nv  % Loop over curves
   if (vesicle.viscCont(k) ~= 1)
- 
+    constCoeffOffD = 1/pi;
+    constCoeffOnD = 1/(2*pi);
+
     % constant that has the d\theta and scaling with the viscosity
     % contrast
     xx = x(:,k);
@@ -529,25 +373,26 @@ for k=1:vesicle.nv  % Loop over curves
     % Vesicle tangent
     sa = vesicle.sa(:,k)';
     % Jacobian
-    cur = vesicle.cur(:,k);
+    cur = vesicle.cur(:,k)';
     % curvature
     normal = vesicle.normal(:,k);
     
 
-    xtar = xx(:,ones(N,1))';
-    ytar = yy(:,ones(N,1))';
+    xtar = xx(:,ones(N,1));
+    ytar = yy(:,ones(N,1));
     % target points
-    
-    normx = normal(1:N,ones(N,1));
-    normy = normal(N+1:2*N,ones(N,1));
+    normx = normal(1:N)';
+    normy = normal(N+1:2*N)';
+    normx = normx(:,ones(N,1));
+    normy = normy(:,ones(N,1));
 
     % normal points
-    xsou = xx(:,ones(N,1));
-    ysou = yy(:,ones(N,1));
+    xsou = xx(:,ones(N,1))';
+    ysou = yy(:,ones(N,1))';
     % source points
 
-    txtar = tx;
-    tytar = ty;
+    txsou = tx';
+    tysou = ty';
     % tangent at srouces
     sa = sa(ones(N,1),:);
     % Jacobian
@@ -559,33 +404,214 @@ for k=1:vesicle.nv  % Loop over curves
     % set diagonal terms to 0
     
     kernel = diffx.*normx + diffy.*normy;
-    kernel = kernel.*rho4.*sa;
+    kernel = kernel.*rho4;
 
-    D11 = 1/pi*kernel.*diffx.^2;
+    D11 = constCoeffOffD*kernel.*diffx.^2.*sa;
     % (1,1) component
 
-    D11(1:N+1:N.^2) = 0.5/pi*cur'.*sa(1,:).*txtar'.^2;
+    D11(1:N+1:N.^2) = constCoeffOnD*cur.*sa(1,:).*txsou.^2;
     % diagonal limiting term
 
-    D12 = 1/pi*kernel.*diffx.*diffy;
+    D12 = constCoeffOffD*kernel.*diffx.*diffy.*sa;
     % (1,2) component
-    D12(1:N+1:N.^2) = 0.5/pi*cur'.*sa(1,:).*txtar'.*tytar';
+    D12(1:N+1:N.^2) = constCoeffOnD*cur.*sa(1,:).*txsou.*tysou;
     % diagonal limiting term
 
-    D22 = 1/pi*kernel.*diffy.^2;
+    D22 = constCoeffOffD*kernel.*diffy.^2.*sa;
     % (2,2) component
-    D22(1:N+1:N.^2) = 0.5/pi*cur'.*sa(1,:).*tytar'.^2;
+    D22(1:N+1:N.^2) = constCoeffOnD/pi*cur.*sa(1,:).*tysou.^2;
     % diagonal limiting term
 
     D(:,:,k) = [D11 D12; D12 D22];
     % build matrix with four blocks
-    D(:,:,k) = -1 * D(:,:,k)*2*pi/N;
+    D(:,:,k) = D(:,:,k)*2*pi/N;
     % scale with the arclength spacing and divide by pi
 
   end
 end % k
 
-end % stokesDLTmatrix2
+end % stokesDLTmatrix
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function G = stokesSLmatrixKR(o,vesicle,viscosity)
+% G = stokesSLmatrixKR(vesicle) generates the single-layer potential
+% for Stokes vesicle.  G is (2N,2N,nv) array where N is the number of
+% points per curve and nv is the number of curves in X.  This uses
+% Kapur-Rokhlin quadrature
+
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+% Vesicle positions
+N = vesicle.N;
+% points per vesicle
+G = zeros(2*N,2*N,vesicle.nv);
+% initialize space for single-layer potential matrix
+
+for k = 1:vesicle.nv
+  xx = x(:,k);
+  yy = y(:,k);
+  % locations
+  sa = vesicle.sa';
+  sa= sa(ones(N,1),:);
+  
+
+  xtar = xx(:,ones(N,1))'; 
+  ytar = yy(:,ones(N,1))'; 
+  % target points
+
+  xsou = xx(:,ones(N,1)); 
+  ysou = yy(:,ones(N,1));
+  % source points
+
+  diffx = xtar - xsou;
+  diffy = ytar - ysou;
+  rho2 = (diffx.^2 + diffy.^2).^(-1);
+  % one over the distance squared
+
+  logpart = 0.5*log(rho2);
+  % sign changed to positive because rho2 is one over distance squared
+
+  G11 = logpart + diffx.^2.*rho2;
+  G12 = diffx.*diffy.*rho2;
+  G22 = logpart + diffy.^2.*rho2;
+  % don't need negative sign in front of log since rho2 is one over
+  % distance squared
+  G11(1:N+1:N^2) = 0;
+  G12(1:N+1:N^2) = 0;
+  G22(1:N+1:N^2) = 0;
+  % zero out the diagonal term
+
+  gamma = o.gamma;
+  if numel(gamma) == 2
+    G11(2:N+1:N^2-N) = (1+gamma(1))*G11(2:N+1:N^2-N);
+    G11(N+1:N+1:N^2-1) = (1+gamma(1))*G11(N+1:N+1:N^2-1);
+    G11(3:N+1:N^2-2*N) = (1+gamma(2))*G11(3:N+1:N^2-2*N);
+    G11(2*N+1:N+1:N^2-2) = (1+gamma(2))*G11(2*N+1:N+1:N^2-2);
+    G12(2:N+1:N^2-N) = (1+gamma(1))*G12(2:N+1:N^2-N);
+    G12(N+1:N+1:N^2-1) = (1+gamma(1))*G12(N+1:N+1:N^2-1);
+    G12(3:N+1:N^2-2*N) = (1+gamma(2))*G12(3:N+1:N^2-2*N);
+    G12(2*N+1:N+1:N^2-2) = (1+gamma(2))*G12(2*N+1:N+1:N^2-2);
+    G22(2:N+1:N^2-N) = (1+gamma(1))*G22(2:N+1:N^2-N);
+    G22(N+1:N+1:N^2-1) = (1+gamma(1))*G22(N+1:N+1:N^2-1);
+    G22(3:N+1:N^2-2*N) = (1+gamma(2))*G22(3:N+1:N^2-2*N);
+    G22(2*N+1:N+1:N^2-2) = (1+gamma(2))*G22(2*N+1:N+1:N^2-2);
+    % modify the first few diagonal terms to handle the log singularity
+
+    G11(N-1,1) = (1+gamma(2))*G11(N-1,1);
+    G11(N,1) = (1+gamma(1))*G11(N,1);
+    G11(N,2) = (1+gamma(2))*G11(N,2);
+    G12(N-1,1) = (1+gamma(2))*G12(N-1,1);
+    G12(N,1) = (1+gamma(1))*G12(N,1);
+    G12(N,2) = (1+gamma(2))*G12(N,2);
+    G22(N-1,1) = (1+gamma(2))*G22(N-1,1);
+    G22(N,1) = (1+gamma(1))*G22(N,1);
+    G22(N,2) = (1+gamma(2))*G22(N,2);
+    % periodicity built in at top left part of the matrix
+    G11(1,N-1) = (1+gamma(2))*G11(1,N-1);
+    G11(1,N) = (1+gamma(1))*G11(1,N);
+    G11(2,N) = (1+gamma(2))*G11(2,N);
+    G12(1,N-1) = (1+gamma(2))*G12(1,N-1);
+    G12(1,N) = (1+gamma(1))*G12(1,N);
+    G12(2,N) = (1+gamma(2))*G12(2,N);
+    G22(1,N-1) = (1+gamma(2))*G22(1,N-1);
+    G22(1,N) = (1+gamma(1))*G22(1,N);
+    G22(2,N) = (1+gamma(2))*G22(2,N);
+    % periodicity built in at top right part of the matrix
+  elseif numel(gamma) == 6
+    G11(2:N+1:N^2-1*N) = (1+gamma(1))*G11(2:N+1:N^2-1*N);
+    G11(1*N+1:N+1:N^2-1) = (1+gamma(1))*G11(1*N+1:N+1:N^2-1);
+    G11(3:N+1:N^2-2*N) = (1+gamma(2))*G11(3:N+1:N^2-2*N);
+    G11(2*N+1:N+1:N^2-2) = (1+gamma(2))*G11(2*N+1:N+1:N^2-2);
+    G11(4:N+1:N^2-3*N) = (1+gamma(3))*G11(4:N+1:N^2-3*N);
+    G11(3*N+1:N+1:N^2-3) = (1+gamma(3))*G11(3*N+1:N+1:N^2-3);
+    G11(5:N+1:N^2-4*N) = (1+gamma(4))*G11(5:N+1:N^2-4*N);
+    G11(4*N+1:N+1:N^2-4) = (1+gamma(4))*G11(4*N+1:N+1:N^2-4);
+    G11(6:N+1:N^2-5*N) = (1+gamma(5))*G11(6:N+1:N^2-5*N);
+    G11(5*N+1:N+1:N^2-5) = (1+gamma(5))*G11(5*N+1:N+1:N^2-5);
+    G11(7:N+1:N^2-6*N) = (1+gamma(6))*G11(7:N+1:N^2-5*N);
+    G11(6*N+1:N+1:N^2-6) = (1+gamma(6))*G11(6*N+1:N+1:N^2-6);
+    G12(2:N+1:N^2-1*N) = (1+gamma(1))*G12(2:N+1:N^2-1*N);
+    G12(1*N+1:N+1:N^2-1) = (1+gamma(1))*G12(1*N+1:N+1:N^2-1);
+    G12(3:N+1:N^2-2*N) = (1+gamma(2))*G12(3:N+1:N^2-2*N);
+    G12(2*N+1:N+1:N^2-2) = (1+gamma(2))*G12(2*N+1:N+1:N^2-2);
+    G12(4:N+1:N^2-3*N) = (1+gamma(3))*G12(4:N+1:N^2-3*N);
+    G12(3*N+1:N+1:N^2-3) = (1+gamma(3))*G12(3*N+1:N+1:N^2-3);
+    G12(5:N+1:N^2-4*N) = (1+gamma(4))*G12(5:N+1:N^2-4*N);
+    G12(4*N+1:N+1:N^2-4) = (1+gamma(4))*G12(4*N+1:N+1:N^2-4);
+    G12(6:N+1:N^2-5*N) = (1+gamma(5))*G12(6:N+1:N^2-5*N);
+    G12(5*N+1:N+1:N^2-5) = (1+gamma(5))*G12(5*N+1:N+1:N^2-5);
+    G12(7:N+1:N^2-6*N) = (1+gamma(6))*G12(7:N+1:N^2-5*N);
+    G12(6*N+1:N+1:N^2-6) = (1+gamma(6))*G12(6*N+1:N+1:N^2-6);
+    G22(2:N+1:N^2-1*N) = (1+gamma(1))*G22(2:N+1:N^2-1*N);
+    G22(1*N+1:N+1:N^2-1) = (1+gamma(1))*G22(1*N+1:N+1:N^2-1);
+    G22(3:N+1:N^2-2*N) = (1+gamma(2))*G22(3:N+1:N^2-2*N);
+    G22(2*N+1:N+1:N^2-2) = (1+gamma(2))*G22(2*N+1:N+1:N^2-2);
+    G22(4:N+1:N^2-3*N) = (1+gamma(3))*G22(4:N+1:N^2-3*N);
+    G22(3*N+1:N+1:N^2-3) = (1+gamma(3))*G22(3*N+1:N+1:N^2-3);
+    G22(5:N+1:N^2-4*N) = (1+gamma(4))*G22(5:N+1:N^2-4*N);
+    G22(4*N+1:N+1:N^2-4) = (1+gamma(4))*G22(4*N+1:N+1:N^2-4);
+    G22(6:N+1:N^2-5*N) = (1+gamma(5))*G22(6:N+1:N^2-5*N);
+    G22(5*N+1:N+1:N^2-5) = (1+gamma(5))*G22(5*N+1:N+1:N^2-5);
+    G22(7:N+1:N^2-6*N) = (1+gamma(6))*G22(7:N+1:N^2-5*N);
+    G22(6*N+1:N+1:N^2-6) = (1+gamma(6))*G22(6*N+1:N+1:N^2-6);
+    % modify the first few diagonal terms to handle the log singularity
+
+    G11((N:-1:N-5),1) = (1+gamma(1:6)).*G11(N:-1:N-5,1);
+    G11((N:-1:N-4),2) = (1+gamma(2:6)).*G11(N:-1:N-4,2);
+    G11((N:-1:N-3),3) = (1+gamma(3:6)).*G11(N:-1:N-3,3);
+    G11((N:-1:N-2),4) = (1+gamma(4:6)).*G11(N:-1:N-2,4);
+    G11((N:-1:N-1),5) = (1+gamma(5:6)).*G11(N:-1:N-1,5);
+    G11(N,6) = (1+gamma(6)).*G11(N,6);
+    G12((N:-1:N-5),1) = (1+gamma(1:6)).*G12(N:-1:N-5,1);
+    G12((N:-1:N-4),2) = (1+gamma(2:6)).*G12(N:-1:N-4,2);
+    G12((N:-1:N-3),3) = (1+gamma(3:6)).*G12(N:-1:N-3,3);
+    G12((N:-1:N-2),4) = (1+gamma(4:6)).*G12(N:-1:N-2,4);
+    G12((N:-1:N-1),5) = (1+gamma(5:6)).*G12(N:-1:N-1,5);
+    G12(N,6) = (1+gamma(6)).*G12(N,6);
+    G22((N:-1:N-5),1) = (1+gamma(1:6)).*G22(N:-1:N-5,1);
+    G22((N:-1:N-4),2) = (1+gamma(2:6)).*G22(N:-1:N-4,2);
+    G22((N:-1:N-3),3) = (1+gamma(3:6)).*G22(N:-1:N-3,3);
+    G22((N:-1:N-2),4) = (1+gamma(4:6)).*G22(N:-1:N-2,4);
+    G22((N:-1:N-1),5) = (1+gamma(5:6)).*G22(N:-1:N-1,5);
+    G22(N,6) = (1+gamma(6)).*G22(N,6);
+    % periodicity built in at bottom left part of the matrix
+
+    G11(1,(N:-1:N-5)) = (1+gamma(1:6)').*G11(1,N:-1:N-5);
+    G11(2,(N:-1:N-4)) = (1+gamma(2:6)').*G11(2,N:-1:N-4);
+    G11(3,(N:-1:N-3)) = (1+gamma(3:6)').*G11(3,N:-1:N-3);
+    G11(4,(N:-1:N-2)) = (1+gamma(4:6)').*G11(4,N:-1:N-2);
+    G11(5,(N:-1:N-1)) = (1+gamma(5:6)').*G11(5,N:-1:N-1);
+    G11(6,N) = (1+gamma(6)).*G11(6,N);
+    G12(1,(N:-1:N-5)) = (1+gamma(1:6)').*G12(1,N:-1:N-5);
+    G12(2,(N:-1:N-4)) = (1+gamma(2:6)').*G12(2,N:-1:N-4);
+    G12(3,(N:-1:N-3)) = (1+gamma(3:6)').*G12(3,N:-1:N-3);
+    G12(4,(N:-1:N-2)) = (1+gamma(4:6)').*G12(4,N:-1:N-2);
+    G12(5,(N:-1:N-1)) = (1+gamma(5:6)').*G12(5,N:-1:N-1);
+    G12(6,N) = (1+gamma(6)).*G12(6,N);
+    G22(1,(N:-1:N-5)) = (1+gamma(1:6)').*G22(1,N:-1:N-5);
+    G22(2,(N:-1:N-4)) = (1+gamma(2:6)').*G22(2,N:-1:N-4);
+    G22(3,(N:-1:N-3)) = (1+gamma(3:6)').*G22(3,N:-1:N-3);
+    G22(4,(N:-1:N-2)) = (1+gamma(4:6)').*G22(4,N:-1:N-2);
+    G22(5,(N:-1:N-1)) = (1+gamma(5:6)').*G22(5,N:-1:N-1);
+    G22(6,N) = (1+gamma(6)).*G22(6,N);
+    % periodicity built in at top right part of the matrix
+  end
+    
+  
+  G11 = G11'.*sa;
+  G12 = G12'.*sa;
+  G22 = G22'.*sa;
+  % multiply by Jacobian
+  
+  G(:,:,k) = [G11 G12; G12 G22];
+  % build matrix with 4 blocks
+  G(:,:,k) = 1/4/pi/viscosity*G(:,:,k)*2*pi/N; 
+  % scale with the arclength spacing and divide by 4*pi
+end
+
+end % stokesSLmatrixKR
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function qw = quadratureS(o,q)
 % qw = quadratureS(q) generates the quadrature rules for a function
