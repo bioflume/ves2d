@@ -431,7 +431,223 @@ for k=1:vesicle.nv  % Loop over curves
 end % k
 
 end % stokesDLTmatrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [stokesDLP,stokesDLPtar] = ...
+    exactStokesDL(o,vesicle,f,M,Xtar,K1)
+% [stokesDLP,stokesDLPtar] = exactStokesDL(vesicle,f,Xtar,K1) computes
+% the double-layer potential due to f around all vesicles except
+% itself.  Also can pass a set of target points Xtar and a collection
+% of vesicles K1 and the double-layer potential due to vesicles in K1
+% will be evaluated at Xtar.  Everything but Xtar is in the 2*N x nv
+% format Xtar is in the 2*Ntar x ncol format
+normal = [vesicle.xt(vesicle.N+1:2*vesicle.N,:);...
+         -vesicle.xt(1:vesicle.N,:)]; 
+% Normal vector
 
+if nargin == 6
+  Ntar = size(Xtar,1)/2;
+  ncol = size(Xtar,2);
+  stokesDLPtar = zeros(2*Ntar,ncol);
+else
+  K1 = [];
+  stokesDLPtar = [];
+  ncol = 0;
+  Ntar = 0;
+  % if nargin ~= 5, the user does not need the velocity at arbitrary
+  % points
+end
+
+den = (f.*[vesicle.sa;vesicle.sa]*2*pi/vesicle.N)* diag(1-vesicle.viscCont);
+% jacobian term and 2*pi/N accounted for here
+% have accounted for the scaling with (1-\nu) here
+
+oc = curve;
+[xsou,ysou] = oc.getXY(vesicle.X(:,K1));
+xsou = xsou(:); ysou = ysou(:);
+xsou = xsou(:,ones(Ntar,1))';
+ysou = ysou(:,ones(Ntar,1))';
+
+[denx,deny] = oc.getXY(den(:,K1));
+denx = denx(:); deny = deny(:);
+denx = denx(:,ones(Ntar,1))';
+deny = deny(:,ones(Ntar,1))';
+
+[normalx,normaly] = oc.getXY(normal(:,K1));
+normalx = normalx(:); normaly = normaly(:);
+normalx = normalx(:,ones(Ntar,1))';
+normaly = normaly(:,ones(Ntar,1))';
+
+for k = 1:ncol % loop over columns of target points
+  [xtar,ytar] = oc.getXY(Xtar(:,k));
+  xtar = xtar(:,ones(vesicle.N*numel(K1),1));
+  ytar = ytar(:,ones(vesicle.N*numel(K1),1));
+  
+  diffx = xtar-xsou; diffy = ytar-ysou;
+  dis2 = (diffx).^2 + (diffy).^2;
+  % difference of source and target location and distance squared
+  
+  
+  rdotnTIMESrdotf = (diffx.*normalx + diffy.*normaly)./dis2.^2 .* ...
+      (diffx.*denx + diffy.*deny);
+  % \frac{(r \dot n)(r \dot density)}{\rho^{4}} term
+  
+  stokesDLPtar(1:Ntar,k) = stokesDLPtar(1:Ntar,k) + ...
+      sum(rdotnTIMESrdotf.*diffx,2);
+  stokesDLPtar(Ntar+1:end,k) = stokesDLPtar(Ntar+1:end,k) + ...
+      sum(rdotnTIMESrdotf.*diffy,2);
+  % r \otimes r term of the double-layer potential
+end
+stokesDLPtar = stokesDLPtar/pi;
+% double-layer potential due to vesicles indexed over K1 evaluated at
+% arbitrary points
+
+stokesDLP = zeros(2*vesicle.N,vesicle.nv);
+if (nargin == 4 && vesicle.nv > 1)
+  oc = curve;
+  for k = 1:vesicle.nv
+    K = [(1:k-1) (k+1:vesicle.nv)];
+    [x,y] = oc.getXY(vesicle.X(:,K));
+    [nx,ny] = oc.getXY(normal(:,K));
+    [denx,deny] = oc.getXY(den(:,K));
+    for j=1:vesicle.N
+      diffxy = [vesicle.X(j,k) - x ; vesicle.X(j+vesicle.N,k) - y];
+      dis2 = diffxy(1:vesicle.N,:).^2 + ...
+          diffxy(vesicle.N+1:2*vesicle.N,:).^2;
+      % difference of source and target location and distance squared
+
+      rdotfTIMESrdotn = ...
+        (diffxy(1:vesicle.N,:).*nx + ...
+        diffxy(vesicle.N+1:2*vesicle.N,:).*ny)./dis2.^2 .* ...
+        (diffxy(1:vesicle.N,:).*denx + ...
+        diffxy(vesicle.N+1:2*vesicle.N,:).*deny);
+      % \frac{(r \dot n)(r \dot density)}{\rho^{4}} term
+
+      stokesDLP(j,k) = stokesDLP(j,k) + ...
+          sum(sum(rdotfTIMESrdotn.*diffxy(1:vesicle.N,:)));
+      stokesDLP(j+vesicle.N,k) = stokesDLP(j+vesicle.N,k) + ...
+          sum(sum(rdotfTIMESrdotn.*diffxy(vesicle.N+1:2*vesicle.N,:)));
+      % double-layer potential for Stokes
+    end
+  end
+
+  stokesDLP = stokesDLP/pi;
+  % 1/pi is the coefficient in front of the double-layer potential
+end
+% double-layer potential due to all vesicles except oneself
+
+end % exactStokesDL
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [stokesSLP,stokesSLPtar] = ...
+    exactStokesSL(o,vesicle,viscosity,f,M,Xtar,K1)
+% [stokesSLP,stokesSLPtar] = exactStokesSL(vesicle,f,Xtar,K1) computes
+% the single-layer potential due to f around all vesicles except
+% itself.  Also can pass a set of target points Xtar and a collection
+% of vesicles K1 and the single-layer potential due to vesicles in K1
+% will be evaluated at Xtar.  Everything but Xtar is in the 2*N x nv
+% format Xtar is in the 2*Ntar x ncol format
+
+if nargin == 7
+  Ntar = size(Xtar,1)/2;
+  ncol = size(Xtar,2);
+  stokesSLPtar = zeros(2*Ntar,ncol);
+else
+  K1 = [];
+  Ntar = 0;
+  stokesSLPtar = [];
+  ncol = 0;
+  % if nargin ~= 5, the user does not need the velocity at arbitrary
+  % points
+end
+
+den = f.*[vesicle.sa;vesicle.sa]*2*pi/vesicle.N;
+% multiply by arclength term
+
+oc = curve;
+[xsou,ysou] = oc.getXY(vesicle.X(:,K1));
+xsou = xsou(:); ysou = ysou(:);
+xsou = xsou(:,ones(Ntar,1))';
+ysou = ysou(:,ones(Ntar,1))';
+% This is faster than repmat
+
+[denx,deny] = oc.getXY(den(:,K1));
+denx = denx(:); deny = deny(:);
+denx = denx(:,ones(Ntar,1))';
+deny = deny(:,ones(Ntar,1))';
+% This is faster than repmat
+
+for k = 1:ncol % loop over columns of target points 
+  [xtar,ytar] = oc.getXY(Xtar(:,k));
+  xtar = xtar(:,ones(vesicle.N*numel(K1),1));
+  ytar = ytar(:,ones(vesicle.N*numel(K1),1));
+  
+  diffx = xtar-xsou; diffy = ytar-ysou;
+  
+  dis2 = diffx.^2 + diffy.^2;
+  % distance squared of source and target location
+  
+  coeff = 0.5*log(dis2);
+  % first part of single-layer potential for Stokes
+  stokesSLPtar(1:Ntar,k) = -sum(coeff.*denx,2);
+  stokesSLPtar(Ntar+1:2*Ntar,k) = -sum(coeff.*deny,2);
+  % log part of stokes single-layer potential
+
+  coeff = (diffx.*denx + diffy.*deny)./dis2;
+  % second part of single-layer potential for Stokes
+  stokesSLPtar(1:Ntar,k) = stokesSLPtar(1:Ntar,k) + ...
+      sum(coeff.*diffx,2);
+  stokesSLPtar(Ntar+1:2*Ntar,k) = stokesSLPtar(Ntar+1:2*Ntar,k) + ...
+      sum(coeff.*diffy,2);
+end
+stokesSLPtar = 1/(4*pi*viscosity)*stokesSLPtar;
+% Avoid loop over the target points.  Only loop over its columns
+
+%% 1/4/pi is the coefficient in front of the single-layer potential
+
+
+stokesSLP = zeros(2*vesicle.N,vesicle.nv); % Initialize to zero
+
+if (nargin == 5 && vesicle.nv > 1)
+  for k = 1:vesicle.nv % vesicle of targets
+    K = [(1:k-1) (k+1:vesicle.nv)];
+    % Loop over all vesicles except k
+    for j=1:vesicle.N
+      dis2 = (vesicle.X(j,k) - vesicle.X(1:vesicle.N,K)).^2 + ...
+          (vesicle.X(j+vesicle.N,k) - ...
+            vesicle.X(vesicle.N+1:2*vesicle.N,K)).^2;
+      diffxy = [vesicle.X(j,k) - vesicle.X(1:vesicle.N,K) ; ...
+          vesicle.X(j+vesicle.N,k) - ...
+            vesicle.X(vesicle.N+1:2*vesicle.N,K)];
+      % distance squared and difference of source and target location
+
+      coeff = 0.5*log(dis2);
+      % first part of single-layer potential for Stokes
+
+      val = coeff.*den(1:vesicle.N,K);
+      stokesSLP(j,k) = -sum(val(:));
+      val = coeff.*den(vesicle.N+1:2*vesicle.N,K);
+      stokesSLP(j+vesicle.N,k) = -sum(val(:));
+      % logarithm terms in the single-layer potential
+      
+      coeff = (diffxy(1:vesicle.N,:).*den(1:vesicle.N,K) + ...
+          diffxy(vesicle.N+1:2*vesicle.N,:).*...
+          den(vesicle.N+1:2*vesicle.N,K))./dis2;
+      % second part of single-layer potential for Stokes
+
+      val = coeff.*diffxy(1:vesicle.N,:);
+      stokesSLP(j,k) = stokesSLP(j,k) + sum(val(:));
+      val = coeff.*diffxy(vesicle.N+1:2*vesicle.N,:);
+      stokesSLP(j+vesicle.N,k) = stokesSLP(j+vesicle.N,k) + ...
+          sum(val(:));
+      % r \otimes r term of the single-layer potential
+
+    end % j
+  end % k
+  % Evaluate single-layer potential at vesicles but oneself
+  stokesSLP = 1/(4*pi*viscosity)*stokesSLP;
+  % 1/4/pi is the coefficient in front of the single-layer potential
+end % nargin == 3
+
+end % exactStokesSL
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function G = stokesSLmatrixKR(o,vesicle,viscosity)
@@ -612,6 +828,119 @@ for k = 1:vesicle.nv
 end
 
 end % stokesSLmatrixKR
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLmatrixWall(o,vesicle)
+% D = stokesDLmatrix(vesicle), generate double-layer potential for 
+% Stokes vesicle is a data structure defined as in the capsules class
+% D is (2N,2N,nv) array where N is the number of points per curve and 
+% nv is the number of curves in X 
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+% Vesicle positions
+N = vesicle.N;
+% number of points per vesicles
+D = zeros(2*N,2*N,vesicle.nv);
+% initialize space for double-layer potential matrix
+
+for k=1:vesicle.nv  % Loop over curves
+  if (vesicle.viscCont(k) ~= 1)
+    const_coeff = -(1-vesicle.viscCont(k));
+    % constant that has the d\theta and scaling with the viscosity
+    % contrast
+    xx = x(:,k);
+    yy = y(:,k);
+    % locations
+
+    
+    [tx,ty] = oc.getXY(vesicle.xt);
+    tx = tx(:,k); ty = ty(:,k);
+    % Vesicle tangent
+    sa = vesicle.sa(:,k)';
+    % Jacobian
+    cur = vesicle.cur(:,k)';
+    % curvature
+    
+
+    xtar = xx(:,ones(N,1))';
+    ytar = yy(:,ones(N,1))';
+    % target points
+
+    xsou = xx(:,ones(N,1));
+    ysou = yy(:,ones(N,1));
+    % source points
+
+    txsou = tx';
+    tysou = ty';
+    % tangent at srouces
+    sa = sa(ones(N,1),:);
+    % Jacobian
+
+    diffx = xtar - xsou;
+    diffy = ytar - ysou;
+    rho4 = (diffx.^2 + diffy.^2).^(-2);
+    rho4(1:N+1:N.^2) = 0;
+    % set diagonal terms to 0
+
+    kernel = diffx.*(tysou(ones(N,1),:)) - ...
+            diffy.*(txsou(ones(N,1),:));
+    kernel = kernel.*rho4.*sa;
+    kernel = const_coeff*kernel;
+
+    D11 = kernel.*diffx.^2;
+    % (1,1) component
+    D11(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*txsou.^2;
+    % diagonal limiting term
+
+    D12 = kernel.*diffx.*diffy;
+    % (1,2) component
+    D12(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*txsou.*tysou;
+    % diagonal limiting term
+
+    D22 = kernel.*diffy.^2;
+    % (2,2) component
+    D22(1:N+1:N.^2) = 0.5*const_coeff*cur.*sa(1,:).*tysou.^2;
+    % diagonal limiting term
+
+    % move to grid with vesicle.N points by applying prolongation and
+    % restriction operators
+
+    D(:,:,k) = [D11 D12; D12 D22];
+    % build matrix with four blocks
+    D(:,:,k) = 1/pi*D(:,:,k)*2*pi/N;
+    % scale with the arclength spacing and divide by pi
+
+  end
+end % k
+
+end % stokesDLmatrixWall
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function N0 = stokesN0matrix(o,vesicle)
+% N0 = stokesN0matrix(vesicle) generates the the integral operator with kernel
+% normal(x) \otimes normal(y) which removes the rank one defficiency of the
+% double-layer potential.  Need this operator for solid walls
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X); % Vesicle positions
+
+normal = [vesicle.xt(vesicle.N+1:2*vesicle.N,:);...
+         -vesicle.xt(1:vesicle.N,:)]; % Normal vector
+normal = normal(:,ones(2*vesicle.N,1));
+
+sa = [vesicle.sa(:,1);vesicle.sa(:,1)];
+sa = sa(:,ones(2*vesicle.N,1));
+N0 = zeros(2*vesicle.N,2*vesicle.N,vesicle.nv);
+N0(:,:,1) = normal.*normal'.*sa'*2*pi/vesicle.N;
+% Use N0 if solving (-1/2 + DLP)\eta = f where f has no flux through
+% the boundary.  By solving (-1/2 + DLP + N0)\eta = f, we guarantee
+% that \eta also has no flux through the boundary.  This is not
+% required, but it means we're enforcing one addition condition on eta
+% which removes the rank one kernel.  DLP is the double-layer potential
+% for stokes equation
+
+end % stokesN0matrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function qw = quadratureS(o,q)
 % qw = quadratureS(q) generates the quadrature rules for a function
