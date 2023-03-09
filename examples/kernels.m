@@ -186,71 +186,6 @@ end
 G = constTerm * G;
 end % stokesSLmatrixAlpert
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function G = stokesSLmatrixNoCorr(o,vesicle,viscosity)
-% G = stokesSLmatrixNoCorr(vesicle) computes stokes single layer potential
-% matrix without any quadrature. This corresponds to the way SLP FMM
-% computes the SLP. Its counterpart is stokesDLmatrixNoCorr
-
-oc = curve;
-[x,y] = oc.getXY(vesicle.X);
-% Vesicle positions
-N = vesicle.N;
-% points per vesicle
-G = zeros(2*N,2*N,vesicle.nv);
-% initialize space for single-layer potential matrix
-
-for k = 1:vesicle.nv
-  xx = x(:,k);
-  yy = y(:,k);
-  % locations
-      
-  sa = vesicle.sa(:,k)';
-  sa = sa(ones(N,1),:);
-  % Jacobian
-
-  xtar = xx(:,ones(N,1))'; 
-  ytar = yy(:,ones(N,1))'; 
-  % target points
-
-  xsou = xx(:,ones(N,1)); 
-  ysou = yy(:,ones(N,1));
-  % source points
-
-  diffx = xtar - xsou;
-  diffy = ytar - ysou;
-  rho2 = (diffx.^2 + diffy.^2).^(-1);
-  % one over the distance squared
-  rho = sqrt(diffx.^2 + diffy.^2);
-  logpart = -log(rho);
-  % sign changed to positive because rho2 is one over distance squared
-
-  G11 = (logpart + diffx.^2.*rho2);
-  G12 = (diffx.*diffy.*rho2);
-  G22 = (logpart + diffy.^2.*rho2);
-  % don't need negative sign in front of log since rho2 is one over
-  % distance squared
-
-  % Zero out the self term and add regularization
-  G11(1:N+1:N^2) = 0;
-  tot = sum(G11,2);
-  G11(1:N+1:N^2) = tot;
-  
-  G12(1:N+1:N^2) = 0;
-  tot = sum(G12,2);
-  G12(1:N+1:N^2) = tot;
-
-  G22(1:N+1:N^2) = 0;
-  tot = sum(G22,2);
-  G22(1:N+1:N^2) = tot;
-
-  G(:,:,k) = [G11 G12; G12 G22];
-  % build matrix with 4 blocks
-  G(:,:,k) = 1/4/pi/viscosity*G(:,:,k); 
-  % scale with the arclength spacing and divide by 4*pi
-end
-
-end % stokesSLmatrixNoCorr
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function D = stokesDLmatrix(o,vesicle)
@@ -431,6 +366,164 @@ for k=1:vesicle.nv  % Loop over curves
 end % k
 
 end % stokesDLTmatrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function G = stokesSLmatrixInteraction(o,source,target,viscosity)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+
+Nsource = source.N;
+Ntarget = target.N;
+
+sa = source.sa';
+sa = sa(ones(Ntarget,1),:);
+% Jacobian
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho2 = (diffx.^2 + diffy.^2).^(-1);
+% one over the distance squared
+rho = sqrt(diffx.^2 + diffy.^2);
+logpart = -log(rho);
+% sign changed to positive because rho2 is one over distance squared
+
+G11 = (logpart + diffx.^2.*rho2).*sa;
+G12 = (diffx.*diffy.*rho2).*sa;
+G22 = (logpart + diffy.^2.*rho2).*sa;
+% don't need negative sign in front of log since rho2 is one over
+% distance squared
+
+G= 1/4/pi/viscosity * 2*pi/Nsource * [G11 G12; G12 G22];
+% build matrix with 4 blocks
+% scale with the arclength spacing and divide by 4*pi
+
+end % stokesSLmatrixInteraction
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLmatrixInteraction(o,source,target)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+% Vesicle positions
+Nsource = source.N;
+Ntarget = target.N;
+% number of points per vesicles
+
+constCoeffOffD = -1/pi;
+
+% constant that has the d\theta and scaling with the viscosity
+% contrast
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+
+sa = source.sa';
+sa = sa(ones(Ntarget,1),:);
+% Jacobian
+
+normx = source.normal(1:Nsource)';
+normy = source.normal(Nsource+1:2*Nsource)';
+
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho4 = (diffx.^2 + diffy.^2).^(-2);
+
+kernel = diffx.*normx(ones(Ntarget,1),:) + diffy.*(normy(ones(Ntarget,1),:));
+kernel = kernel.*rho4;
+
+D11 = constCoeffOffD*kernel.*diffx.^2.*sa;
+% (1,1) component
+
+D12 = constCoeffOffD*kernel.*diffx.*diffy.*sa;
+% (1,2) component
+
+D22 = constCoeffOffD*kernel.*diffy.^2.*sa;
+% (2,2) component
+
+D = 2*pi/Nsource*[D11 D12; D12 D22];
+% build matrix with four blocks
+% scale with the arclength spacing and divide by pi
+
+ 
+
+end % stokesDLmatrixInteraction
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLTmatrixInteraction(o,source,target)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+% Vesicle positions
+Nsource = source.N;
+Ntarget = target.N;
+% number of points per vesicles
+
+constCoeffOffD = 1/pi;
+% constant that has the d\theta and scaling with the viscosity
+% contrast
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+
+sa = source.sa';
+sa = sa(ones(Ntarget,1),:);
+% Jacobian
+% Jacobian
+normal = target.normal;
+normx = normal(1:Ntarget)';
+normy = normal(Ntarget+1:2*Ntarget)';
+normx = normx(:,ones(Nsource,1));
+normy = normy(:,ones(Nsource,1));
+% Normal
+
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho4 = (diffx.^2 + diffy.^2).^(-2);
+% set diagonal terms to 0
+
+kernel = diffx.*normx + diffy.*normy;
+kernel = kernel.*rho4;
+
+D11 = constCoeffOffD*kernel.*diffx.^2.*sa;
+% (1,1) component
+
+D12 = constCoeffOffD*kernel.*diffx.*diffy.*sa;
+% (1,2) component
+
+D22 = constCoeffOffD*kernel.*diffy.^2.*sa;
+% (2,2) component
+
+D = 2*pi/Nsource*[D11 D12; D12 D22];
+% scale with the arclength spacing and divide by pi
+
+
+end % stokesDLTmatrixInteraction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [stokesDLP,stokesDLPtar] = ...
     exactStokesDL(o,vesicle,f,M,Xtar,K1)
