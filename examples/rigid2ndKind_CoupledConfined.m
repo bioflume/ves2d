@@ -102,7 +102,7 @@ while time < time_horizon
         SLP_ob             -DLP_ob*K        wallSLP];
 
   % solve the system
-  sol = gmres(MAT,RHS);
+  sol = gmres(MAT,RHS,[],1E-12,20);
 
   % dissect the solution
   traction = sol(1:2*Npoints);
