@@ -7,7 +7,7 @@ addpath ../src/
 viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
-radius = 1; % micro meters
+radius = 5; % micro meters
 Npoints = 64;
 
 % Body shape discretization assuming a sphere

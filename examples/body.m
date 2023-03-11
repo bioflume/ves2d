@@ -80,6 +80,30 @@ end % calc_K_matrix
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function K = calc_K_matrix_weighted(o)
+% K matrix is a matrix of size (2*N,3,nv)
+% for velocity [u, v, w]; w > 0 for CCW direction
+
+K = zeros(2*o.N, 3,o.nv);
+sa = o.sa; % jacobian
+
+for iv = 1 : o.nv
+  cx = mean(o.X(1:o.N,iv));
+  cy = mean(o.X(o.N+1:end,iv));  
+  for ij = 1 : o.N
+    x = o.X(ij,iv)-cx; y = o.X(ij+o.N,iv)-cy;
+    K(ij,:,iv) = [1 0 y];
+    K(ij+o.N,:,iv) = [0 1 -x];
+  end% ij
+end% iv
+
+sa = [sa;sa];
+K = K .* sa(:,ones(3,1)) * 2 * pi / o.N;
+
+end % calc_K_matrix_weighted
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function K = calc_KT_matrix(o,sa)
 % Adjoint of K matrix
 
@@ -101,7 +125,7 @@ end % calc_KT_matrix
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function K = calc_KT_matrix_noweights(o,sa)
+function K = calc_KT_matrix_weightless(o,sa)
 % Adjoint of K matrix
 
 K = zeros(3,2*o.N,o.nv);
