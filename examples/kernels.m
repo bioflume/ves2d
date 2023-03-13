@@ -315,6 +315,8 @@ for k=1:vesicle.nv  % Loop over curves
    
     normx = vesicle.normal(1:N,k)';
     normy = vesicle.normal(N+1:2*N,k)';
+    normx = normx(ones(N,1),:);
+    normy = normy(ones(N,1),:);
 
     xtar = xx(:,ones(N,1));
     ytar = yy(:,ones(N,1));
@@ -334,7 +336,7 @@ for k=1:vesicle.nv  % Loop over curves
     rho4(1:N+1:N.^2) = 0;
     % set diagonal terms to 0
 
-    kernel = diffx.*normx(ones(N,1),:) + diffy.*(normy(ones(N,1),:));
+    kernel = diffx.*normx + diffy.*normy;
     kernel = kernel.*rho4;
 
     D11 = constCoeffOffD*kernel.*diffx.^2;
@@ -500,7 +502,7 @@ for k=1:vesicle.nv  % Loop over curves
     xsou = xx(:,ones(N,1))';
     ysou = yy(:,ones(N,1))';
     % source points
-
+    
     txsou = tx';
     tysou = ty';
     % tangent at srouces
