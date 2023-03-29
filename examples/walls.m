@@ -51,6 +51,24 @@ o.IK = fft1.modes(o.N,1);
 end % wall
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function K = calc_KT_matrix_weightless(o,sa)
+% Adjoint of K matrix
+
+K = zeros(3,2*o.N,o.nv);
+
+for iv = 1 : o.nv
+  cx = mean(o.X(1:o.N,iv));
+  cy = mean(o.X(o.N+1:end,iv));  
+  for ij = 1 : o.N
+    x = o.X(ij,iv)-cx; y = o.X(ij+o.N,iv)-cy;
+    K(:,ij,iv) = [1;0;y];
+    K(:,ij+o.N,iv) = [0;1;-x];
+  end% ij
+end% iv
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 end % methods
 
 end % classdef

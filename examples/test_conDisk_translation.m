@@ -12,8 +12,8 @@ radius = 1; % micro meters
 Npoints = 64;
 
 % Wall geometry
-NpointsWall = 512t;
-wall_radius = 50;
+NpointsWall = 512;
+wall_radius = 8;
 theta = [0:NpointsWall-1]'/NpointsWall * 2 * pi;
 Xwalls = [wall_radius*cos(theta); wall_radius*sin(theta)];
 
@@ -169,7 +169,7 @@ while time < time_horizon
   % Display the results  
   display_results(ui,wi,given_velocity,time,X,Xwalls,radius)
 
-%   pause
+  pause
 
 end % end while time < time_horizon
 

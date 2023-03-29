@@ -79,7 +79,13 @@ end% iv
 end % calc_K_matrix
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function H = calc_jac_matrix(o)
 
+% 2*N by 1 matrix of jacobian
+H = [o.sa;o.sa] * 2 * pi / o.N;
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function K = calc_K_matrix_weighted(o)
 % K matrix is a matrix of size (2*N,3,nv)
 % for velocity [u, v, w]; w > 0 for CCW direction

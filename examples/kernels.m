@@ -624,6 +624,47 @@ end % stokesSLmatrixInteractionWeightless
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function G = stokesSLmatrixInteractionRegulWeightless(o,source,target,viscosity)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+
+Nsource = source.N;
+Ntarget = target.N;
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho2 = (diffx.^2 + diffy.^2).^(-1);
+% one over the distance squared
+rho = sqrt(diffx.^2 + diffy.^2);
+logpart = -log(rho);
+% sign changed to positive because rho2 is one over distance squared
+
+G11 = (logpart + diffx.^2.*rho2);
+G12 = (diffx.*diffy.*rho2);
+G22 = (logpart + diffy.^2.*rho2);
+G11(1:Ntarget+1:Ntarget^2) = 0;
+G12(1:Ntarget+1:Ntarget^2) = 0;
+G22(1:Ntarget+1:Ntarget^2) = 0;
+% don't need negative sign in front of log since rho2 is one over
+% distance squared
+
+G= 1/4/pi/viscosity * [G11 G12; G12 G22];
+% build matrix with 4 blocks
+% scale with the arclength spacing and divide by 4*pi
+
+end % stokesSLmatrixInteractionRegulWeightless
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function G = stokesSLmatrixRegulWeightless(o,source,viscosity)
 
 oc = curve;
@@ -775,6 +816,62 @@ D = [D11 D12; D12 D22];
 
 end % stokesDLmatrixInteractionWeightless
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLmatrixInteractionRegulWeightless(o,source,target)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+% Vesicle positions
+Nsource = source.N;
+Ntarget = target.N;
+% number of points per vesicles
+
+constCoeffOffD = -1/pi;
+
+% constant that has the d\theta and scaling with the viscosity
+% contrast
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+normx = source.normal(1:Nsource)';
+normy = source.normal(Nsource+1:2*Nsource)';
+
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho4 = (diffx.^2 + diffy.^2).^(-2);
+
+kernel = diffx.*normx(ones(Ntarget,1),:) + diffy.*(normy(ones(Ntarget,1),:));
+kernel = kernel.*rho4;
+
+D11 = constCoeffOffD*kernel.*diffx.^2;
+% (1,1) component
+
+D12 = constCoeffOffD*kernel.*diffx.*diffy;
+% (1,2) component
+
+D22 = constCoeffOffD*kernel.*diffy.^2;
+% (2,2) component
+
+D11(1:Ntarget+1:Ntarget^2) = 0;
+D12(1:Ntarget+1:Ntarget^2) = 0;
+D22(1:Ntarget+1:Ntarget^2) = 0;
+
+D = [D11 D12; D12 D22];
+% build matrix with four blocks
+% scale with the arclength spacing and divide by pi
+
+ 
+
+end % stokesDLmatrixInteractionRegulWeightless
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function D = stokesDLTmatrixInteraction(o,source,target)
 
@@ -883,11 +980,69 @@ D12 = constCoeffOffD*kernel.*diffx.*diffy;
 D22 = constCoeffOffD*kernel.*diffy.^2;
 % (2,2) component
 
-D = 2*pi/Nsource*[D11 D12; D12 D22];
+D = [D11 D12; D12 D22];
 % scale with the arclength spacing and divide by pi
 
 
 end % stokesDLTmatrixInteractionWeightless
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLTmatrixInteractionRegulWeightless(o,source,target)
+
+oc = curve;
+[xsource,ysource] = oc.getXY(source.X);
+[xtarget,ytarget] = oc.getXY(target.X);
+% Vesicle positions
+Nsource = source.N;
+Ntarget = target.N;
+% number of points per vesicles
+
+constCoeffOffD = 1/pi;
+% constant that has the d\theta and scaling with the viscosity
+% contrast
+
+xtar = xtarget(:,ones(Nsource,1)); 
+ytar = ytarget(:,ones(Nsource,1)); 
+% target points
+
+xsou = xsource(:,ones(Ntarget,1))'; 
+ysou = ysource(:,ones(Ntarget,1))';
+% source points
+
+normal = target.normal;
+normx = normal(1:Ntarget);
+normy = normal(Ntarget+1:2*Ntarget);
+normx = normx(:,ones(Nsource,1));
+normy = normy(:,ones(Nsource,1));
+% Normal
+
+
+diffx = xtar - xsou;
+diffy = ytar - ysou;
+rho4 = (diffx.^2 + diffy.^2).^(-2);
+% set diagonal terms to 0
+
+kernel = diffx.*normx + diffy.*normy;
+kernel = kernel.*rho4;
+
+D11 = constCoeffOffD*kernel.*diffx.^2;
+% (1,1) component
+
+D12 = constCoeffOffD*kernel.*diffx.*diffy;
+% (1,2) component
+
+D22 = constCoeffOffD*kernel.*diffy.^2;
+% (2,2) component
+
+D11(1:Ntarget+1:Ntarget^2) = 0;
+D12(1:Ntarget+1:Ntarget^2) = 0;
+D22(1:Ntarget+1:Ntarget^2) = 0;
+
+D = [D11 D12; D12 D22];
+% scale with the arclength spacing and divide by pi
+
+
+end % stokesDLTmatrixInteractionRegulWeightless
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [stokesDLP,stokesDLPtar] = ...
     exactStokesDL(o,vesicle,f,M,Xtar,K1)
@@ -1390,6 +1545,30 @@ sa = [vesicle.sa(:,1);vesicle.sa(:,1)];
 sa = sa(:,ones(2*vesicle.N,1));
 N0 = zeros(2*vesicle.N,2*vesicle.N,vesicle.nv);
 N0(:,:,1) = normal.*normal'.*sa'*2*pi/vesicle.N;
+% Use N0 if solving (-1/2 + DLP)\eta = f where f has no flux through
+% the boundary.  By solving (-1/2 + DLP + N0)\eta = f, we guarantee
+% that \eta also has no flux through the boundary.  This is not
+% required, but it means we're enforcing one addition condition on eta
+% which removes the rank one kernel.  DLP is the double-layer potential
+% for stokes equation
+
+end % stokesN0matrix
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function N0 = stokesN0matrixWeightless(o,vesicle)
+% N0 = stokesN0matrix(vesicle) generates the the integral operator with kernel
+% normal(x) \otimes normal(y) which removes the rank one defficiency of the
+% double-layer potential.  Need this operator for solid walls
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X); % Vesicle positions
+
+normal = [vesicle.xt(vesicle.N+1:2*vesicle.N,:);...
+         -vesicle.xt(1:vesicle.N,:)]; % Normal vector
+normal = normal(:,ones(2*vesicle.N,1));
+
+N0 = zeros(2*vesicle.N,2*vesicle.N,vesicle.nv);
+N0(:,:,1) = normal.*normal';
 % Use N0 if solving (-1/2 + DLP)\eta = f where f has no flux through
 % the boundary.  By solving (-1/2 + DLP + N0)\eta = f, we guarantee
 % that \eta also has no flux through the boundary.  This is not

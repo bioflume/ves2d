@@ -13,7 +13,7 @@ Npoints = 64;
 
 % Wall geometry
 NpointsWall = 256;
-wall_radius = 50;
+wall_radius = 4;
 theta = [0:NpointsWall-1]'/NpointsWall * 2 * pi;
 Xwalls = [wall_radius*cos(theta); wall_radius*sin(theta)];
 
