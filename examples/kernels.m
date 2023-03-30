@@ -14,6 +14,9 @@ properties
   N; % points per curve
   qw; % quadrature weights for logarithmic singularity
   qp; % quadrature points for logarithmic singularity (Alpert's rule)
+
+  qwWeightless; % quadrature weights for logarithmic singularity
+  qpWeightless; % quadrature points for logarithmic singularity (Alpert's rule)
   interpMat;  
   % interpolation matrix used for near-singular integration
   % This matrix replaces the need to use polyfit
@@ -31,6 +34,7 @@ properties
   Nup;
   qwUp;
   qpUp;
+  
   % upsampled quadrature rules for Alpert's quadrature rule.
   Rfor;
   Rbac;
@@ -65,6 +69,12 @@ accuracyOrder = 8;
 o.qw = o.quadratureS(accuracyOrder);
 o.qp = o.qw(:,2:end);
 o.qw = o.qw(:,1);
+
+o.qwWeightless = o.quadratureSweightless(accuracyOrder);
+o.qpWeightless = o.qwWeightless(:,2:end);
+o.qwWeightless = o.qwWeightless(:,1);
+
+
 [o.Rfor,o.Rbac] = o.rotationIndicies;
 
 if o.N < 32 
@@ -186,6 +196,87 @@ end
 G = constTerm * G;
 end % stokesSLmatrixAlpert
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function G = stokesSLmatrixAlpertWeightless(o,vesicle,viscosity)
+% G = stokesSLmatrix(vesicle) generates the single-layer potential for
+% Stokes vesicle is a data structure defined as in the curve class G is
+% (2N,2N,nv) array where N is the number of points per curve and nv is
+% the number of curves in X 
+
+% It can be upsampled or not, if vesicle.N > o.N then upsampled vesicle is
+% sent here.
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+% Vesicle positions
+constTerm = 1/(viscosity)*o.N/(2*pi);
+
+Nquad = numel(o.qw);
+qw = o.qw(:,ones(vesicle.N,1));
+qp = o.qp;
+Rbac = o.Rbac;
+Rfor = o.Rfor;
+% number of quadrature points including the extra terms that Alpert's
+% rule brings into the quadrature
+
+
+G = zeros(2*o.N,2*o.N,vesicle.nv);
+for k=1:vesicle.nv  % Loop over curves
+
+  sa = vesicle.sa(:,k)';
+  sa = sa(ones(vesicle.N,1),:);
+  % Jacobian
+
+  xx = x(:,k);
+  yy = y(:,k);
+  % locations
+
+  xtar = xx(:,ones(Nquad,1))'; 
+  ytar = yy(:,ones(Nquad,1))'; 
+  % target points
+
+  xsou = xx(:,ones(vesicle.N,1)); 
+  ysou = yy(:,ones(vesicle.N,1));
+  % source points
+  
+  xsou = xsou(Rfor);
+  ysou = ysou(Rfor);
+  % have to rotate each column so that it is compatiable with o.qp
+  % which is the matrix that takes function values and maps them to the
+  % intermediate values required for Alpert quadrature
+  
+  diffx = xtar - qp*xsou;
+  diffy = ytar - qp*ysou;
+  rho2 = (diffx.^2 + diffy.^2).^(-1);
+  % one over distance squared
+
+  logpart = 0.5*qp'*(qw .* log(rho2));
+  % sign changed to positive because rho2 is one over distance squared
+
+  Gves = logpart + qp'*(qw.*diffx.^2.*rho2);
+  Gves = Gves(Rbac);
+  G11 = Gves';
+  % (1,1)-term
+ 
+  Gves = logpart + qp'*(qw.*diffy.^2.*rho2);
+  Gves = Gves(Rbac);
+  G22 = Gves';
+  % (2,2)-term
+
+  Gves = qp'*(qw.*diffx.*diffy.*rho2);
+  Gves = Gves(Rbac);
+  G12 = Gves';
+  % (1,2)-term
+  
+
+  G(1:o.N,1:o.N,k) = G11;
+  G(1:o.N,o.N+1:end,k) = G12;
+  G(o.N+1:end,1:o.N,k) = G(1:o.N,o.N+1:end,k);
+  G(o.N+1:end,o.N+1:end,k) = G22;
+end
+G = constTerm * G;
+end % stokesSLmatrixAlpertWeightless
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function D = stokesDLmatrix(o,vesicle)
@@ -652,9 +743,6 @@ logpart = -log(rho);
 G11 = (logpart + diffx.^2.*rho2);
 G12 = (diffx.*diffy.*rho2);
 G22 = (logpart + diffy.^2.*rho2);
-G11(1:Ntarget+1:Ntarget^2) = 0;
-G12(1:Ntarget+1:Ntarget^2) = 0;
-G22(1:Ntarget+1:Ntarget^2) = 0;
 % don't need negative sign in front of log since rho2 is one over
 % distance squared
 
@@ -861,9 +949,6 @@ D12 = constCoeffOffD*kernel.*diffx.*diffy;
 D22 = constCoeffOffD*kernel.*diffy.^2;
 % (2,2) component
 
-D11(1:Ntarget+1:Ntarget^2) = 0;
-D12(1:Ntarget+1:Ntarget^2) = 0;
-D22(1:Ntarget+1:Ntarget^2) = 0;
 
 D = [D11 D12; D12 D22];
 % build matrix with four blocks
@@ -1033,10 +1118,6 @@ D12 = constCoeffOffD*kernel.*diffx.*diffy;
 
 D22 = constCoeffOffD*kernel.*diffy.^2;
 % (2,2) component
-
-D11(1:Ntarget+1:Ntarget^2) = 0;
-D12(1:Ntarget+1:Ntarget^2) = 0;
-D22(1:Ntarget+1:Ntarget^2) = 0;
 
 D = [D11 D12; D12 D22];
 % scale with the arclength spacing and divide by pi
@@ -1609,6 +1690,39 @@ A = [sparse(A1); B; sparse(A2)];
 qw = [wt, A];
 
 end % quadratureS
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function qw = quadratureSweightless(o,q)
+% qw = quadratureS(q) generates the quadrature rules for a function
+% with o.N points and a logarithmic singularity at the origin.  q
+% controls the accuracy.  All rules are from Alpert 1999.  This is
+% Bryan's reformulation which uses Alpert's quadrature rules as
+% described in Section 7, but with Fourier interpolation
+
+[v,u,a] = o.getWeights(q);
+% get the weights coming from Table 8 of Alpert's 1999 paper
+
+h = 1;
+n = o.N - 2*a + 1;
+
+of = fft1;
+A1 = of.sinterpS(o.N,v*h);
+A2 = of.sinterpS(o.N,2*pi-flipud(v*h));
+yt = h*(a:n-1+a)';
+% regular points away from the singularity
+wt = [h*u; h*ones(length(yt),1); h*flipud(u)]/4/pi;
+% quadrature points away from singularity
+
+B = sparse(length(yt),o.N);
+pos = 1 + (a:n-1+a)';
+
+for k = 1:length(yt)
+  B(k, pos(k)) = 1;
+end
+A = [sparse(A1); B; sparse(A2)];
+qw = [wt, A];
+
+end % quadratureSweightless
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [v,u,a] = getWeights(o,q)
