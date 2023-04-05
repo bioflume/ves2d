@@ -169,8 +169,8 @@ while time < time_horizon
   X0 = [X(1:Npoints)-center(1); X(Npoints+1:end)-center(2)];
   center = center + ui*dt;
 
-  xnew = center(1)+cos(wi*dt)*X0(1:Npoints)+sin(wi*dt)*X0(Npoints+1:end);
-  ynew = center(2)-sin(wi*dt)*X0(1:Npoints)+cos(wi*dt)*X0(Npoints+1:end);
+  xnew = center(1)+cos(-wi*dt)*X0(1:Npoints)+sin(-wi*dt)*X0(Npoints+1:end);
+  ynew = center(2)-sin(-wi*dt)*X0(1:Npoints)+cos(-wi*dt)*X0(Npoints+1:end);
   X = [xnew; ynew];
   
   orientation = orientation + wi*dt;

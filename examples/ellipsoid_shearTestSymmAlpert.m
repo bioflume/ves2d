@@ -1,56 +1,52 @@
-clear; clc;
+function [error,ave_iter,orientation,theta_theo] = ellipsoid_shearTestSymmAlpert(shearStrength,N)
 
 addpath ../src/
-iflag = 0;
+iflag = 1;
+
+oc = curve;
 
 %% Problem setup
 % Fluid properties
 viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
-radius = 1; % micro meters
-Npoints = 64;
-
-% Wall geometry
-NpointsWall = 512;
-wall_radius = 8;
-theta = [0:NpointsWall-1]'/NpointsWall * 2 * pi;
-Xwalls = [wall_radius*cos(theta); wall_radius*sin(theta)];
-
-% Wall kernels
-kerWall = kernels(NpointsWall);
-wall = walls(Xwalls, [0 0], zeros(size(Xwalls)));
-wallSLP = kerWall.stokesSLmatrixRegulWeightless(wall,viscosity);
-wallDLP = kerWall.stokesDLmatrixWeightless(wall);
-wallDLPT = kerWall.stokesDLTmatrixWeightless(wall);
+radius_x = 1; % micro meters
+radius_y = 2;
+Npoints = N;
+radius = max([radius_x;radius_y]);
+bgFlow = @(y) [shearStrength*y;zeros(size(y))];
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
-body_x = radius*cos(theta);
-body_y = radius*sin(theta);
+body_x = radius_x*cos(theta);
+body_y = radius_y*sin(theta);
 
+% X = [body_x;body_y];
+% figure(1); clf;
+% vecx = [interpft(X(1:end/2),128); X(1)];
+% vecy = [interpft(X(end/2+1:end),128); X(end/2+1)];
+% 
+% plot(vecx, vecy, 'k');
+% hold on;
+% fill(vecx, vecy,'k');
+% axis equal
+% 
+% 
+% grid off
+% box on
+% pause
 
-%% work out the analytical solution
-given_velocity = 1;
-R1 = radius;
-R2 = wall_radius;
+xlim([-2*radius 2*radius])
+ylim([-2*radius 2*radius])
 
-h = (R1^2 + R2^2)/(R1^2*(log(R2)+1) + R2^2*log(R2)-R2^2 - (R1^2+R2^2)*log(R1));
-am2 = R1^2 * R2^2 / (2 * (R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1)));
-a0 = (R1^2*(2*log(R2)+1) + 2*R2^2*log(R2)-R2^2)/(2*R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1));
-a2 = 1/(2*(R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1)));
+expected_angVelocity = @(theta) -shearStrength/(radius_x^2 + radius_y^2) ...
+    * (radius_x^2*sin(theta)^2 + radius_y^2*cos(theta)^2);  
 
-
-fx = 4*pi*viscosity*h*given_velocity;
-
-% Force and torque under body moves
-ext_force = [fx; 0]; % pico Newton
-ext_torque = [0];
 
 % Time scale
-time_horizon = (10*2*radius)/norm(given_velocity); 
-time_scale = 2*radius/norm(given_velocity); 
-dt = 1E-3 * time_scale; 
+time_horizon = 20/shearStrength;
+dt = 1E-1/shearStrength; 
+time_horizon = dt;
 
 % Call kernels
 ker = kernels(Npoints);
@@ -62,9 +58,8 @@ X = [body_x; body_y];
 center = [0; 0];
 orientation = 0; % angle
 traction = zeros(2*Npoints,1);
-surf_vel = zeros(2*Npoints,1);
 
-
+tot_iter = 0;
 U = zeros(3,1);
 while time < time_horizon
   % update time
@@ -76,50 +71,37 @@ while time < time_horizon
   bb.traction = traction; 
 
   % calculate the K matrix
-  K = bb.calc_K_matrix_weighted();
-  KT = bb.calc_KT_matrix(bb.sa);
+  K = bb.calc_K_matrix();
+  KT = bb.calc_KT_matrix_weightless(bb.sa);
+  H = bb.calc_jac_matrix();
 
   % calculate the single and double layer matrices
-  SLP = ker.stokesSLmatrixRegulWeightless(bb,viscosity);  
+  SLP = ker.stokesSLmatrixAlpertWeightless(bb,viscosity);  
+  SLP = 0.5 * (SLP + SLP');
+  
   DLP = ker.stokesDLmatrixWeightless(bb);
   DLPT = ker.stokesDLTmatrixWeightless(bb);
-
-  % calculate the interaction matrices
-  SLP_bo = ker.stokesSLmatrixInteractionWeightless(wall, bb, viscosity);
-  SLP_ob = ker.stokesSLmatrixInteractionWeightless(bb, wall, viscosity);
-
-  DLP_ob = ker.stokesDLmatrixInteractionWeightless(bb,wall);
-  DLPT_bo = ker.stokesDLTmatrixInteractionWeightless(wall,bb);
   
    
   % THEN SOLVE FOR BODY VELOCITY AND TRACTION, WALL TRACTION
 
   % form RHS
-  RHS = zeros(2*NpointsWall + 2*Npoints + 3,1);
-  RHS(1:2*Npoints) = 0;
-  RHS(2*Npoints+1:2*Npoints+3) = -[ext_force;ext_torque];
-  RHS(2*Npoints+4:end) = 0;
+  RHS = zeros(2*Npoints + 3,1);
+  RHS(1:2*Npoints) = bgFlow(X(end/2+1:end));
     
   % form the LHS matrix
-  wgt_body = [bb.sa;bb.sa]*2*pi/bb.N;
-  wgt_wall = [wall.sa; wall.sa] * 2 * pi / wall.N;
-  wgt_body_mat = wgt_body(:,ones(3,1));
   
+  Hmat = diag(H);
+  
+
   mat11 = SLP;
-  mat12 =  -(0.5./wgt_body_mat).*K-DLP*K;
-  mat13 = SLP_bo;
+  mat12 =  -0.5*K-(DLP*Hmat)*K;
 
-  mat21 = -(0.5./wgt_body_mat').*KT-KT*DLPT;
+  mat21 = -0.5.*KT-(KT*Hmat)*DLPT;
   mat22 = zeros(3);
-  mat23 = -KT*DLPT_bo;
-  
-  mat31 = SLP_ob;
-  mat32 = -DLP_ob*K;
-  mat33 = wallSLP;
 
-  MAT = [mat11 mat12 mat13;...
-         mat21 mat22 mat23;...
-         mat31 mat32 mat33];
+  MAT = [mat11 mat12;...
+         mat21 mat22];
   
   if iflag
   % Check if SLP_bo is transpose(SLP_ob)
@@ -128,31 +110,17 @@ while time < time_horizon
   end
 
   % solve the system
-  sol = gmres(MAT,RHS,[],1E-12,50);
+  [sol,~,~,iter] = gmres(MAT,RHS,[],1E-15,size(MAT,1));
+  tot_iter = tot_iter + iter(2);
+  disp(['Number of GMRES iterations is ' num2str(iter(2))])
 
   % dissect the solution
   
 
-  traction = sol(1:2*Npoints)./wgt_body;
+  traction = sol(1:2*Npoints)./H;
   ui = sol(2*Npoints+1:2*Npoints+2);
   wi = sol(2*Npoints+3);
   U = [ui;wi];
-  wall_traction = sol(2*Npoints+4:end)./wgt_wall;
-
-  ubody_found = (K*U)./wgt_body;
-
-  if iflag
-  figure(2); clf; hold on;
-  
-  quiver(bb.X(1:end/2),bb.X(end/2+1:end),ubody_found(1:end/2),ubody_found(end/2+1:end));
-  axis equal
-  quiver(bb.X(1:end/2),bb.X(end/2+1:end),traction(1:end/2),traction(end/2+1:end))
-  quiver(Xwalls(1:end/2), Xwalls(end/2+1:end),wall_traction(1:end/2),wall_traction(end/2+1:end))
-  plot(Xwalls(1:end/2), Xwalls(end/2+1:end),'linewidth',2)
-  plot(bb.X(1:end/2), bb.X(end/2+1:end),'linewidth',2);
-  legend('Body velocity', 'Body traction', 'Wall traction')
-  pause
-  end
 
   % update the position and orientation
   center = bb.center;
@@ -160,31 +128,37 @@ while time < time_horizon
   X0 = [X(1:Npoints)-center(1); X(Npoints+1:end)-center(2)];
   center = center + ui*dt;
 
-  xnew = center(1)+cos(wi*dt)*X0(1:Npoints)+sin(wi*dt)*X0(Npoints+1:end);
-  ynew = center(2)-sin(wi*dt)*X0(1:Npoints)+cos(wi*dt)*X0(Npoints+1:end);
+  xnew = center(1)+cos(-wi*dt)*X0(1:Npoints)+sin(-wi*dt)*X0(Npoints+1:end);
+  ynew = center(2)-sin(-wi*dt)*X0(1:Npoints)+cos(-wi*dt)*X0(Npoints+1:end);
   X = [xnew; ynew];
   
+  expected_velocity = expected_angVelocity(orientation);
+
   orientation = orientation + wi*dt;
   
+  
   % Display the results  
-  display_results(ui,wi,given_velocity,time,X,Xwalls,radius)
-
-  pause
+  error(nsteps,1) = display_results(ui,wi,expected_velocity,time,X,radius);
 
 end % end while time < time_horizon
+ave_iter = tot_iter / nsteps;
 
+theta_theo = atan(radius_y/radius_x * tan(-radius_x*radius_y*shearStrength*time/(radius_x^2 + radius_y^2)));
+orientation = oc.getIncAngle(X);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function display_results(ui, wi, given_velocity, time, X, Xwalls,radius)
+function error = display_results(ui, wi, expected_velocity, time, X,radius)
 
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
-disp(['Velocity is found: ' num2str(reshape(ui,1,[])) 'um/s'])
-disp(['Given velocity is: ' num2str(given_velocity) 'um/s'])
-error = abs(ui(1)-given_velocity)./given_velocity * 100;
-disp(['Error is: ' num2str(error) '%'])
 disp(['Angular velocity is found: ' num2str(wi)])
+disp(['Expected velocity is: ' num2str(expected_velocity) 'um/s'])
+error = abs(wi-expected_velocity)./abs(expected_velocity);
+disp(['Error is: ' num2str(error)])
+disp(['Velocity is found: ' num2str(reshape(ui,1,[])) 'um/s'])
 
+if 1
 figure(1); clf;
 vecx = [interpft(X(1:end/2),128); X(1)];
 vecy = [interpft(X(end/2+1:end),128); X(end/2+1)];
@@ -199,16 +173,11 @@ grid off
 box on
 title(['Time = ' num2str(time) 's'])
 
-if ~isempty(Xwalls)
-vecx = [Xwalls(1:end/2); Xwalls(1)];
-vecy = [Xwalls(end/2+1:end); Xwalls(end/2+1)];
-plot(vecx, vecy, 'k','linewidth',2)
-else
-xlim([-2*radius 20*radius])
+xlim([-2*radius 2*radius])
 ylim([-2*radius 2*radius])
-end
-pause(0.1)
 
+pause(0.1)
+end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,77 +1,50 @@
-function error = rotationalTestSymmAlpert(N,wallRadScale)
+function [trajectories,velocities] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, N)
 
 addpath ../src/
 iflag = 1;
+
+oc = curve;
 
 %% Problem setup
 % Fluid properties
 viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
-radius = 1; % micro meters
 Npoints = N;
-
-% Wall geometry
-NpointsWall = N*wallRadScale;
-wall_radius = wallRadScale;
-theta = [0:NpointsWall-1]'/NpointsWall * 2 * pi;
-Xwalls = [wall_radius*cos(theta); wall_radius*sin(theta)];
-
-% Wall kernels
-kerWall = kernels(NpointsWall);
-wall = walls(Xwalls, [0 0], zeros(size(Xwalls)));
-wallSLP = kerWall.stokesSLmatrixAlpertWeightless(wall,viscosity);
-% Symmetric Alpert:
-wallSLP = 0.5 * (wallSLP + wallSLP');
-
-Hwall = [wall.sa; wall.sa] * 2 * pi / wall.N;
+radius = 0.5; % micro meters
+bgFlow = @(y) [shearStrength*y;zeros(size(y))];
+xcenters = [-8 0];
+ycenters = [0.5 0];
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
-body_x = radius*cos(theta);
-body_y = radius*sin(theta);
-
-
-%% work out the analytical solution
-given_torque = 1;
-R1 = radius;
-R2 = wall_radius;
-
-expected_velocity = given_torque ./ (4*pi*viscosity * R1^2 * R2^2 / (R2^2-R1^2));
-
-% Force and torque under body moves
-ext_force = [0; 0]; % pico Newton
-ext_torque = [given_torque];
+X = zeros(2*N,numel(xcenters));
+for ik = 1 : numel(xcenters)
+  X(:,ik) = [radius*cos(theta)+xcenters(ik);radius*sin(theta)+ycenters(ik)];
+end
 
 % Time scale
-time_scale = 2*radius/norm(expected_velocity); 
-dt = 1E-3 * time_scale; 
-time_horizon = dt;
+time_horizon = 20/shearStrength;
+
 % Call kernels
 ker = kernels(Npoints);
 
 %% Take time steps
 time = 0;
 nsteps = 0;
-X = [body_x; body_y];
-center = [0; 0];
-orientation = 0; % angle
-traction = zeros(2*Npoints,1);
+tot_iter = 0;
 
-
-U = zeros(3,1);
 while time < time_horizon
   % update time
   time = time + dt; 
   nsteps = nsteps + 1;
   
   % build body object
-  bb = body(X, radius, center, orientation,U);
-  bb.traction = traction; 
+  bb = body(X, [], [], [], []);
 
   % calculate the K matrix
   K = bb.calc_K_matrix();
-  KT = bb.calc_KT_matrix_weightless(bb.sa);
+  KT = bb.calc_KT_matrix_weightless([]);
   H = bb.calc_jac_matrix();
 
   % calculate the single and double layer matrices
@@ -80,22 +53,13 @@ while time < time_horizon
   
   DLP = ker.stokesDLmatrixWeightless(bb);
   DLPT = ker.stokesDLTmatrixWeightless(bb);
-
-  % calculate the interaction matrices
-  SLP_bo = ker.stokesSLmatrixInteractionWeightless(wall, bb, viscosity);
-  SLP_ob = ker.stokesSLmatrixInteractionWeightless(bb, wall, viscosity);
-
-  DLP_ob = ker.stokesDLmatrixInteractionWeightless(bb,wall);
-  DLPT_bo = ker.stokesDLTmatrixInteractionWeightless(wall,bb);
   
    
   % THEN SOLVE FOR BODY VELOCITY AND TRACTION, WALL TRACTION
 
   % form RHS
-  RHS = zeros(2*NpointsWall + 2*Npoints + 3,1);
-  RHS(1:2*Npoints) = 0;
-  RHS(2*Npoints+1:2*Npoints+3) = -[ext_force;ext_torque];
-  RHS(2*Npoints+4:end) = 0;
+  RHS = zeros(2*Npoints + 3,1);
+  RHS(1:2*Npoints) = bgFlow(X(end/2+1:end));
     
   % form the LHS matrix
   
@@ -104,20 +68,12 @@ while time < time_horizon
 
   mat11 = SLP;
   mat12 =  -0.5*K-(DLP*Hmat)*K;
-  mat13 = SLP_bo;
 
   mat21 = -0.5.*KT-(KT*Hmat)*DLPT;
   mat22 = zeros(3);
-  mat23 = -(KT*Hmat)*DLPT_bo;
-  
-  mat31 = SLP_ob;
-  mat32 = -(DLP_ob*Hmat)*K;
-  mat33 = wallSLP;
-   
 
-  MAT = [mat11 mat12 mat13;...
-         mat21 mat22 mat23;...
-         mat31 mat32 mat33];
+  MAT = [mat11 mat12;...
+         mat21 mat22];
   
   if iflag
   % Check if SLP_bo is transpose(SLP_ob)
@@ -126,7 +82,9 @@ while time < time_horizon
   end
 
   % solve the system
-  sol = gmres(MAT,RHS,[],1E-12,50);
+  [sol,~,~,iter] = gmres(MAT,RHS,[],1E-15,size(MAT,1));
+  tot_iter = tot_iter + iter(2);
+  disp(['Number of GMRES iterations is ' num2str(iter(2))])
 
   % dissect the solution
   
@@ -135,9 +93,6 @@ while time < time_horizon
   ui = sol(2*Npoints+1:2*Npoints+2);
   wi = sol(2*Npoints+3);
   U = [ui;wi];
-  ubody_found = (K*U)./H;
-  wall_traction = sol(2*Npoints+4:end)./Hwall;
-
 
   % update the position and orientation
   center = bb.center;
@@ -149,25 +104,33 @@ while time < time_horizon
   ynew = center(2)-sin(-wi*dt)*X0(1:Npoints)+cos(-wi*dt)*X0(Npoints+1:end);
   X = [xnew; ynew];
   
+  expected_velocity = expected_angVelocity(orientation);
+
   orientation = orientation + wi*dt;
   
+  
   % Display the results  
-  error = display_results(ui,wi,expected_velocity,time,X,Xwalls,radius);
+  error(nsteps,1) = display_results(ui,wi,expected_velocity,time,X,radius);
 
 end % end while time < time_horizon
+ave_iter = tot_iter / nsteps;
+
+theta_theo = atan(radius_y/radius_x * tan(-radius_x*radius_y*shearStrength*time/(radius_x^2 + radius_y^2)));
+orientation = oc.getIncAngle(X);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function error = display_results(ui, wi, expected_velocity, time, X, Xwalls,radius)
+function error = display_results(ui, wi, expected_velocity, time, X,radius)
 
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
-disp(['Angular Velocity is found: ' num2str(reshape(wi,1,[])) 'um/s'])
+disp(['Angular velocity is found: ' num2str(wi)])
 disp(['Expected velocity is: ' num2str(expected_velocity) 'um/s'])
-error = abs(wi(1)-expected_velocity)./expected_velocity;
+error = abs(wi-expected_velocity)./abs(expected_velocity);
 disp(['Error is: ' num2str(error)])
-disp(['Translational velocity is found: ' num2str(reshape(ui,1,[]))])
+disp(['Velocity is found: ' num2str(reshape(ui,1,[])) 'um/s'])
 
+if 1
 figure(1); clf;
 vecx = [interpft(X(1:end/2),128); X(1)];
 vecy = [interpft(X(end/2+1:end),128); X(end/2+1)];
@@ -182,16 +145,11 @@ grid off
 box on
 title(['Time = ' num2str(time) 's'])
 
-if ~isempty(Xwalls)
-vecx = [Xwalls(1:end/2); Xwalls(1)];
-vecy = [Xwalls(end/2+1:end); Xwalls(end/2+1)];
-plot(vecx, vecy, 'k','linewidth',2)
-else
-xlim([-2*radius 20*radius])
+xlim([-2*radius 2*radius])
 ylim([-2*radius 2*radius])
-end
-pause(0.1)
 
+pause(0.1)
+end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

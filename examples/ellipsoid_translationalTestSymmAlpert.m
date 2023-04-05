@@ -1,51 +1,68 @@
-clear; clc;
+function error = ellipsoid_translationalTestSymmAlpert(N,wallRadScale)
 
 addpath ../src/
 iflag = 1;
+
+oc = curve;
 
 %% Problem setup
 % Fluid properties
 viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
-radius = 1; % micro meters
-Npoints = 64;
+radius_x = 1; % micro meters
+radius_y = 2;
+Npoints = N;
+radius = max([radius_x;radius_y]);
 
 % Wall geometry
-NpointsWall = 256;
-wall_radius = 4;
+NpointsWall = (N/radius)*wallRadScale;
+wall_radius = wallRadScale*radius;
 theta = [0:NpointsWall-1]'/NpointsWall * 2 * pi;
 Xwalls = [wall_radius*cos(theta); wall_radius*sin(theta)];
+
 
 % Wall kernels
 kerWall = kernels(NpointsWall);
 wall = walls(Xwalls, [0 0], zeros(size(Xwalls)));
-wallSLP = kerWall.stokesSLmatrixRegulWeightless(wall,viscosity);
-wallDLP = kerWall.stokesDLmatrixWeightless(wall);
-wallDLPT = kerWall.stokesDLTmatrixWeightless(wall);
+wallSLP = kerWall.stokesSLmatrixAlpertWeightless(wall,viscosity);
+% Symmetric Alpert:
+wallSLP = 0.5 * (wallSLP + wallSLP');
+
+Hwall = [wall.sa; wall.sa] * 2 * pi / wall.N;
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
-body_x = radius*cos(theta);
-body_y = radius*sin(theta);
-
+body_x = radius_x*cos(theta);
+body_y = radius_y*sin(theta);
+% X = [body_x; body_y];
+% for it = 1 : 100
+% [X,~,~] = oc.redistributeArcLength(X);
+% end
+% body_x = X(1:end/2);
+% body_y = X(end/2+1:end);
 
 %% work out the analytical solution
-given_velocity = 1;
+given_force = 1;
 R1 = radius;
 R2 = wall_radius;
 
-torz = given_velocity * 4 * pi * viscosity * R1^2 * R2^2 / (R2^2-R1^2);
+h = (R1^2 + R2^2)/(R1^2*(log(R2)+1) + R2^2*log(R2)-R2^2 - (R1^2+R2^2)*log(R1));
+am2 = R1^2 * R2^2 / (2 * (R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1)));
+a0 = (R1^2*(2*log(R2)+1) + 2*R2^2*log(R2)-R2^2)/(2*R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1));
+a2 = 1/(2*(R1^2*(log(R2)+1)+R2^2*log(R2)-R2^2-(R1^2+R2^2)*log(R1)));
 
+
+expected_velocity = given_force/(4*pi*viscosity*h);
 % Force and torque under body moves
-ext_force = [0; 0]; % pico Newton
-ext_torque = [torz];
+ext_force = [given_force; 0]; % pico Newton
+ext_torque = [0];
 
 % Time scale
-time_horizon = (10*2*radius)/norm(given_velocity); 
-time_scale = 2*radius/norm(given_velocity); 
-dt = 1E-4 * time_scale; 
-
+time_horizon = (10*2*radius)/norm(expected_velocity); 
+time_scale = 2*radius/norm(expected_velocity); 
+dt = 1E-3 * time_scale; 
+time_horizon = dt;
 % Call kernels
 ker = kernels(Npoints);
 
@@ -70,11 +87,14 @@ while time < time_horizon
   bb.traction = traction; 
 
   % calculate the K matrix
-  K = bb.calc_K_matrix_weighted();
-  KT = bb.calc_KT_matrix(bb.sa);
+  K = bb.calc_K_matrix();
+  KT = bb.calc_KT_matrix_weightless(bb.sa);
+  H = bb.calc_jac_matrix();
 
   % calculate the single and double layer matrices
-  SLP = ker.stokesSLmatrixRegulWeightless(bb,viscosity);  
+  SLP = ker.stokesSLmatrixAlpertWeightless(bb,viscosity);  
+  SLP = 0.5 * (SLP + SLP');
+  
   DLP = ker.stokesDLmatrixWeightless(bb);
   DLPT = ker.stokesDLTmatrixWeightless(bb);
 
@@ -95,21 +115,22 @@ while time < time_horizon
   RHS(2*Npoints+4:end) = 0;
     
   % form the LHS matrix
-  wgt_body = [bb.sa;bb.sa]*2*pi/bb.N;
-  wgt_wall = [wall.sa; wall.sa] * 2 * pi / wall.N;
-  wgt_body_mat = wgt_body(:,ones(3,1));
   
+  Hmat = diag(H);
+  
+
   mat11 = SLP;
-  mat12 =  -(0.5./wgt_body_mat).*K-DLP*K;
+  mat12 =  -0.5*K-(DLP*Hmat)*K;
   mat13 = SLP_bo;
 
-  mat21 = -(0.5./wgt_body_mat').*KT-KT*DLPT;
+  mat21 = -0.5.*KT-(KT*Hmat)*DLPT;
   mat22 = zeros(3);
-  mat23 = -KT*DLPT_bo;
+  mat23 = -(KT*Hmat)*DLPT_bo;
   
   mat31 = SLP_ob;
-  mat32 = -DLP_ob*K;
+  mat32 = -(DLP_ob*Hmat)*K;
   mat33 = wallSLP;
+   
 
   MAT = [mat11 mat12 mat13;...
          mat21 mat22 mat23;...
@@ -127,26 +148,30 @@ while time < time_horizon
   % dissect the solution
   
 
-  traction = sol(1:2*Npoints)./wgt_body;
+  traction = sol(1:2*Npoints)./H;
   ui = sol(2*Npoints+1:2*Npoints+2);
   wi = sol(2*Npoints+3);
   U = [ui;wi];
-  wall_traction = sol(2*Npoints+4:end)./wgt_wall;
+  ubody_found = (K*U)./H;
+  wall_traction = sol(2*Npoints+4:end)./Hwall;
 
-  ubody_found = (K*U)./wgt_body;
+    
+%     wall_vel = wallSLP * sol(2*Npoints+4:end);
+%     wallVelInt = sum((wall_vel(1:end/2).*wall.normal(1:end/2) + wall_vel(end/2+1:end).*wall.normal(end/2+1:end))*2*pi/wall.N.*wall.sa);
+%     disp(['Net velocity on wall: ' num2str(wallVelInt)])
 
-  if iflag
-  figure(2); clf; hold on;
-  
-  quiver(bb.X(1:end/2),bb.X(end/2+1:end),ubody_found(1:end/2),ubody_found(end/2+1:end));
-  axis equal
-  quiver(bb.X(1:end/2),bb.X(end/2+1:end),traction(1:end/2),traction(end/2+1:end))
-  quiver(Xwalls(1:end/2), Xwalls(end/2+1:end),wall_traction(1:end/2),wall_traction(end/2+1:end))
-  plot(Xwalls(1:end/2), Xwalls(end/2+1:end),'linewidth',2)
-  plot(bb.X(1:end/2), bb.X(end/2+1:end),'linewidth',2);
-  legend('Body velocity', 'Body traction', 'Wall traction')
-  pause
-  end
+%   if iflag
+%   figure(2); clf; hold on;
+%   
+%   quiver(bb.X(1:end/2),bb.X(end/2+1:end),ubody_found(1:end/2),ubody_found(end/2+1:end));
+%   axis equal
+%   quiver(bb.X(1:end/2),bb.X(end/2+1:end),traction(1:end/2),traction(end/2+1:end))
+%   quiver(Xwalls(1:end/2), Xwalls(end/2+1:end),wall_traction(1:end/2),wall_traction(end/2+1:end))
+%   plot(Xwalls(1:end/2), Xwalls(end/2+1:end),'linewidth',2)
+%   plot(bb.X(1:end/2), bb.X(end/2+1:end),'linewidth',2);
+%   legend('Body velocity', 'Body traction', 'Wall traction')
+%   pause
+%   end
 
   % update the position and orientation
   center = bb.center;
@@ -161,23 +186,21 @@ while time < time_horizon
   orientation = orientation + wi*dt;
   
   % Display the results  
-  display_results(ui,wi,given_velocity,time,X,Xwalls,radius)
-
-%   pause
+  error = display_results(ui,wi,expected_velocity,time,X,Xwalls,radius);
 
 end % end while time < time_horizon
-
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function display_results(ui, wi, given_velocity, time, X, Xwalls,radius)
+function error = display_results(ui, wi, expected_velocity, time, X, Xwalls,radius)
 
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
-disp(['Angular Velocity is found: ' num2str(reshape(wi,1,[])) 'um/s'])
-disp(['Given velocity is: ' num2str(given_velocity) 'um/s'])
-error = abs(wi(1)-given_velocity)./given_velocity * 100;
-disp(['Error is: ' num2str(error) '%'])
-disp(['Translational velocity is found: ' num2str(reshape(ui,1,[]))])
+disp(['Velocity is found: ' num2str(reshape(ui,1,[])) 'um/s'])
+disp(['Expected velocity is: ' num2str(expected_velocity) 'um/s'])
+error = abs(ui(1)-expected_velocity)./expected_velocity;
+disp(['Error is: ' num2str(error)])
+disp(['Angular velocity is found: ' num2str(wi)])
 
 figure(1); clf;
 vecx = [interpft(X(1:end/2),128); X(1)];

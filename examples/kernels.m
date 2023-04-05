@@ -1125,6 +1125,167 @@ D = [D11 D12; D12 D22];
 
 end % stokesDLTmatrixInteractionRegulWeightless
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pot = stokesDLT_times_density(o,source,target,density,isame)
+
+% source and target are lists of rigid objects
+% pot is also the list of size of target
+% this does not include the self-interaction 
+% density is a list defined on the source
+
+Ntar = target.N;
+Nsou = source.N;
+ntarget = target.nv;
+nsource = source.nv;
+
+pot = zeros(2*Ntar, ntarget);
+factor = 1/pi;
+
+for k = 1 : ntarget
+
+  if isame
+    K = [(1:k-1) (k+1:nsource)];
+  else
+    K = [1:nsource];
+  end
+  xsou = source.X(1:Nsou,K);
+  ysou = target.X(Nsou+1:2*Nsou,K);
+  denx = density(1:Nsou,K);
+  deny = density(Nsou+1:2*Nsou,K);
+  for j = 1 : Ntar
+    xtar = target.X(j,k);
+    ytar = target.X(j+Ntar,k);
+  
+    normx = target.normal(j,k);
+    normy = target.normal(j+Ntar,k);
+    
+    diffx = xtar - xsou;
+    diffy = ytar - ysou;
+
+    rho4 = (diffx.^2 + diffy.^2).^(-2);
+  
+    rdotnTIMESrdotf = factor*(diffx.*normx + diffy.*normy).*rho4.*(diffx.*denx + diffy.*deny);
+  
+    pot(j,k) = pot(j,k) + sum(sum(rdotnTIMESrdotf.*diffx));
+    pot(j+Ntar,k) = pot(j+Ntar,k) + sum(sum(rdotnTIMESrdotf.*diffy));
+  
+  end % for j = 1 : N
+end % for k = 1:ntarget
+
+end % stokesDLT_times_density
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pot = stokesDL_times_density(o,source,target,density,isame)
+
+% source and target are lists of rigid objects
+% pot is also the list of size of target
+% this does not include the self-interaction 
+% density is a list defined on the source
+
+Ntar = target.N;
+Nsou = source.N;
+ntarget = target.nv;
+nsource = source.nv;
+
+pot = zeros(2*Ntar, ntarget);
+factor = -1/pi;
+
+for k = 1 : ntarget
+
+  if isame
+    K = [(1:k-1) (k+1:nsource)];
+  else
+    K = [1:nsource];
+  end
+  xsou = source.X(1:Nsou,K);
+  ysou = source.X(Nsou+1:2*Nsou,K);
+  
+  normx = source.normal(1:Nsou,K);
+  normy = source.normal(Nsou+1:2*Nsou,K);
+  
+  denx = density(1:Nsou,K);
+  deny = density(Nsou+1:2*Nsou,K);
+  for j = 1 : Ntar
+    xtar = target.X(j,k);
+    ytar = target.X(j+Ntar,k);
+  
+    diffx = xtar - xsou;
+    diffy = ytar - ysou;
+
+    rho4 = (diffx.^2 + diffy.^2).^(-2);
+  
+    rdotnTIMESrdotf = (diffx.*normx + diffy.*normy).*rho4.*(diffx.*denx + diffy.*deny);
+  
+    pot(j,k) = pot(j,k) + sum(sum(rdotnTIMESrdotf.*diffx));
+    pot(j+Ntar,k) = pot(j+Ntar,k) + sum(sum(rdotnTIMESrdotf.*diffy));
+  
+  end % for j = 1 : N
+end % for k = 1:ntarget
+pot = factor*pot;
+end % stokesDL_times_density
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pot = stokesSL_times_density(o,source,target,viscosity,density,isame)
+
+% source and target are lists of rigid objects
+% pot is also the list of size of target
+% this does not include the self-interaction 
+% density is a list defined on the source
+
+Ntar = target.N;
+Nsou = source.N;
+ntarget = target.nv;
+nsource = source.nv;
+
+pot = zeros(2*Ntar, ntarget);
+factor = 1/4/pi/viscosity;
+
+for k = 1 : ntarget
+
+  if isame
+    K = [(1:k-1) (k+1:nsource)];
+  else
+    K = [1:nsource];
+  end
+  xsou = source.X(1:Nsou,K);
+  ysou = target.X(Nsou+1:2*Nsou,K);
+  
+  denx = density(1:Nsou,K);
+  deny = density(Nsou+1:2*Nsou,K);
+  for j = 1 : Ntar
+    xtar = target.X(j,k);
+    ytar = target.X(j+Ntar,k);
+  
+    
+
+    diffx = xtar - xsou;
+    diffy = ytar - ysou;
+
+    rho2 = (diffx.^2 + diffy.^2).^(-1);
+
+    rho = sqrt(diffx.^2 + diffy.^2);
+
+    logpart = -log(rho);
+  
+    val = logpart.*denx;
+    pot(j,k) = sum(val(:));
+    val = logpart.*deny;
+    pot(j+Ntar,k) = sum(val(:));
+
+    coeff = (diffx.*denx + diffy.*deny).*rho2;
+    val = coeff.*diffx;
+    pot(j,k) = pot(j,k) + sum(val(:));
+    val = coeff.*diffy;
+    pot(j+Ntar,k) = pot(j+Ntar,k) + sum(val(:));
+    
+  
+  end % for j = 1 : N
+end % for k = 1:ntarget
+
+pot = factor * pot;
+
+end % stokesSL_times_density
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [stokesDLP,stokesDLPtar] = ...
     exactStokesDL(o,vesicle,f,M,Xtar,K1)
 % [stokesDLP,stokesDLPtar] = exactStokesDL(vesicle,f,Xtar,K1) computes
@@ -1151,6 +1312,7 @@ else
 end
 
 den = (f.*[vesicle.sa;vesicle.sa]*2*pi/vesicle.N)* diag(1-vesicle.viscCont);
+den =  f;
 % jacobian term and 2*pi/N accounted for here
 % have accounted for the scaling with (1-\nu) here
 
