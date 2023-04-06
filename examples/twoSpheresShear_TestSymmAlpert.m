@@ -1,9 +1,5 @@
-function [trajectories,velocities] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, N)
-
+function [trajectories,velocities,ave_iter,max_iter] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, N)
 addpath ../src/
-iflag = 1;
-
-oc = curve;
 
 %% Problem setup
 % Fluid properties
@@ -14,7 +10,7 @@ Npoints = N;
 radius = 0.5; % micro meters
 bgFlow = @(y) [shearStrength*y;zeros(size(y))];
 xcenters = [-8 0];
-ycenters = [0.5 0];
+ycenters = [0.25 0];
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
@@ -24,7 +20,7 @@ for ik = 1 : numel(xcenters)
 end
 
 % Time scale
-time_horizon = 20/shearStrength;
+time_horizon = 40/shearStrength;
 
 % Call kernels
 ker = kernels(Npoints);
@@ -33,7 +29,9 @@ ker = kernels(Npoints);
 time = 0;
 nsteps = 0;
 tot_iter = 0;
-
+velocities = [];
+trajectories = [];
+max_iter = -inf;
 while time < time_horizon
   % update time
   time = time + dt; 
@@ -45,108 +43,156 @@ while time < time_horizon
   % calculate the K matrix
   K = bb.calc_K_matrix();
   KT = bb.calc_KT_matrix_weightless([]);
+  Hmat = bb.calc_jacDiag_matrix();
   H = bb.calc_jac_matrix();
 
   % calculate the single and double layer matrices
   SLP = ker.stokesSLmatrixAlpertWeightless(bb,viscosity);  
-  SLP = 0.5 * (SLP + SLP');
-  
   DLP = ker.stokesDLmatrixWeightless(bb);
   DLPT = ker.stokesDLTmatrixWeightless(bb);
   
    
   % THEN SOLVE FOR BODY VELOCITY AND TRACTION, WALL TRACTION
-
+  RHS = zeros(2*bb.N*bb.nv + 3*bb.nv,1);
   % form RHS
-  RHS = zeros(2*Npoints + 3,1);
-  RHS(1:2*Npoints) = bgFlow(X(end/2+1:end));
-    
-  % form the LHS matrix
-  
-  Hmat = diag(H);
-  
+  for k = 1 : bb.nv
+    istart = (k-1)*(2*bb.N+3)+1;
+    iend = istart + 2*bb.N - 1;
+    RHS(istart:iend) = -bgFlow(X(end/2+1:end,k));
 
-  mat11 = SLP;
-  mat12 =  -0.5*K-(DLP*Hmat)*K;
-
-  mat21 = -0.5.*KT-(KT*Hmat)*DLPT;
-  mat22 = zeros(3);
-
-  MAT = [mat11 mat12;...
-         mat21 mat22];
-  
-  if iflag
-  % Check if SLP_bo is transpose(SLP_ob)
-  check_norm = norm(MAT-MAT');
-  disp(['Symmetric MAT check: ' num2str(check_norm)])
+    SLP(:,:,k) = 0.5 * (SLP(:,:,k) + SLP(:,:,k)');
   end
 
+
   % solve the system
-  [sol,~,~,iter] = gmres(MAT,RHS,[],1E-15,size(MAT,1));
+  sys_size = 2*bb.N*bb.nv+3*bb.nv;
+  [sol,iflag,~,iter,~] = gmres(@(X) ...
+      TimeMatVec(X,bb,ker,SLP,DLP,DLPT,K,KT,Hmat,viscosity),...
+      RHS,[],1E-10,sys_size,[]);
+ 
   tot_iter = tot_iter + iter(2);
+  if iter(2) > max_iter; max_iter = iter(2); end;
   disp(['Number of GMRES iterations is ' num2str(iter(2))])
 
   % dissect the solution
-  
+  velocity = zeros(3,bb.nv);
+  centers = zeros(2,bb.nv);
+  traction = zeros(2*bb.N,bb.nv);
 
-  traction = sol(1:2*Npoints)./H;
-  ui = sol(2*Npoints+1:2*Npoints+2);
-  wi = sol(2*Npoints+3);
-  U = [ui;wi];
-
-  % update the position and orientation
-  center = bb.center;
+  for k = 1 : bb.nv
+    istart = (k-1)*(2*bb.N+3)+1;
+    iend = istart+2*bb.N-1;
+    traction(:,k) = sol(istart:iend)./H(:,k);
+    istart = iend+1;
+    iend = istart+2;
+    velocity(:,k) = sol(istart:iend);
     
-  X0 = [X(1:Npoints)-center(1); X(Npoints+1:end)-center(2)];
-  center = center + ui*dt;
+    cx = mean(bb.X(1:bb.N,k));
+    cy = mean(bb.X(bb.N+1:2*bb.N,k));
 
-  xnew = center(1)+cos(-wi*dt)*X0(1:Npoints)+sin(-wi*dt)*X0(Npoints+1:end);
-  ynew = center(2)-sin(-wi*dt)*X0(1:Npoints)+cos(-wi*dt)*X0(Npoints+1:end);
-  X = [xnew; ynew];
-  
-  expected_velocity = expected_angVelocity(orientation);
+    X0 = [bb.X(1:bb.N,k)-cx; bb.X(bb.N+1:2*bb.N,k)-cy];
+    cx = cx + velocity(1,k)*dt;
+    cy = cy + velocity(2,k)*dt;
+    centers(:,k) = [cx;cy];
+    
+    xnew = cx+cos(velocity(3,k)*dt)*X0(1:bb.N)+sin(velocity(3,k)*dt)*X0(bb.N+1:end);
+    ynew = cy-sin(velocity(3,k)*dt)*X0(1:bb.N)+cos(velocity(3,k)*dt)*X0(bb.N+1:end);
+    X(:,k) = [xnew;ynew];
 
-  orientation = orientation + wi*dt;
-  
+  end
+  velocities = [velocities velocity(:)];
+  trajectories = [trajectories centers(:)];
+
   
   % Display the results  
-  error(nsteps,1) = display_results(ui,wi,expected_velocity,time,X,radius);
-
+  display_results(time,X,traction,trajectories,velocity);
 end % end while time < time_horizon
 ave_iter = tot_iter / nsteps;
 
-theta_theo = atan(radius_y/radius_x * tan(-radius_x*radius_y*shearStrength*time/(radius_x^2 + radius_y^2)));
-orientation = oc.getIncAngle(X);
 end
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function error = display_results(ui, wi, expected_velocity, time, X,radius)
+function val = TimeMatVec(sol, bb, ker, SLP, DLP, DLPT, K, KT, H, viscosity)
+
+val = zeros(size(sol));
+N = bb.N;
+nv = bb.nv;
+
+valTraction = zeros(2*N,nv);
+valVelocity = zeros(3,nv);
+
+traction = zeros(2*N,nv);
+velocity = zeros(3,nv);
+
+for k = 1 : nv
+  istart = (k-1)*(2*N+3)+1;
+  iend = istart+2*N-1;
+  traction(:,k) = sol(istart:iend);
+  istart = iend+1;
+  iend = istart+2;
+  velocity(:,k) = sol(istart:iend);
+end
+
+% Calculate the self-interactions
+SLvals = zeros(2*N,nv);
+KDLvals = zeros(2*N,nv); % includes -1/2 * K - DHK
+KTDTvals = zeros(3,nv); % includes -1/2*KT - KT *H *DT
+surfVels = zeros(2*N,nv);
+for k = 1 : nv
+  SLvals(:,k) = SLP(:,:,k) * traction(:,k);
+  KDLvals(:,k) = -1/2*K(:,:,k)*velocity(:,k)-DLP(:,:,k)*(H(:,:,k)*(K(:,:,k)*velocity(:,k)));
+  KTDTvals(:,k) = -1/2*KT(:,:,k)*traction(:,k) - ((KT(:,:,k)*H(:,:,k))*DLPT(:,:,k))*traction(:,k);
+  surfVels(:,k) = H(:,:,k)* (K(:,:,k) * velocity(:,k));
+end
+
+
+% Calculate the hydrodynamic interactions
+SLinteract = ker.stokesSL_times_density(bb,bb,viscosity,traction,1);
+DLinteract = ker.stokesDL_times_density(bb,bb,surfVels,1);
+DLTinteract = ker.stokesDLT_times_density(bb,bb,traction,1);
+
+valTraction = valTraction + SLvals + KDLvals + SLinteract - DLinteract;
+valVelocity = valVelocity + KTDTvals;
+for k = 1 : nv
+  valVelocity(:,k) = valVelocity(:,k) - (KT(:,:,k)*H(:,:,k))*DLTinteract(:,k);
+  istart = (k-1)*(2*N+3)+1;
+  iend = istart - 1 + 2*N + 3;
+  val(istart:iend) = [valTraction(:,k);valVelocity(:,k)];
+end
+
+end % val = TimeMatVec
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function display_results(time,X,traction,trajectories,velocity)
 
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
-disp(['Angular velocity is found: ' num2str(wi)])
-disp(['Expected velocity is: ' num2str(expected_velocity) 'um/s'])
-error = abs(wi-expected_velocity)./abs(expected_velocity);
-disp(['Error is: ' num2str(error)])
-disp(['Velocity is found: ' num2str(reshape(ui,1,[])) 'um/s'])
-
-if 1
+disp(['The velocity of disk 1: ' num2str(reshape(velocity(:,1),1,[]))])
+disp(['The velocity of disk 2: ' num2str(reshape(velocity(:,2),1,[]))])
+if 0
 figure(1); clf;
-vecx = [interpft(X(1:end/2),128); X(1)];
-vecy = [interpft(X(end/2+1:end),128); X(end/2+1)];
+vecx = [X(1:end/2,:); X(1,:)];
+vecy = [X(end/2+1:end,:); X(end/2+1,:)];
 
 plot(vecx, vecy, 'k');
 hold on;
 fill(vecx, vecy,'k');
 axis equal
 
+for k = 1 : size(X,2)
+  istart = (k-1)*2+1;
+  plot(trajectories(istart,:),trajectories(istart+1,:),'linewidth',2)
+  quiver(trajectories(istart,end),trajectories(istart+1,end),1*velocity(1,k),1*velocity(2,k),'c','LineWidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),traction(1:end/2,k),traction(end/2+1:end,k),'r')
+end
 
 grid off
 box on
 title(['Time = ' num2str(time) 's'])
 
-xlim([-2*radius 2*radius])
-ylim([-2*radius 2*radius])
+xlim([-10 2])
+ylim([-1 1])
 
 pause(0.1)
 end

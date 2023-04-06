@@ -39,14 +39,14 @@ body_y = radius_y*sin(theta);
 xlim([-2*radius 2*radius])
 ylim([-2*radius 2*radius])
 
-expected_angVelocity = @(theta) -shearStrength/(radius_x^2 + radius_y^2) ...
+expected_angVelocity = @(theta) shearStrength/(radius_x^2 + radius_y^2) ...
     * (radius_x^2*sin(theta)^2 + radius_y^2*cos(theta)^2);  
 
 
 % Time scale
 time_horizon = 20/shearStrength;
 dt = 1E-1/shearStrength; 
-time_horizon = dt;
+% time_horizon = dt;
 
 % Call kernels
 ker = kernels(Npoints);
@@ -87,7 +87,7 @@ while time < time_horizon
 
   % form RHS
   RHS = zeros(2*Npoints + 3,1);
-  RHS(1:2*Npoints) = bgFlow(X(end/2+1:end));
+  RHS(1:2*Npoints) = -bgFlow(X(end/2+1:end));
     
   % form the LHS matrix
   
@@ -110,7 +110,7 @@ while time < time_horizon
   end
 
   % solve the system
-  [sol,~,~,iter] = gmres(MAT,RHS,[],1E-15,size(MAT,1));
+  [sol,~,~,iter] = gmres(MAT,RHS,[],1E-10,size(MAT,1));
   tot_iter = tot_iter + iter(2);
   disp(['Number of GMRES iterations is ' num2str(iter(2))])
 
@@ -123,13 +123,15 @@ while time < time_horizon
   U = [ui;wi];
 
   % update the position and orientation
-  center = bb.center;
+  cx = mean(X(1:Npoints));
+  cy = mean(X(Npoints+1:2*Npoints));
     
-  X0 = [X(1:Npoints)-center(1); X(Npoints+1:end)-center(2)];
-  center = center + ui*dt;
+  X0 = [X(1:Npoints)-cx; X(Npoints+1:end)-cy];
+  cx = cx + ui(1)*dt;
+  cy = cy + ui(2)*dt;
 
-  xnew = center(1)+cos(-wi*dt)*X0(1:Npoints)+sin(-wi*dt)*X0(Npoints+1:end);
-  ynew = center(2)-sin(-wi*dt)*X0(1:Npoints)+cos(-wi*dt)*X0(Npoints+1:end);
+  xnew = cx+cos(wi*dt)*X0(1:Npoints)+sin(wi*dt)*X0(Npoints+1:end);
+  ynew = cy-sin(wi*dt)*X0(1:Npoints)+cos(wi*dt)*X0(Npoints+1:end);
   X = [xnew; ynew];
   
   expected_velocity = expected_angVelocity(orientation);
@@ -139,7 +141,6 @@ while time < time_horizon
   
   % Display the results  
   error(nsteps,1) = display_results(ui,wi,expected_velocity,time,X,radius);
-
 end % end while time < time_horizon
 ave_iter = tot_iter / nsteps;
 

@@ -4,7 +4,7 @@ N = [16; 32; 64; 128; 256];
 
 ave_iters = [];
 errors = [];
-for ir = 4 : numel(N)
+for ir = 1 : numel(N)
 
 [error, ave_iter, orientation, theta_theo] = ellipsoid_shearTestSymmAlpert(1,N(ir));    
 errors(:,ir) = error;
