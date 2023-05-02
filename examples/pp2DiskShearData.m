@@ -1,28 +1,5 @@
-clear;
-% 
-xcenters = [-8 0];
-ycenters = [0.25 0.25];
-shearStrength = 1;
+load LukasShearData1stKind.mat
 
-% xcenters = [-4 4];
-% ycenters = [0 0];
-% force = [-1;0;0];
-dt = 0.4;
-Ns = [16;32;64;128;256];
-
-for in = 1 : numel(Ns)
-[trajectories,velocities,ave_iter,max_iter] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, Ns(in));
-% [trajectories,velocities,ave_iter,max_iter] = twoSpheresShear_Test1stKind(xcenters, ycenters, shearStrength, dt, Ns(in));
-% [trajectories,velocities,ave_iter,max_iter] = twoSpheresForce_TestSymmAlpert(xcenters, ycenters, force, dt, Ns(in));
-% [trajectories,velocities,ave_iter,max_iter] = twoSpheresForce_Test1stKind(xcenters, ycenters, force, dt, Ns(in));
-ave_iters(in,1) = ave_iter;
-max_iters(in,1) = max_iter;
-trajs{in} = trajectories;
-vels{in} = velocities;
-end
-
-
-%%
 theta = [0:63]'/64 * 2 * pi;
 vecx = cos(theta)*0.5;
 vecy = sin(theta)*0.5;

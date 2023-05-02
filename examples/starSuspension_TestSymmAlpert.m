@@ -1,4 +1,4 @@
-function [trajectories,velocities,ave_iter,max_iter] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, N)
+function [ave_iter,max_iter,trajectories] = starSuspension_TestSymmAlpert(shearStrength, dt, N)
 addpath ../src/
 
 %% Problem setup
@@ -7,21 +7,35 @@ viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
 Npoints = N;
-radius = 0.5; % micro meters
 bgFlow = @(y) [shearStrength*y;zeros(size(y))];
-% xcenters = [-8 0];
-% ycenters = [0.25 0];
+xcenters = [-4 -3 -1 0];
+ycenters = [-1 -2 -4 -5];
 
-% Body shape discretization assuming a sphere
-theta = [0:Npoints-1]'/Npoints * 2 * pi;
-X = zeros(2*N,numel(xcenters));
-for ik = 1 : numel(xcenters)
-  X(:,ik) = [radius*cos(theta)+xcenters(ik);radius*sin(theta)+ycenters(ik)];
+% xcenters = [-5 -3 0 2];
+% ycenters = [-1 -3 -6 -8];
+
+angles = [pi/4 0 pi/4 0;
+    0 pi/4 0 pi/4;
+    pi/4 0 pi/4 0;
+    0 pi/4 0 pi/4];
+
+[xc,yc] = meshgrid(xcenters,ycenters);
+folds = 4;
+X = zeros(2*N,numel(xc(:)));
+t = (0:N-1)'*2*pi/N;
+radius = 1 + 0.3*cos(folds*t);
+Xt = [radius.*cos(t);radius.*sin(t)];
+dy = max(Xt(end/2+1:end))-min(Xt(end/2+1:end));
+Xt = Xt/dy;
+for ik = 1 : numel(xc(:))
+% rotate Xt and locate the center
+X(1:end/2,ik) = xc(ik) + cos(angles(ik))*Xt(1:N)+sin(angles(ik))*Xt(N+1:end);
+X(end/2+1:end,ik) = yc(ik) - sin(angles(ik))*Xt(1:N)+cos(angles(ik))*Xt(N+1:end);
 end
 
 % Time scale
-time_horizon = 40/shearStrength;
-% time_horizon = dt;
+time_horizon = 17;
+
 % Call kernels
 ker = kernels(Npoints);
 
@@ -32,7 +46,6 @@ tot_iter = 0;
 velocities = [];
 trajectories = [];
 max_iter = -inf;
-count = 1;
 while time < time_horizon
   % update time
   time = time + dt; 
@@ -107,7 +120,7 @@ while time < time_horizon
 
   
   % Display the results  
-  count = display_results(time,X,traction,trajectories,velocity,count);
+  display_results(time,X,traction,trajectories,velocity);
 end % end while time < time_horizon
 ave_iter = tot_iter / nsteps;
 
@@ -166,39 +179,35 @@ end
 
 end % val = TimeMatVec
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function count = display_results(time,X,traction,trajectories,velocity,count)
+function display_results(time,X,traction,trajectories,velocity)
 
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
-disp(['The velocity of disk 1: ' num2str(reshape(velocity(:,1),1,[]))])
-disp(['The velocity of disk 2: ' num2str(reshape(velocity(:,2),1,[]))])
-if rem(time,0.75) == 0
+
+if 0
 figure(1); clf;
-vecx = [X(1:end/2,:); X(1,:)];
-vecy = [X(end/2+1:end,:); X(end/2+1,:)];
+vecx = [interpft(X(1:end/2,:),128); X(1,:)];
+vecy = [interpft(X(end/2+1:end,:),128); X(end/2+1,:)];
 
 plot(vecx, vecy, 'k');
 hold on;
 fill(vecx, vecy,'k');
 axis equal
 
-for k = 1 : size(X,2)
-  istart = (k-1)*2+1;
-  plot(trajectories(istart,:),trajectories(istart+1,:),'linewidth',2)
-  quiver(trajectories(istart,end),trajectories(istart+1,end),1*velocity(1,k),1*velocity(2,k),'c','LineWidth',2)
-  quiver(X(1:end/2,k),X(end/2+1:end,k),traction(1:end/2,k),traction(end/2+1:end,k),'r')
-end
+% for k = 1 : size(X,2)
+%   istart = (k-1)*2+1;
+%   plot(trajectories(istart,:),trajectories(istart+1,:),'linewidth',2)
+%   quiver(trajectories(istart,end),trajectories(istart+1,end),1*velocity(1,k),1*velocity(2,k),'c','LineWidth',2)
+%   quiver(X(1:end/2,k),X(end/2+1:end,k),traction(1:end/2,k),traction(end/2+1:end,k),'r')
+% end
 
 grid off
 box on
 title(['Time = ' num2str(time) 's'])
 
-xlim([-10 2])
-ylim([-1 1])
+xlim([-7 3])
+ylim([-8 2])
 
-ax = gca;
-filename = ['./frames/image', sprintf('%04',count), '.png'];
-exportgraphics(ax,filename,'Resolution',300)
 pause(0.1)
 end
 end

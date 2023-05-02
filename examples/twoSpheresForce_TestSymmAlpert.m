@@ -1,4 +1,4 @@
-function [trajectories,velocities,ave_iter,max_iter] = twoSpheresShear_TestSymmAlpert(xcenters, ycenters, shearStrength, dt, N)
+function [trajectories,velocities,ave_iter,max_iter] = twoSpheresForce_TestSymmAlpert(xcenters, ycenters, force, dt, N)
 addpath ../src/
 
 %% Problem setup
@@ -8,9 +8,10 @@ viscosity = 1; % Pa.s -- 1000x water's viscosity
 % Body geometry
 Npoints = N;
 radius = 0.5; % micro meters
-bgFlow = @(y) [shearStrength*y;zeros(size(y))];
-% xcenters = [-8 0];
-% ycenters = [0.25 0];
+
+ext_forces = zeros(3,2);
+ext_forces(:,1) = force;
+ext_forces(:,2) = -force;
 
 % Body shape discretization assuming a sphere
 theta = [0:Npoints-1]'/Npoints * 2 * pi;
@@ -20,8 +21,8 @@ for ik = 1 : numel(xcenters)
 end
 
 % Time scale
-time_horizon = 40/shearStrength;
-% time_horizon = dt;
+time_horizon = 40;
+
 % Call kernels
 ker = kernels(Npoints);
 
@@ -57,9 +58,10 @@ while time < time_horizon
   RHS = zeros(2*bb.N*bb.nv + 3*bb.nv,1);
   % form RHS
   for k = 1 : bb.nv
-    istart = (k-1)*(2*bb.N+3)+1;
-    iend = istart + 2*bb.N - 1;
-    RHS(istart:iend) = -bgFlow(X(end/2+1:end,k));
+
+    istart = (k-1)*(2*bb.N+3) + 2*bb.N + 1;
+    iend = istart - 1 + 3;
+    RHS(istart:iend) = ext_forces(:,k);
 
     SLP(:,:,k) = 0.5 * (SLP(:,:,k) + SLP(:,:,k)');
   end
@@ -74,8 +76,7 @@ while time < time_horizon
   tot_iter = tot_iter + iter(2);
   if iter(2) > max_iter; max_iter = iter(2); end;
   disp(['Number of GMRES iterations is ' num2str(iter(2))])
-  if nsteps == 1; pause; end;
-
+%   if nsteps == 1; pause; end;
   % dissect the solution
   velocity = zeros(3,bb.nv);
   centers = zeros(2,bb.nv);
@@ -193,7 +194,7 @@ grid off
 box on
 title(['Time = ' num2str(time) 's'])
 
-xlim([-10 2])
+xlim([-10 10])
 ylim([-1 1])
 
 ax = gca;
