@@ -1148,7 +1148,7 @@ for k = 1 : ntarget
     K = [1:nsource];
   end
   xsou = source.X(1:Nsou,K);
-  ysou = target.X(Nsou+1:2*Nsou,K);
+  ysou = source.X(Nsou+1:2*Nsou,K);
   denx = density(1:Nsou,K);
   deny = density(Nsou+1:2*Nsou,K);
   for j = 1 : Ntar
@@ -1248,7 +1248,7 @@ for k = 1 : ntarget
     K = [1:nsource];
   end
   xsou = source.X(1:Nsou,K);
-  ysou = target.X(Nsou+1:2*Nsou,K);
+  ysou = source.X(Nsou+1:2*Nsou,K);
   
   denx = density(1:Nsou,K);
   deny = density(Nsou+1:2*Nsou,K);

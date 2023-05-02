@@ -68,6 +68,26 @@ end% iv
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function H = calc_jacDiag_matrix(o)
+
+% 2*N by 1 matrix of jacobian
+H = zeros(2*o.N,2*o.N,o.nv);
+for iv = 1 : o.nv
+  H(:,:,iv) = diag([o.sa(:,iv);o.sa(:,iv)] * 2 * pi / o.N);
+end
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function H = calc_jac_matrix(o)
+
+% 2*N by 1 matrix of jacobian
+H = zeros(2*o.N,o.nv);
+for iv = 1 : o.nv
+  H(:,iv) = [o.sa(:,iv);o.sa(:,iv)] * 2 * pi / o.N;
+end
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 end % methods
 
