@@ -31,6 +31,7 @@ for ik = 1 : numel(xc(:))
 X(1:end/2,ik) = xc(ik) + cos(angles(ik))*Xt(1:N)+sin(angles(ik))*Xt(N+1:end);
 X(end/2+1:end,ik) = yc(ik) - sin(angles(ik))*Xt(1:N)+cos(angles(ik))*Xt(N+1:end);
 end
+nrigid = numel(xc(:));
 
 % Time scale
 time_horizon = 17;
@@ -74,12 +75,26 @@ while time < time_horizon
     SLP(:,:,k) = 0.5 * (SLP(:,:,k) + SLP(:,:,k)');
   end
 
+  % build the preconditioner
+  bdiagL = zeros(2*Npoints+3,2*Npoints+3,nrigid);
+  bdiagU = zeros(2*Npoints+3,2*Npoints+3,nrigid);
+  for k=1:nrigid
+    [bdiagL(:,:,k),bdiagU(:,:,k)] = lu([SLP(:,:,k) -K(:,:,k); ...
+        -KT(:,:,k) zeros(3)]);
+  end
+
 
   % solve the system
   sys_size = 2*bb.N*bb.nv+3*bb.nv;
+  if 0
   [sol,iflag,~,iter,~] = gmres(@(X) ...
       TimeMatVec(X,bb,ker,SLP,K,KT,Hmat,viscosity),...
       RHS,[],1E-10,sys_size,[]);
+  else
+  [sol,iflag,~,iter,~] = gmres(@(X) ...
+      TimeMatVec(X,bb,ker,SLP,K,KT,Hmat,viscosity),...
+      RHS,[],1E-10,sys_size,@(z) precondBD(z,bdiagL,bdiagU));
+  end
  
   tot_iter = tot_iter + iter(2);
   if iter(2) > max_iter; max_iter = iter(2); end;
@@ -123,6 +138,17 @@ ave_iter = tot_iter / nsteps;
 
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function val = precondBD(z,bdiagL,bdiagU)
+Nrd = (size(bdiagL,1)-3)/2;
+nvrd = size(bdiagL,3);
+
+valRigid = zeros(2*Nrd+3,nvrd);
+for k = 1 : nvrd
+  valRigid(:,k) = bdiagU(:,:,k)\(bdiagL(:,:,k)\z((k-1)*(2*Nrd+3)+1:k*(2*Nrd+3)));
+end
+val = valRigid(:);
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

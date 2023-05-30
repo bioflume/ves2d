@@ -1,4 +1,4 @@
-function [ave_iter, max_iter]  = confined_2ndKind(N)
+function [ave_iter, max_iter]  = confined_2ndKind(N,ifix)
 
 addpath ../src/
 
@@ -98,6 +98,9 @@ while time < time_horizon
   % form RHS
   RHS = zeros(2*NpointsWall + 2*Npoints + 3,1);
   RHS(1:2*Npoints) = 0;
+  if ifix
+    RHS(1:2*Npoints) = RHS(1:2*Npoints) + K*[ext_force;ext_torque];
+  end
   RHS(2*Npoints+1:2*Npoints+3) = -[ext_force;ext_torque];
   RHS(2*Npoints+4:end) = 0;
   if ~isempty(wall_velocity)      
@@ -111,6 +114,9 @@ while time < time_horizon
   
 
   mat11 = SLP;
+  if ifix
+    mat11 = mat11 + K*KT;
+  end
   mat12 =  -0.5*K-(DLP*Hmat)*K;
   mat13 = SLP_bo;
 

@@ -1,4 +1,4 @@
-function [error,ave_iter,orientation,theta_theo] = ellipsoid_shearTestSymmAlpert(shearStrength,N)
+function [error,ave_iter,orientation,theta_theo] = ellipsoid_shearTestSDDj(shearStrength,N)
 
 addpath ../src/
 iflag = 1;
@@ -11,7 +11,7 @@ viscosity = 1; % Pa.s -- 1000x water's viscosity
 
 % Body geometry
 radius_x = 1; % micro meters
-radius_y = 2;
+radius_y = 10;
 Npoints = N;
 radius = max([radius_x;radius_y]);
 bgFlow = @(y) [shearStrength*y;zeros(size(y))];
@@ -82,8 +82,11 @@ while time < time_horizon
   
   DLP = ker.stokesDLmatrixWeightless(bb);
   DLPT = ker.stokesDLTmatrixWeightless(bb);
+  Hmat = diag(H);
+  HmatInv = diag(1./H);
   
-   
+  GR = ker.stokeRotmatrix(bb,bb,viscosity);
+
   % THEN SOLVE FOR BODY VELOCITY AND TRACTION, WALL TRACTION
 
   % form RHS
@@ -91,15 +94,32 @@ while time < time_horizon
   RHS(1:2*Npoints) = -bgFlow(X(end/2+1:end));
     
   % form the LHS matrix
-  
-  Hmat = diag(H);
-  
-
+%   What we are suggesting
+  if 0
   mat11 = SLP;
   mat12 =  -0.5*K-(DLP*Hmat)*K;
 
   mat21 = -0.5.*KT-(KT*Hmat)*DLPT;
   mat22 = zeros(3);
+  end
+
+  % Shravan
+  if 0
+  mat11 = HmatInv/2 - DLP + SLP;
+  mat12 = -K;
+  
+  mat21 = -KT*Hmat*DLPT;
+  mat22 = zeros(3);
+  end
+
+  % Power and Miranda
+  if 1
+  mat11 = HmatInv/2 - DLP + GR*KT;
+  mat12 = -K;
+
+  mat21 = -KT;
+  mat22 = zeros(3);
+  end
 
   MAT = [mat11 mat12;...
          mat21 mat22];

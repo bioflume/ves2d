@@ -674,7 +674,122 @@ G= 1/4/pi/viscosity * 2*pi/Nsource * [G11 G12; G12 G22];
 
 end % stokesSLmatrixInteraction
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function GR = stokeRotmatrix(o,source,target,viscosity)
 
+oc = curve;
+xfactor = 1/4/pi/viscosity;
+[cx, cy] = oc.getCenterXY(source.X);
+[X, Y] = oc.getXY(target.X);
+ntarget = target.nv;
+nsource = source.nv;
+Ntarget = target.N;
+
+GR = zeros(2*Ntarget,3,ntarget);
+
+for isrc = 1 : nsource
+
+diffx = X(:,isrc) - cx(isrc); 
+diffy = Y(:,isrc) - cy(isrc);
+
+rho = sqrt(diffx.^2 + diffy.^2);
+rho2 = (diffx.^2 + diffy.^2).^(-1);
+
+logpart = -rho;
+
+GR(1:Ntarget,1,isrc) = logpart + diffx.^2.*rho2;
+GR(Ntarget+1:2*Ntarget,1,isrc) =  diffx.*diffy.*rho2;
+
+GR(1:Ntarget,2,isrc) = diffx.*diffy.*rho2;
+GR(Ntarget+1:2*Ntarget,2,isrc) = logpart + diffy.^2.*rho2;
+
+GR(1:Ntarget,3,isrc) = diffy.*rho2;
+GR(Ntarget+1:2*Ntarget,3,isrc) =  -diffx.*rho2;
+  
+end
+
+GR = xfactor * GR;
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pot = stokeRotTimes_forceTorque(o,source,target,stokeslet,rotlet,viscosity,isame)
+oc = curve;
+xfactor = 1/4/pi/viscosity;
+[cx, cy] = oc.getCenterXY(source.X);
+[X, Y] = oc.getXY(target.X);
+
+ntarget = target.nv;
+nsource = source.nv;
+Ntarget = target.N;
+
+pot = zeros(2*Ntarget,ntarget);
+
+for k = 1 : ntarget
+  if isame
+    K = [(1:k-1) (k+1:nsource)];
+  else
+    K = [1:nsource];
+  end
+  for ksrc = K
+    
+    diffx = X(:,k)-cx(ksrc);
+    diffy = Y(:,k)-cy(ksrc);
+    
+    rho2 = diffx.^2 + diffy.^2; 
+
+    LogTerm = -0.5*log(rho2)*stokeslet(1,ksrc);
+    rorTerm = 1./rho2.*(diffx.*diffx*stokeslet(1,ksrc) + ...
+        diffx.*diffy*stokeslet(2,ksrc));
+    RotTerm = diffy./rho2*rotlet(ksrc);
+    
+
+    pot(1:Ntarget,k) = pot(1:Ntarget,k) + xfactor*(LogTerm + rorTerm) + xfactor*RotTerm;
+
+    LogTerm = -0.5*log(rho2)*stokeslet(2,ksrc);
+    rorTerm = 1./rho2.*(diffy.*diffx*stokeslet(1,ksrc) + ...
+        diffy.*diffy*stokeslet(2,ksrc));
+    RotTerm = -diffx./rho2*rotlet(ksrc);
+
+    pot(Ntarget+1:2*Ntarget,k) = pot(Ntarget+1:2*Ntarget,k) + xfactor*(LogTerm + rorTerm) + xfactor*RotTerm;
+    
+  end
+end
+
+end % end function
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pot = stokeRotTimes_SelfForceTorque(o,X,stokeslet,rotlet,viscosity)
+oc = curve;
+xfactor = 1/4/pi/viscosity;
+[cx, cy] = oc.getCenterXY(X);
+[X, Y] = oc.getXY(X);
+
+N = numel(X);
+
+pot = zeros(2*N,1);
+
+diffx = X-cx;
+diffy = Y-cy;
+
+rho2 = diffx.^2 + diffy.^2; 
+
+LogTerm = -0.5*log(rho2)*stokeslet(1);
+rorTerm = 1./rho2.*(diffx.*diffx*stokeslet(1) + ...
+    diffx.*diffy*stokeslet(2));
+RotTerm = diffy./rho2*rotlet;
+
+
+pot(1:N) = xfactor*(LogTerm + rorTerm) + xfactor*RotTerm;
+
+LogTerm = -0.5*log(rho2)*stokeslet(2);
+rorTerm = 1./rho2.*(diffy.*diffx*stokeslet(1) + ...
+    diffy.*diffy*stokeslet(2));
+RotTerm = -diffx./rho2*rotlet;
+
+pot(N+1:2*N) = xfactor*(LogTerm + rorTerm) + xfactor*RotTerm;
+    
+
+end % end function
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function G = stokesSLmatrixInteractionWeightless(o,source,target,viscosity)
 

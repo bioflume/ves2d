@@ -51,6 +51,26 @@ end
 end % getCenter
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [cx, cy] = getCenterXY(o,X)
+% center = getCenter(o,X) finds the center of each capsule
+N = size(X,1)/2;
+nv = size(X,2);
+
+% upsample
+Nup = max(N,256);
+x = interpft(X(1:end/2,:),Nup);
+y = interpft(X(end/2+1:end,:),Nup);
+cx = zeros(nv,1);
+cy = zeros(nv,1);
+
+for k = 1 : nv
+  cx(k) = mean(x(:,k));
+  cy(k) = mean(y(:,k));
+end
+
+end % getCenter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function IA = getIncAngle(o,X)
 % IA = getIncAngle(o,X) finds the inclination angle of each capsule
 % The inclination angle (IA) is the angle between the x-axis and the 

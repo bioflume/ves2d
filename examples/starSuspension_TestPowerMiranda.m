@@ -1,4 +1,6 @@
-function [ave_iter,max_iter,trajectories] = starSuspension_TestSymmAlpert(shearStrength, dt, N)
+function [ave_iter,max_iter,trajectories] = starSuspension_TestPowerMiranda(shearStrength, dt, N)
+
+
 addpath ../src/
 
 %% Problem setup
@@ -10,9 +12,6 @@ Npoints = N;
 bgFlow = @(y) [shearStrength*y;zeros(size(y))];
 xcenters = [-4 -3 -1 0];
 ycenters = [-1 -2 -4 -5];
-
-% xcenters = [-4 -1];
-% ycenters = [-1];
 
 % xcenters = [-5 -3 0 2];
 % ycenters = [-1 -3 -6 -8];
@@ -32,12 +31,12 @@ radius = 1 + 0.3*cos(folds*t);
 Xt = [radius.*cos(t);radius.*sin(t)];
 dy = max(Xt(end/2+1:end))-min(Xt(end/2+1:end));
 Xt = Xt/dy;
+nrigid = numel(xc);
 for ik = 1 : numel(xc(:))
 % rotate Xt and locate the center
 X(1:end/2,ik) = xc(ik) + cos(angles(ik))*Xt(1:N)+sin(angles(ik))*Xt(N+1:end);
 X(end/2+1:end,ik) = yc(ik) - sin(angles(ik))*Xt(1:N)+cos(angles(ik))*Xt(N+1:end);
 end
-nrigid = numel(xc(:));
 
 % Time scale
 time_horizon = 5*dt;
@@ -65,12 +64,10 @@ while time < time_horizon
   KT = bb.calc_KT_matrix_weightless([]);
   Hmat = bb.calc_jacDiag_matrix();
   H = bb.calc_jac_matrix();
+  
 
   % calculate the single and double layer matrices
-  SLP = ker.stokesSLmatrixAlpertWeightless(bb,viscosity);  
-  DLP = ker.stokesDLmatrixWeightless(bb);
-  DLPT = ker.stokesDLTmatrixWeightless(bb);
-  
+  DLP = ker.stokesDLmatrixWeightless(bb);  
    
   % THEN SOLVE FOR BODY VELOCITY AND TRACTION, WALL TRACTION
   RHS = zeros(2*bb.N*bb.nv + 3*bb.nv,1);
@@ -79,31 +76,27 @@ while time < time_horizon
     istart = (k-1)*(2*bb.N+3)+1;
     iend = istart + 2*bb.N - 1;
     RHS(istart:iend) = -bgFlow(X(end/2+1:end,k));
-
-    SLP(:,:,k) = 0.5 * (SLP(:,:,k) + SLP(:,:,k)');
   end
-  
+
   % build the preconditioner
   bdiagL = zeros(2*Npoints+3,2*Npoints+3,nrigid);
   bdiagU = zeros(2*Npoints+3,2*Npoints+3,nrigid);
   for k=1:nrigid
-    [bdiagL(:,:,k),bdiagU(:,:,k)] = lu([SLP(:,:,k) -0.5*K(:,:,k)-DLP(:,:,k)*(Hmat(:,:,k)*K(:,:,k)); ...
-        -0.5*KT(:,:,k)-(KT(:,:,k)*Hmat(:,:,k))*DLPT(:,:,k) zeros(3)]);
+    invHmat = diag(1./H(:,k));
+    [bdiagL(:,:,k),bdiagU(:,:,k)] = lu([0.5*invHmat-DLP(:,:,k) K(:,:,k); KT(:,:,k) zeros(3)]);
   end
-
-
   % solve the system
   sys_size = 2*bb.N*bb.nv+3*bb.nv;
-  if 1
+
+  if 0
   [sol,iflag,~,iter,~] = gmres(@(X) ...
-      TimeMatVec(X,bb, ker, SLP, DLP, DLPT, K, KT, Hmat, viscosity),...
+      TimeMatVec(X,bb,ker,DLP,K,KT,H,viscosity),...
       RHS,[],1E-10,sys_size,[]);
   else
   [sol,iflag,~,iter,~] = gmres(@(X) ...
-      TimeMatVec(X,bb, ker, SLP, DLP, DLPT, K, KT, Hmat, viscosity),...
+      TimeMatVec(X,bb,ker,DLP,K,KT,H,viscosity),...
       RHS,[],1E-10,sys_size, @(z) precondBD(z,bdiagL,bdiagU));
   end
- 
   tot_iter = tot_iter + iter(2);
   if iter(2) > max_iter; max_iter = iter(2); end;
   disp(['Number of GMRES iterations is ' num2str(iter(2))])
@@ -145,7 +138,6 @@ end % end while time < time_horizon
 ave_iter = tot_iter / nsteps;
 
 end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function val = precondBD(z,bdiagL,bdiagU)
 Nrd = (size(bdiagL,1)-3)/2;
@@ -157,54 +149,60 @@ for k = 1 : nvrd
 end
 val = valRigid(:);
 end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function val = TimeMatVec(sol, bb, ker, SLP, DLP, DLPT, K, KT, H, viscosity)
+function val = TimeMatVec(sol, bb, ker, DLP, K, KT, H, viscosity)
 
 val = zeros(size(sol));
 N = bb.N;
 nv = bb.nv;
 
-valTraction = zeros(2*N,nv);
+valDensity = zeros(2*N,nv);
 valVelocity = zeros(3,nv);
 
-traction = zeros(2*N,nv);
+density = zeros(2*N,nv);
 velocity = zeros(3,nv);
 
 for k = 1 : nv
   istart = (k-1)*(2*N+3)+1;
   iend = istart+2*N-1;
-  traction(:,k) = sol(istart:iend);
+  density(:,k) = sol(istart:iend);
   istart = iend+1;
   iend = istart+2;
   velocity(:,k) = sol(istart:iend);
 end
 
 % Calculate the self-interactions
-SLvals = zeros(2*N,nv);
-KDLvals = zeros(2*N,nv); % includes -1/2 * K - DHK
-KTDTvals = zeros(3,nv); % includes -1/2*KT - KT *H *DT
+DLvals = zeros(2*N,nv); % includes 1/2 - D*density
+GRKvals = zeros(2*N,nv);
+KTvals = zeros(3,nv);
+stokeslet = zeros(2,nv);
+rotlet = zeros(1,nv);
 surfVels = zeros(2*N,nv);
 for k = 1 : nv
-  SLvals(:,k) = SLP(:,:,k) * traction(:,k);
-  KDLvals(:,k) = -1/2*K(:,:,k)*velocity(:,k)-DLP(:,:,k)*(H(:,:,k)*(K(:,:,k)*velocity(:,k)));
-  KTDTvals(:,k) = -1/2*KT(:,:,k)*traction(:,k) - ((KT(:,:,k)*H(:,:,k))*DLPT(:,:,k))*traction(:,k);
-  surfVels(:,k) = H(:,:,k)* (K(:,:,k) * velocity(:,k));
+  
+  DLvals(:,k) = +(1./(2*H(:,k))).*density(:,k)-DLP(:,:,k)*density(:,k);
+  
+  stokeRot = KT(:,:,k)*density(:,k);
+  KTvals(:,k) = stokeRot;
+  stokeslet(:,k) = stokeRot(1:2);
+  rotlet(:,k) = stokeRot(3);
+  
+  GRKvals(:,k) = ker.stokeRotTimes_SelfForceTorque(bb.X(:,k),stokeslet(:,k),rotlet(:,k),viscosity);
+  surfVels(:,k) = (K(:,:,k) * velocity(:,k));
 end
 
 
 % Calculate the hydrodynamic interactions
-SLinteract = ker.stokesSL_times_density(bb,bb,viscosity,traction,1);
-DLinteract = ker.stokesDL_times_density(bb,bb,surfVels,1);
-DLTinteract = ker.stokesDLT_times_density(bb,bb,traction,1);
 
-valTraction = valTraction + SLvals + KDLvals + SLinteract - DLinteract;
-valVelocity = valVelocity + KTDTvals;
+DLinteract = ker.stokesDL_times_density(bb,bb,density,1);
+GRinteract = ker.stokeRotTimes_forceTorque(bb,bb,stokeslet,rotlet,viscosity,1);
+valDensity = valDensity + DLvals + 0*GRKvals - DLinteract + 0*GRinteract - surfVels;
+valVelocity = valVelocity + KTvals;
 for k = 1 : nv
-  valVelocity(:,k) = valVelocity(:,k) - (KT(:,:,k)*H(:,:,k))*DLTinteract(:,k);
   istart = (k-1)*(2*N+3)+1;
   iend = istart - 1 + 2*N + 3;
-  val(istart:iend) = [valTraction(:,k);valVelocity(:,k)];
+  val(istart:iend) = [valDensity(:,k);valVelocity(:,k)];
+  
 end
 
 end % val = TimeMatVec
@@ -214,7 +212,7 @@ function display_results(time,X,traction,trajectories,velocity)
 disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 disp(['Time = ' num2str(time) 's'])
 
-if 0
+if 1
 figure(1); clf;
 vecx = [interpft(X(1:end/2,:),128); X(1,:)];
 vecy = [interpft(X(end/2+1:end,:),128); X(end/2+1,:)];
