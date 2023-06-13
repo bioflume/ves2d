@@ -46,7 +46,7 @@ expected_angVelocity = @(theta) shearStrength/(radius_x^2 + radius_y^2) ...
 % Time scale
 time_horizon = 20/shearStrength;
 dt = 1E-1/shearStrength; 
-time_horizon = 5*dt;
+time_horizon = 1*dt;
 % time_horizon = dt;
 
 % Call kernels
@@ -105,15 +105,15 @@ while time < time_horizon
 
   % Shravan
   if 0
-  mat11 = HmatInv/2 - DLP + SLP;
-  mat12 = -K;
+  mat11 = HmatInv/2 - DLP + SLP ;
+  mat12 = -K; %-0.5*K-(DLP*Hmat)*K;
   
-  mat21 = -KT*Hmat*DLPT;
+  mat21 = -0.5*KT-(KT*Hmat)*DLPT;
   mat22 = zeros(3);
   end
 
   % Power and Miranda
-  if 1
+  if 0
   mat11 = HmatInv/2 - DLP + GR*KT;
   mat12 = -K;
 
