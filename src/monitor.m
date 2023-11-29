@@ -305,7 +305,7 @@ if ~isempty(rem_ids)
     return
   end
    % if time step shrinks too much, then terminate the run
-  if dt < 1e-6
+  if dt < 1e-10
     message = ['Time step shrinks too much, it is not feasible to complete it'];
     o.writeMessage(message,'%s\n')
     message = ['I AM STOPPING'];

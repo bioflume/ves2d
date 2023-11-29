@@ -7861,8 +7861,10 @@ elseif any(strcmp(varargin,'rotate'))
   vInf = [y;-x];
 
 elseif any(strcmp(varargin,'taylorCouette'))
-  velx = -(y)./(x.^2 + y.^2 );
-  vely =  (x)./(x.^2 + y.^2 );
+  %velx = -(y)./(x.^2 + y.^2 );
+  %vely =  (x)./(x.^2 + y.^2 );
+  velx = -sin(atan2(y,x))./sqrt(x.^2 + y.^2);
+  vely =  cos(atan2(y,x))./sqrt(x.^2 + y.^2);
   vInf = [velx; vely];
 
 elseif any(strcmp(varargin,'freeCouette'))

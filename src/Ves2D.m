@@ -374,7 +374,7 @@ while time < prams.T - 1e-10
   else
     nreject = nreject + 1;
     terminate = false;
-    if dt <= 1e-4
+    if dt <= 1e-10
       message = ['Time step shrinks too much, it is not feasible to complete it'];
       om.writeMessage(message,'%s\n')
       message = ['I AM STOPPING'];

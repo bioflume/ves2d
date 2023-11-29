@@ -3,8 +3,8 @@ function driver_rotational_vortex(runName, VC, RA, kappa, Vinf, vortexSize, Xg, 
 % Physics parameters
 prams.N = 96;                           % points per vesicle
 prams.nv = 1;                          % number of vesicles
-prams.T = ceil(2000/abs(Vinf));  % time horizon
-prams.m = 2e4;                         % number of time steps
+prams.T = 20000;  % time horizon
+prams.m = 2e7;                         % number of time steps
 prams.kappa = kappa;                   % bending coefficient
 prams.errorTol = 1e-1;
 prams.viscCont = VC*ones(prams.nv,1); % viscosity contrast
@@ -47,8 +47,8 @@ options.timeAdap = true;
 prams.rtolArea = 1e-3;
 prams.rtolLength = 1e-3;
 
-prams.dtMax = 1e-1;
-prams.dtMin = 1e-3;
+prams.dtMax = 1e-3;
+prams.dtMin = 1e-5;
 prams.betaInc = 1e-2;
 prams.betaDec = 5e-2;
 prams.betaUp = 1.5;
@@ -80,7 +80,7 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
 % Scale the vesicle's radius 
 [~, area, ~] = oc.geomProp(X);
 rad = sqrt(area/pi);
-scale = 1/rad/pi;
+scale = 1/rad;
 
 X(1:end/2) = scale * (X(1:end/2)-cenx) + cenx;
 X(end/2+1:end) = scale * (X(end/2+1:end)-ceny) + ceny;

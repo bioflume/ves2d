@@ -107,6 +107,7 @@ Xwalls = [x;y];
 % more interesting
 fname = ['/work2/03353/gokberk/frontera/stenosisRuns/' ICFile];
 load(fname);
+X = [interpft(X(1:end/2),prams.N);interpft(X(end/2+1:end),prams.N)];
 % X = oc.initConfig(prams.N,'nv',prams.nv,...
 %   'reducedArea',RA,...
 %   'angle',angle,...
@@ -136,7 +137,7 @@ fprintf(fid,'%s\n',['Tube height is ' num2str(tube_height)]);
 fprintf(fid,'%s\n',['Gap size is ' num2str(min_height)]);
 fprintf(fid,'%s\n',['Gap width is ' num2str(contraction_width)]);
 fprintf(fid,'%s\n',['Poiseuille flow Vinf is ' num2str(Vinf)]);
-fprintf(fid,'%s\n',['Height of the vesicle is ' num2str(maxL)]);
+%fprintf(fid,'%s\n',['Height of the vesicle is ' num2str(maxL)]);
 fprintf(fid,'%s\n',['Area of the vesicle is ' num2str(area)]);
 fprintf(fid,'%s\n',['Length of the vesicle is ' num2str(length)]);
 fprintf(fid,'%s\n',['Reduced Area of the vesicle is ' num2str(reduced_area)]);
