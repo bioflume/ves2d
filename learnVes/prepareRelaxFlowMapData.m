@@ -8,7 +8,8 @@ kappa = 1;
 oc = curve;
 % set of vesicle shapes
 %load /workspace/gokberk/X100KinitShapes.mat
-load /mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/X100KinitShapes.mat
+% load /mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/X100KinitShapes.mat
+load ./necessaryMatFiles/X100KinitShapes.mat
 % Xstore
 
 istandard = false; % if the shapes are already standardized
@@ -16,7 +17,7 @@ istandard = false; % if the shapes are already standardized
 % number of vesicles
 nves = size(Xstore,2);
 % num. points per vesicle
-N = 256;
+N = 128;
 
 % time step size
 dt = 1E-6;
@@ -73,14 +74,16 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
 
   if rem(idx,100) == 0 
     nInstances = idx; 
-    fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+    fileName = ['./relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+%     fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
     %fileName = ['/workspace/gokberk/relax1step/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat']; 
     save(fileName,'nves','N','XstandStore','nInstances','XnewStandStore','dt','idx')
   end
 end
 nInstances = idx;
 
-fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+fileName = ['./relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+% fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
 %fileName = ['/workspace/gokberk/relax1step/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat']; 
 save(fileName,'nves','N','XstandStore','nInstances','XnewStandStore','dt')
 end

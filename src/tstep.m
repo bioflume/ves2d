@@ -7956,7 +7956,7 @@ elseif (any(strcmp(varargin,'choke')) || ...
       any(strcmp(varargin,'doublechoke')) || ...
       any(strcmp(varargin,'choke2')))
   vInf = zeros(2*N,nv);
-  ind = abs(x)>7;
+  ind = abs(x)>0.8*max(x);
   vx = exp(1./((y(ind)/max(y)).^2-1))/exp(-1);
   % typical mollifer so that velocity decays smoothly to 0
   vx(vx==Inf) = 0;
@@ -7969,7 +7969,16 @@ elseif (any(strcmp(varargin,'tube')))
   vx(vx==Inf) = 0;
   vInf(ind,:) = vx;
     
+elseif any(strcmp(varargin,'rotateDataGen'));
+  vInf = [-y(:,1)+mean(y(:,1));x(:,1)-mean(x(:,1))];
+  XwallsInt = varargin{find(strcmp(varargin,'intWalls'))+1};
+  vSec = zeros(size(XwallsInt));
+  for iw = 1 : numel(XwallsInt(1,:))
+    xiw = XwallsInt(1:end/2,iw); yiw = XwallsInt(end/2+1:end,iw);
+    vSec(:,iw) = -[-yiw+mean(yiw); xiw-mean(xiw)];
+  end
   
+
 elseif any(strcmp(varargin,'couette'));
   vInf = [zeros(2*N,1) 1*[-y(:,2)+mean(y(:,2));x(:,2)-mean(x(:,2))]];
   
@@ -8387,6 +8396,9 @@ end
 
 
 vInf = vInf * speed;
+if vSec
+  vSec = vSec * speed;
+end
 end % bgFlow
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

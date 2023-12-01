@@ -3,3 +3,8 @@ examples/figureEight.m~
 *.bin
 *.log
 *.dat
+learnVes/.DS_Store
+learnVes/.DS_Store
+*.mat
+*.png
+*.fig
