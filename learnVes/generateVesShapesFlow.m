@@ -1,35 +1,41 @@
-clear; clc;
+% clear; clc;
+% runName = ['dataGenRun'];
+% folderName = './output/';
+% nv = 15;
+% speed = 10000;
+function generateVesShapesFlow(runName, folderName, nv, speed)
 addpath ../src/
 addpath ../examples/
 rng('shuffle')
 
-runName = ['dataGenRun'];
-prams.folderName = './output/';
+prams.folderName = folderName;
 fileName = [prams.folderName runName '.bin'];
 logFile = [prams.folderName runName '.log'];
 
 prams.farField = 'rotateDataGen'; % 'rotation' or 'couette' (w/ solid boundaries)
-prams.speed = 100; % 70 for rotation, 100 for couette 
-iplot = 1;
+prams.speed = speed; 
+iplot = 0;
 iCalcVel = 0;
-nsave = 2;
+
 
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
+tsave = prams.Th/100;
 prams.N = 128; % num. points for true solve in DNN scheme
-prams.nv = 6; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
+prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 
-prams.dt = 1E-4/(prams.speed/100); % time step size
+prams.dt = 5E-4/(prams.speed/100); % time step size
+dtInit = prams.dt;
 
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
-prams.NbdExt = 256;
-prams.NbdInt = 64;
+prams.NbdExt = 512;
+prams.NbdInt = 96;
 prams.nvbdInt = 5;
 prams.nvbdExt = 1;
 prams.nvbd = prams.nvbdInt + prams.nvbdExt;
@@ -57,6 +63,10 @@ Uwall = wallsExt.u;
     XwallsExt, XwallsInt, prams,oc, tt);
 prams.area0 = area0; prams.len0 = len0;
 
+[~,areaExt,~] = oc.geomProp(XwallsExt);
+[~,areaInt,~] = oc.geomProp(XwallsInt);
+[~,areaVes,~] = oc.geomProp(X);
+
 if 0
 figure(1); clf;
 plot([XwallsExt(1:end/2); XwallsExt(1)], [XwallsExt(end/2+1:end); XwallsExt(end/2+1)],'k','linewidth',2)
@@ -74,9 +84,7 @@ end
 
 % Initialize matrices and counters
 % -------------------------------------------------------------------------
-time = (0:prams.dt:prams.Th)'; ntime = numel(time);
 tt.dt = prams.dt;
-errAreaLength = zeros(ntime,1);
 sig = zeros(prams.N,prams.nv); 
 etaInt = zeros(2*prams.NbdInt,prams.nvbdInt); 
 etaExt = zeros(2*prams.NbdExt,1); RS = zeros(3,prams.nvbdInt+1);
@@ -97,6 +105,9 @@ writeMessage(logFile,message, '%s\n');
 message = ['Viscosity Contrast is ' num2str(prams.viscCont(1))];
 writeMessage(logFile,message, '%s\n');
 message = ['Bending stiffness is ' num2str(prams.kappa)];
+writeMessage(logFile,message, '%s\n');
+areaFraction = sum(areaVes)/(sum(areaExt)-sum(areaInt));
+message = ['Area fraction is ' num2str(areaFraction)];
 writeMessage(logFile,message, '%s\n');
 
 if iCalcVel
@@ -122,48 +133,74 @@ quiver(xx, yy, Vx, Vy)
 pause
 end
 
-for it = 1 : ntime
+it = 1; time = 0;
+while time < prams.Th 
   message = '********************************************';
   writeMessage(logFile,message,'%s\n')
-  message = [num2str(it) 'th (/' num2str(ntime) ') time step, time: ' num2str(time(it))];
+  message = ['Time = '  num2str(time) ' out of ' num2str(prams.Th)];
   writeMessage(logFile,message,'%s\n')
 
   vesicle = capsules(X,[],[],prams.kappa,prams.viscCont,1);
   vesicle.setUpRate();
-  [X,sig,etaInt,etaExt,RS] = tt.timeStepSimpleDiffDisc(X,sig,etaInt,etaExt,...
+  [Xnew,sigNew,etaIntNew,etaExtNew,RSNew,iter,iflag] = tt.timeStepSimpleDiffDisc(X,sig,etaInt,etaExt,...
       RS,prams.viscCont,wallsInt,wallsExt,vesicle);
-  
-  if rem(it,nsave) == 0
-    writeDataWithEta(fileName,X,sig,etaExt,etaInt,RS,time(it));
-  end
+  message = ['GMRES took ' num2str(iter) ' iterations.'];
+  writeMessage(logFile,message,'%s\n')
+
 
    % AREA-LENGTH CORRECTION
   message = 'Correcting area-length errors...';
   writeMessage(logFile,message,'%s\n')
-  [Xcorr,ifail] = oc.correctAreaAndLength2(X,prams.area0,prams.len0);
+  [Xcorr,ifail] = oc.correctAreaAndLength2(Xnew,prams.area0,prams.len0);
   if ifail
     message = 'AREA-LENGTH CANNOT BE CORRECTED!!!';
     writeMessage(logFile,message,'%s\n')
   end
-  X = oc.alignCenterAngle(X,Xcorr); 
+  Xnew = oc.alignCenterAngle(Xnew,Xcorr); 
 
   % Equally distribute points in arc-length
-  Xiter = X;
+  Xiter = Xnew;
   for iter = 1 : 5
     [Xiter,~,~] = oc.redistributeArcLength(Xiter);
   end
   
   % Fix misalignment in center and angle due to reparametrization
-  X = oc.alignCenterAngle(X,Xiter);
+  Xnew = oc.alignCenterAngle(Xnew,Xiter);
   
   % Compute error in area and length
-  [~,area,len] = oc.geomProp(X);
+  [~,area,len] = oc.geomProp(Xnew);
   errArea = max(abs(area-prams.area0)./prams.area0); 
   errLen = max(abs(len-prams.len0)./prams.len0);
-  errAreaLength(it) = max(errArea,errLen);
+  errAreaLength = max(errArea,errLen);
   
-  message = ['Max. error in area and length is ' num2str(errAreaLength(it))];
+  message = ['Max. error in area and length is ' num2str(errAreaLength)];
   writeMessage(logFile,message,'%s\n');
+
+  % Collision check
+  vesicleProv = capsules(X,[],[],[],[],1);
+  vesicleProv.setUpRate(tt.op);
+  [NearV2V,NearV2Wint] = vesicleProv.getZone(wallsInt,3);  
+  [~,NearV2Wext] = vesicleProv.getZone(wallsExt,2);
+  [~,icollisionWallExt] = vesicleProv.collision(wallsExt,...
+      NearV2V,NearV2Wext,prams.fmm,tt.op);
+  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInt,...
+    NearV2V,NearV2Wint,prams.fmm,tt.op);
+  icollisionWall = icollisionWallInt || icollisionWallExt;
+
+  if errAreaLength >= 1e-2 || ifail || icollisionWall || icollisionVes
+    writeMessage(logFile,message,'%s\n');  
+    prams.dt = prams.dt/2;
+    message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
+  else
+    X = Xnew; sig = sigNew; etaExt = etaExtNew; etaInt = etaIntNew; RS = RSNew;  
+    time = time + prams.dt;
+    prams.dt = min(dtInit, prams.dt*1.2);
+    it = it + 1;
+    if rem(time,tsave) == 0
+      writeDataWithEta(fileName,X,sig,etaExt,etaInt,RS,time);
+    end
+  end
+  tt.dt = prams.dt;
 
   if iplot
     figure(1); clf;
@@ -176,13 +213,13 @@ for it = 1 : ntime
     plot([X(1:end/2,:); X(1,:)], [X(end/2+1:end,:);X(end/2+1,:)], 'r', 'linewidth',2)
     hVes = fill([X(1:end/2,:); X(1,:)],[X(end/2+1:end,:);X(end/2+1,:)],'r');
     set(hVes,'edgecolor','r')
-    title(['Time = ' num2str(time(it))])
+    title(['Time = ' num2str(time)])
     pause(0.1)
   end
 
 
 end % end for it = 1 : ntime
-
+end % end function
 % ------------------------------------------------------------------------
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function writeDataWithEta(fileName,X,sigma,etaExt,etaInt,RS,time)

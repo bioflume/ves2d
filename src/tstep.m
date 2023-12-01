@@ -7970,12 +7970,18 @@ elseif (any(strcmp(varargin,'tube')))
   vInf(ind,:) = vx;
     
 elseif any(strcmp(varargin,'rotateDataGen'));
-  vInf = [-y(:,1)+mean(y(:,1));x(:,1)-mean(x(:,1))];
+  ry = -y(:,1) + mean(y(:,1)); rx = x(:,1)-mean(x(:,1));
+  dr = sqrt(rx.^2 + ry.^2);
+  vInf = [ry./dr;rx./dr];
+%   vInf = [-y(:,1)+mean(y(:,1));x(:,1)-mean(x(:,1))];
   XwallsInt = varargin{find(strcmp(varargin,'intWalls'))+1};
   vSec = zeros(size(XwallsInt));
   for iw = 1 : numel(XwallsInt(1,:))
     xiw = XwallsInt(1:end/2,iw); yiw = XwallsInt(end/2+1:end,iw);
-    vSec(:,iw) = -[-yiw+mean(yiw); xiw-mean(xiw)];
+    dxiw = xiw - mean(xiw); dyiw = -yiw+mean(yiw);
+    driw = sqrt(dxiw.^2 + dyiw.^2);
+    vSec(:,iw) = -[dyiw./driw; dxiw./driw];
+%     vSec(:,iw) = -[-yiw+mean(yiw); xiw-mean(xiw)];
   end
   
 
