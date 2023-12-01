@@ -1,7 +1,7 @@
 % clear; clc;
 % runName = ['dataGenRun'];
 % folderName = './output/';
-% nv = 15;
+% nv = 5;
 % speed = 10000;
 function generateVesShapesFlow(runName, folderName, nv, speed)
 addpath ../src/
@@ -14,14 +14,14 @@ logFile = [prams.folderName runName '.log'];
 
 prams.farField = 'rotateDataGen'; % 'rotation' or 'couette' (w/ solid boundaries)
 prams.speed = speed; 
-iplot = 0;
+iplot = 1;
 iCalcVel = 0;
 
 
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
-tsave = prams.Th/100;
+
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
@@ -31,6 +31,7 @@ prams.kappa = 1;
 
 prams.dt = 5E-4/(prams.speed/100); % time step size
 dtInit = prams.dt;
+tsave = 5*dtInit;
 
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
@@ -133,7 +134,7 @@ quiver(xx, yy, Vx, Vy)
 pause
 end
 
-it = 1; time = 0;
+it = 1; time = 0; nextSave = tsave;
 while time < prams.Th 
   message = '********************************************';
   writeMessage(logFile,message,'%s\n')
@@ -191,13 +192,20 @@ while time < prams.Th
     writeMessage(logFile,message,'%s\n');  
     prams.dt = prams.dt/2;
     message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
+    writeMessage(logFile,message,'%s\n');
+    if prams.dt < 1e-10
+      break
+    end
   else
     X = Xnew; sig = sigNew; etaExt = etaExtNew; etaInt = etaIntNew; RS = RSNew;  
     time = time + prams.dt;
     prams.dt = min(dtInit, prams.dt*1.2);
     it = it + 1;
-    if rem(time,tsave) == 0
+    if time >= nextSave 
       writeDataWithEta(fileName,X,sig,etaExt,etaInt,RS,time);
+      nextSave = nextSave + tsave;
+      message = ['Saving Data'];
+      writeMessage(logFile,message,'%s\n');
     end
   end
   tt.dt = prams.dt;
