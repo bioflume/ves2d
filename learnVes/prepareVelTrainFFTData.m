@@ -1,19 +1,20 @@
-clear; clc;
+function prepareVelTrainFFTData(iset)
 %load /workspace/gokberk/relax1step/only1timeStepPCAData.mat
 % clear sum of the data to have some space
 %clear XnewCoeffs; clear XnewRec; clear XnewStandStore;
 %clear XoldCoeffs; clear Xrec; clear colMeans;
 %clear errInNew; clear evects;
 
-load /workspace/gokberk/relax1step/n256Dt1E4Kb1RelaxAllDataSet.mat
+% load /workspace/gokberk/relax1step/n256Dt1E4Kb1RelaxAllDataSet.mat
+load /work2/03353/gokberk/frontera/n256Dt0.0016RelaxAllDataSet.mat
 clear XnewStandStore;
 
 addpath ../src/
 oc = curve;
 % num. points
-N = 256;
+N = 128;
 op = poten(N);
-nmodes = 24;
+nmodes = 128;
 
 % compute M*basis(for 12 vectors), we cannot store all
 % error is 4%
@@ -31,7 +32,7 @@ activeModes = [(1:nmodes/2)';(N-nmodes/2+1:N)'];
 % we cannot look at statistics of velocity's energy spectrum
 % because we consider arbitrary velocity
 
-iset = 4
+% iset = 4
 nSamples = ones(4,1)*floor(nInstances/4);
 nSamples(end) = nInstances-3*nSamples(1);
 zRealStore = zeros(2*N,nmodes,nSamples(iset));
@@ -89,9 +90,9 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
 end
 
 
-fileName = ['/workspace/gokberk/relax1step/NEWvelocityTrain24modesFFTData_' num2str(iset) '.mat']; 
+fileName = ['/work2/03353/gokberk/frontera/velocityRuns/elocityTrain128modesFFTData_' num2str(iset) '.mat']; 
 nsampInSet = nSamples(iset);
 save(fileName,'nInstances','nsampInSet','zRealStore','zImagStore',...
   'activeModes','N','nmodes','-v7.3')
 
-
+end
