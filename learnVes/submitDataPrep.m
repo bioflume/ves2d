@@ -1,6 +1,6 @@
 function submitDataPrep(idt,npar)
 mul = 2.^(0:15)';
-dts = 1E-6*mul;
+dts = 1E-4*mul;
 p = parcluster('local');
 p.NumWorkers = npar;
 %parpool(npar);
@@ -14,6 +14,7 @@ for irun = 1 : npar
 end
 for j = 1 : npar
   wait(job{j},'finished')
+  disp(['finished ' num2str(j)])
 end
 delete(findJob(p))
 end

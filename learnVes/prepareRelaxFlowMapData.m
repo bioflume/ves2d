@@ -20,7 +20,7 @@ nves = size(Xstore,2);
 N = 128;
 
 % time step size
-dt = 1E-6;
+dt = 1E-4;
 
 % store aligned shapes
 XstandStore = [];
@@ -72,9 +72,9 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   disp([num2str(k-sum(nSamples(1:iset-1))) 'th vesicle of out of ' num2str(nSamples(iset)) ' vesicles is done.'])
   disp(['There are ' num2str(idx) ' samples.'])   
 
-  if rem(idx,100) == 0 
+  if rem(idx,10) == 0 
     nInstances = idx; 
-    fileName = ['./relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+    fileName = ['/work2/03353/gokberk/frontera/relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
 %     fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
     %fileName = ['/workspace/gokberk/relax1step/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat']; 
     save(fileName,'nves','N','XstandStore','nInstances','XnewStandStore','dt','idx')
