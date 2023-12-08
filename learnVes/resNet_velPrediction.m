@@ -23,7 +23,7 @@ netType = 'fcLarge'
 
 % OUTPUT INFORMATION
 N = 256;
-%N = 96;
+%N = 96;ls -
 nmodes = 24;
 activeModes = [(1:nmodes/2)';(N-nmodes/2+1:N)'];
 outputSize = 96; % 1-48: real, 49-96: imag. components 

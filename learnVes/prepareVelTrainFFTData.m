@@ -6,7 +6,8 @@ function prepareVelTrainFFTData(iset)
 %clear errInNew; clear evects;
 
 % load /workspace/gokberk/relax1step/n256Dt1E4Kb1RelaxAllDataSet.mat
-load /work2/03353/gokberk/frontera/n256Dt0.0016RelaxAllDataSet.mat
+% load /work2/03353/gokberk/frontera/n256Dt0.0016RelaxAllDataSet.mat
+load ./output/relaxData/completeData/n256Dt0.0016RelaxAllDataSet.mat
 clear XnewStandStore;
 
 addpath ../src/
@@ -90,7 +91,8 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
 end
 
 
-fileName = ['/work2/03353/gokberk/frontera/velocityRuns/elocityTrain128modesFFTData_' num2str(iset) '.mat']; 
+% fileName = ['/work2/03353/gokberk/frontera/velocityRuns/elocityTrain128modesFFTData_' num2str(iset) '.mat']; 
+fileName = ['./output/relaxData/completeData/veltrain128modesFFTData_' num2str(iset) '.mat']; 
 nsampInSet = nSamples(iset);
 save(fileName,'nInstances','nsampInSet','zRealStore','zImagStore',...
   'activeModes','N','nmodes','-v7.3')

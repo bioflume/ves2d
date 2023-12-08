@@ -26,14 +26,14 @@ prams.Th = 1.5; % time horizon
 prams.N = 32; % num. points for true solve in DNN scheme
 prams.Nexact = 128;
 prams.nv = 70; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
-prams.fmm = ~false; % use FMM for ves2ves
-prams.fmmDLP = ~false; % use FMM for ves2walls
+prams.fmm = false; % use FMM for ves2ves
+prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 prams.interpOrder = interpOrder;
 prams.dtExact = 1E-4;
 prams.dt = 1E-4; % time step size
 if strcmp(prams.bgFlow,'couette')
-  prams.Nbd = 1536;
+  prams.Nbd = 256;
   prams.nvbd = 2;
 else
   prams.Nbd = 0;
