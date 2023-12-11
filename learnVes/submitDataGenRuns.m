@@ -1,6 +1,6 @@
 function submitDataGenRuns(nv,idStart,runNameInit)
 
-folderName = './output/';
+folderName = '/work2/03353/gokberk/frontera/newDataGenRuns/';
 speed = 10000;
 
 npar = 5;
