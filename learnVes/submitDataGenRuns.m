@@ -3,7 +3,7 @@ function submitDataGenRuns(nv,idStart,runNameInit)
 folderName = './output/';
 speed = 10000;
 
-npar = 20;
+npar = 5;
 p = parcluster('local');
 p.NumWorkers = npar;
 

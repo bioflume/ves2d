@@ -50,7 +50,7 @@ reducedArea = 0.65;
 [XwallsInt,XwallsExt] = initializeWalls(prams,oc);
 
 % Generate a sample vesicle
-X = oc.ellipse(prams.N,0.65);
+X = oc.ellipse(prams.N,reducedArea);
 [ra,area,length] = oc.geomProp(X);
 X = X/length;
 
@@ -193,7 +193,7 @@ while time < prams.Th
     prams.dt = prams.dt/2;
     message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
     writeMessage(logFile,message,'%s\n');
-    if prams.dt < 1e-10
+    if prams.dt < 1e-9
       break
     end
   else

@@ -1,7 +1,7 @@
 clear; clc;
 
 iplot = 1;
-fileName = 'dataGenRun.bin';
+fileName = 'testRunsId1.bin';
 fid = fopen(fileName,'r');
 val = fread(fid,'double');
 fclose(fid);

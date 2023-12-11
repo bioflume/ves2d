@@ -416,6 +416,205 @@ end
 
 end % DNNsolve
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [Xnew,tenNew,etaNew,RSnew,vbackTot] = newDNNLikeSolve(o,Xold,tenOld,etaOld,RSold,Nnet)
+tt = o.tt;
+op = tt.op;
+if o.confined
+  opWall = tt.opWall;
+  invWallsMat = tt.bdiagWall;
+  walls = o.walls;
+  uWalls = walls.u;
+  nvbd = walls.nv;
+  Nbd = walls.N;
+  etaNew = zeros(2*Nbd,nvbd);
+  RSnew = zeros(3,nvbd);
+else
+  vback = o.vinf(Xold);
+  etaNew = []; RSnew = [];
+end
+
+% semi-implicit time stepping w/ splitting
+vesicle = capsules(Xold,[],[],o.kappa,1,1);
+vesicle.setUpRate();
+nv = vesicle.nv;
+N = vesicle.N;
+SLPdiag = op.stokesSLmatrixNoCorr(vesicle);
+if tt.fmm
+  Nup = op.LPuprate * vesicle.N;
+  Xup = [interpft(Xold(1:end/2,:),Nup);interpft(Xold(end/2+1:end,:),Nup)];
+  vesicleUp = capsules(Xup,[],[],vesicle.kappa,vesicle.viscCont,0); 
+  SLPnoCorr = op.stokesSLmatrixNoCorr(vesicleUp);
+else
+  SLPnoCorr = [];
+end
+G = op.stokesSLmatrix(vesicle);
+[Ben,Ten,Div] = vesicle.computeDerivs;
+
+% Get the near structure, so that we know what to neglect
+if o.confined
+  [NearV2V,NearV2W] = vesicle.getZone(walls,3);
+  [~,NearW2V] = walls.getZone(vesicle,2);
+  if nvbd > 1
+    NearW2W = o.NearW2W;  
+  end % if nvbd > 1
+else
+  NearV2V = vesicle.getZone([],1);    
+end % if o.confined
+
+% Compute bending forces + old tension forces
+fBend = vesicle.tracJump(Xold,zeros(N,nv));
+fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
+tracJump = fBend+fTen;
+
+% 1) EXPLICIT TENSION AT THE CURRENT STEP
+% neglect near interactions
+
+if nv > 1
+  % Far-field due to traction jump
+  kernelDirect = @op.exactStokesSL;
+  if tt.fmm
+    kernel = @op.exactStokesSLfmm;
+  else
+    kernel = @op.exactStokesSL;
+  end
+  
+  
+  tt.Galpert = op.stokesSLmatrix(vesicle);  
+  SLP = @(X) op.exactStokesSLdiag(vesicle,tt.Galpert,X);
+  farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,...
+      NearV2V,kernel,kernelDirect,vesicle,true,false);
+  % if repulsion is on, compute velocity due to that
+  if o.repulsion
+    if o.confined
+      repulsion = vesicle.repulsionSchemeSimple(Xold,o.repStrength,o.repLenScale,...
+          walls,[],[]);
+    else
+      repulsion = vesicle.repulsionSchemeSimple(Xold,o.repStrength,o.repLenScale,...
+          [],[],[]);
+    end
+    Frepulsion = op.exactStokesSLdiag(vesicle,tt.Galpert,repulsion) + ...
+        op.nearSingInt(vesicle,repulsion,SLP,SLPnoCorr,...
+        NearV2V,kernel,kernelDirect,vesicle,true,false);
+    farFieldtracJump = farFieldtracJump + Frepulsion; 
+  end % if o.repulsion
+
+else
+  farFieldtracJump = zeros(2*N,1);
+end
+
+% Far-field due to walls or background flow
+if o.confined
+  kernelDirect = @opWall.exactStokesDL;
+  if tt.fmmDLP
+    kernel = @opWall.exactStokesDLnewfmm;
+  else
+    kernel = @opWall.exactStokesDL;
+  end
+  DLP = @(X) -1/2*X + opWall.exactStokesDLdiag(walls,tt.wallDLP,X); 
+  vback = opWall.nearSingInt(walls,etaOld,DLP,[],NearW2V,kernel,kernelDirect,...
+      vesicle,false,false);
+  for k = 2:nvbd
+    stokeslet = RSold(1:2,k); rotlet = RSold(3,k);  
+    vback = vback + tt.RSlets(vesicle.X,walls.center(:,k),stokeslet,rotlet);
+  end
+end
+
+
+% SOLVE FOR TENSION
+tenNew = zeros(N,nv);
+for k = 1 : nv
+  LHS = (Div(:,:,k)*G(:,:,k)*Ten(:,:,k));
+  selfBend = G(:,:,k)*fBend(:,k);
+  RHS = -Div(:,:,k)*(vback(:,k)+farFieldtracJump(:,k)+selfBend);
+  tenNew(:,k) = LHS\RHS;
+end
+% compute force due to tension
+fTen = vesicle.tracJump(zeros(2*N,nv),tenNew); tracJump = fBend+fTen;
+
+% 2) SOLVE FOR DENSITY and RS ON WALLS
+if o.confined
+  % vesicle2wall interactions
+  kernelDirect = @op.exactStokesSL;
+  if tt.fmm
+    kernel = @op.exactStokesSLfmm;
+  else
+    kernel = @op.exactStokesSL;
+  end
+  
+  SLP = @(X) op.exactStokesSLdiag(vesicle,tt.Galpert,X);  
+  ves2wallInt = op.nearSingInt(vesicle,tracJump,SLP,[],NearV2W,...
+      kernel,kernelDirect,walls,false,false);
+  if o.repulsion
+    FrepWall = op.nearSingInt(vesicle,repulsion,SLP,[],NearV2W,kernel,...
+        kernelDirect,walls,false,false);
+    ves2wallInt = ves2wallInt + FrepWall;
+  end % if o.repulsion
+
+  RHS = [uWalls(:)-ves2wallInt(:);zeros(3*(nvbd-1),1)];
+  etaRS = invWallsMat*RHS;
+  for iw = 1 : nvbd
+    etaNew(:,iw) = etaRS((iw-1)*2*Nbd+1:iw*2*Nbd);  
+    if iw <= nvbd-1
+      RSnew(:,iw+1) = etaRS(2*Nbd*nvbd+(iw-1)*3+1:2*Nbd*nvbd+iw*3);
+    end
+  end 
+  % Update vback due to new density,rotlets and stokeslet
+  kernelDirect = @opWall.exactStokesDL;
+  if tt.fmmDLP
+    kernel = @opWall.exactStokesDLnewfmm;
+  else
+    kernel = @opWall.exactStokesDL;
+  end
+  
+  
+  DLP = @(X) -1/2*X + opWall.exactStokesDLdiag(walls,tt.wallDLP,X);   
+  vback = opWall.nearSingInt(walls,etaNew,DLP,[],NearW2V,kernel,...
+      kernelDirect,vesicle,false,false);
+  
+  for k = 2:nvbd
+    stokeslet = RSnew(1:2,k); rotlet = RSnew(3,k);  
+    vback = vback + tt.RSlets(vesicle.X,walls.center(:,k),stokeslet,rotlet);
+  end
+end % if iconfined    
+
+% 3) SOLVE FOR NEXT TIME STEP USING OPERATOR SPLITTING
+% EXPLICIT-TREATMENT OF INTER-VESICLE BENDING AND TENSION
+% TENSION AND X are coupled (semi-implicit).
+Xnew = zeros(size(Xold));
+if nv > 1
+  % compute traction jump due to explicit tension and old bending
+  kernelDirect = @op.exactStokesSL;
+  if tt.fmm
+    kernel = @op.exactStokesSLfmm;
+  else
+    kernel = @op.exactStokesSL;
+  end
+  SLP = @(X) op.exactStokesSLdiag(vesicle,tt.Galpert,X);    
+  farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,kernel,...
+      kernelDirect,vesicle,true,false);
+  % if repulsion is on, add the velocity (alread computed) due to that
+  if o.repulsion
+    farFieldtracJump = farFieldtracJump + Frepulsion; 
+  end % if o.repulsion
+else
+  farFieldtracJump = zeros(2*N,1);  
+end
+
+% Total background velocity
+vbackTot = vback + farFieldtracJump;
+% Take a time step
+for k = 1 : nv
+  M = G(:,:,k)*Ten(:,:,k)*((Div(:,:,k)*G(:,:,k)*Ten(:,:,k))\eye(vesicle.N))*Div(:,:,k);
+  rhs1 = Xold(:,k);
+  rhs2 = o.dt*(eye(2*vesicle.N)-M)*vbackTot(:,k);
+  LHS = (eye(2*vesicle.N)-vesicle.kappa*o.dt*(-G(:,:,k)*Ben(:,:,k)+M*G(:,:,k)*Ben(:,:,k)));
+  LHSinv = LHS\eye(2*vesicle.N);
+%   Xnew(:,k) = LHS\(rhs1+rhs2);
+  Xnew(:,k) = LHSinv * rhs1 + LHSinv*rhs2;
+end
+
+end % newDNNLikeSolve
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xnew,tenNew,etaNew,RSnew,vbackTot] = DNNsolve2(o,Xold,tenOld,etaOld,RSold,Nnet)
 tt = o.tt;
 op = tt.op;
