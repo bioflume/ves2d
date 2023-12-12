@@ -14,3 +14,7 @@ learnVes/output/.DS_Store
 learnVes/.DS_Store
 *.zip
 learnVes/.DS_Store
+*.e*
+*.o*
+*~*
+*.mexa64
