@@ -22,21 +22,21 @@ iCalcVel = 0;
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
 
-prams.N = 128; % num. points for true solve in DNN scheme
+prams.N = 256; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
 prams.fmm = ~false; % use FMM for ves2ves
 prams.fmmDLP = ~false; % use FMM for ves2walls
 prams.kappa = 1;
 
-prams.dt = 5E-4/(prams.speed/100); % time step size
+prams.dt = 1E-4/(prams.speed/100); % time step size
 dtInit = prams.dt;
 tsave = 5*dtInit;
 
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
-prams.NbdExt = 512;
-prams.NbdInt = 96;
+prams.NbdExt = 1024;
+prams.NbdInt = 256;
 prams.nvbdInt = 5;
 prams.nvbdExt = 1;
 prams.nvbd = prams.nvbdInt + prams.nvbdExt;
@@ -465,7 +465,7 @@ options.order = 1;
 prams.areaLenTol = 1e-2;
 options.fmm = pramsIn.fmm;
 options.fmmDLP = pramsIn.fmmDLP;
-
+options.antiAlias = 1;
 options.correctShape = 1;
 options.adhesion = 0;
 options.repulsion = 0;
