@@ -22,7 +22,7 @@ iCalcVel = 0;
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
 
-prams.N = 256; % num. points for true solve in DNN scheme
+prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
 prams.fmm = ~false; % use FMM for ves2ves
@@ -187,8 +187,11 @@ while time < prams.Th
   [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInt,...
     NearV2V,NearV2Wint,prams.fmm,tt.op);
   icollisionWall = icollisionWallInt || icollisionWallExt;
+  
+  if icollisionWall; disp('Vesicle-wall collision occurs'); end;
+  if icollisionVes; disp('Vesicle-vesicle collision occurs'); end;
 
-  if errAreaLength >= 1e-2 || ifail || icollisionWall || icollisionVes
+  if errAreaLength >= 5e-3 
     writeMessage(logFile,message,'%s\n');  
     prams.dt = prams.dt/2;
     message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
