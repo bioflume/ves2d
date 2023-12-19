@@ -162,7 +162,8 @@ while time < prams.Th
   % Equally distribute points in arc-length
   Xiter = Xnew;
   for iter = 1 : 5
-    [Xiter,~,~] = oc.redistributeArcLength(Xiter);
+%     [Xiter,~,~] = oc.redistributeArcLength(Xiter);
+    [Xiter, ~] = oc.reparametrize(Xiter,[],6,20);
   end
   
   % Fix misalignment in center and angle due to reparametrization
@@ -356,7 +357,13 @@ function [X,XwallsInt,XwallsExt,area0,len0] = initializeVesicles(Xref,...
 
 % Wall structures
 wallsExt = capsules(XwallsExt,[],[],0,0,true);
-wallsInt = capsules(XwallsInt,[],[],0,0,true);
+% wallsInt = capsules(XwallsInt,[],[],0,0,true);
+XwallsIntLarge = zeros(size(XwallsInt));
+for k = 1 : numel(XwallsInt(1,:))
+  XwallsIntLarge(1:end/2,k) =1.1*(XwallsInt(1:end/2,k)-mean(XwallsInt(1:end/2,k))) + mean(XwallsInt(1:end/2,k));
+  XwallsIntLarge(end/2+1:end,k) =1.1*(XwallsInt(end/2+1:end,k)-mean(XwallsInt(end/2+1:end,k))) + mean(XwallsInt(end/2+1:end,k));
+end
+wallsInt = capsules(XwallsIntLarge,[],[],0,0,true);
 
 % Coordinates of the reference vesicle
 x0 = Xref(1:end/2); y0 = Xref(end/2+1:end);
