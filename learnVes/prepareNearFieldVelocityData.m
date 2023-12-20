@@ -1,13 +1,9 @@
-%function prepareNearFieldVelocityData(iset,npar)
-clear;
-clc;
-iset = 1;
-npar = 4;
+function prepareNearFieldVelocityData(iset,npar)
 
 % Load Xstore containing nves number of vesicles 
 % Xstore holds 2*N entries in its columns as [x;y] coordinates of nves
 % number of vesicles
-load ./necessaryMatFiles/X100KinitShapes.mat
+load /work2/03353/gokberk/frontera/X100KinitShapes.mat
 addpath ../src/
 
 oc = curve;
@@ -83,7 +79,7 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   tracers.nv = 4;
   tracers.X = tracersX(:,2:5);
  
-  if 1
+  if 0
   figure(1); clf;
   plot(Xinit(1:end/2),Xinit(end/2+1:end),'k','linewidth',2)
   hold on
@@ -121,7 +117,7 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
 
   nearVelocity(:,:,idx) = [selfVel VelOnGrid];
   
-  if 1
+  if 0
   figure(1);
   quiver(tracersX(1:end/2,:),tracersX(end/2+1:end,:),nearVelocity(1:end/2,:,idx),nearVelocity(end/2+1:end,:,idx))
   pause
@@ -133,5 +129,5 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   disp(['took ' num2str(tend) ' seconds'])
 end
 
-fileName = ['./output/Data_' num2str(iset) '.mat']; 
+fileName = ['/work2/03353/gokberk/frontera/nearFieldDataSet/nearFieldData_' num2str(iset) '.mat']; 
 save(fileName,'nSamplesInSet','XstandStore','nearVelocity','Nup','tracersXstore','-v7.3')
