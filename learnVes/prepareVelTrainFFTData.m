@@ -68,6 +68,9 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   B1 = real(basis(:,activeModes)); B2 = imag(basis(:,activeModes));
   Z11 = M11*B1+M12*B2; Z12 = M12*B1-M11*B2;
   Z21 = M21*B1+M22*B2; Z22 = M22*B1-M21*B2;
+
+  
+
   zRealStore(:,:,idx) = [Z11;Z21];
   zImagStore(:,:,idx) = [Z12;Z22];
   
