@@ -3,7 +3,8 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-Ntests = [64,128,256,512,1024];
+% Ntests = [64s,128,256,512,1024];
+Ntests = [16];
 sys_size = Ntests*81;
 
 addpath ../src/
@@ -12,6 +13,9 @@ oc = curve;
 gpuTimes = zeros(numel(Ntests),1);
 cpuTimes = zeros(numel(Ntests),1);
 fmmTimes = zeros(numel(Ntests),1);
+valCPU = zeros(numel(Ntests),1);
+valGPU = zeros(numel(Ntests),1);
+valFMM = zeros(numel(Ntests),1);
 
 for it = 1 : numel(Ntests)
   % Choose discretization
@@ -28,8 +32,13 @@ for it = 1 : numel(Ntests)
   % Direct calculation on single core
   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
   cpuTimes(it) = timeit(stokesDirect);
-  %valCPU = exactStokesSLDirect(vesicle,fBend);
+  valCPU(it) = exactStokesSLDirect(vesicle,fBend);
   
+  % FMM Calculation
+  stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
+  fmmTimes(it) = timeit(stokesFMM);
+  valFMM(it) = exactStokesSLfmm(vesicle,fBend);
+
   % GPU Calculation
   saGPU = gpuArray(vesicle.sa);
   fGPU = gpuArray(fBend);
@@ -38,15 +47,9 @@ for it = 1 : numel(Ntests)
   stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
   stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
-  %valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
-
-  % FMM Calculation
-  stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
-  fmmTimes(it) = timeit(stokesFMM);
-  %valFMM = exactStokesSLfmm(vesicle,fBend);
-
+  valGPU(it) = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 end
-save('comparison','fmmTimes','gpuTimes','cpuTimes')
+save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
