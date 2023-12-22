@@ -32,12 +32,12 @@ for it = 1 : numel(Ntests)
   % Direct calculation on single core
   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
   cpuTimes(it) = timeit(stokesDirect);
-  valCPU(it) = exactStokesSLDirect(vesicle,fBend);
+  valCPU = exactStokesSLDirect(vesicle,fBend);
   
   % FMM Calculation
   stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
   fmmTimes(it) = timeit(stokesFMM);
-  valFMM(it) = exactStokesSLfmm(vesicle,fBend);
+  valFMM = exactStokesSLfmm(vesicle,fBend);
 
   % GPU Calculation
   saGPU = gpuArray(vesicle.sa);
@@ -47,7 +47,7 @@ for it = 1 : numel(Ntests)
   stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
   stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
-  valGPU(it) = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
+  valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 end
 save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
 
