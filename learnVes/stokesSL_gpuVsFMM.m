@@ -3,7 +3,8 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-Ntests = [64];
+Ntests = [64,128,256,512,1024];
+sys_size = Ntests*81;
 
 addpath ../src/
 oc = curve;
@@ -27,22 +28,25 @@ for it = 1 : numel(Ntests)
   % Direct calculation on single core
   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
   cpuTimes(it) = timeit(stokesDirect);
+  %valCPU = exactStokesSLDirect(vesicle,fBend);
   
   % GPU Calculation
   saGPU = gpuArray(vesicle.sa);
   fGPU = gpuArray(fBend);
   XGPU = gpuArray(vesicle.X);
-  stokesGPU = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
-  stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPU);
-  gpuTimes(it) = gputimeit(stokesGPU);
-
+  stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
+  stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPUarr);
+  gpuTimes(it) = timeit(stokesGPU);
+  stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
+  %valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 
   % FMM Calculation
-  stokesFMM = @() exactStokesSLfmm(vesicle,f,SLPmat);
+  stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
   fmmTimes(it) = timeit(stokesFMM);
+  %valFMM = exactStokesSLfmm(vesicle,fBend);
 
 end
-
+save('comparison','fmmTimes','gpuTimes','cpuTimes')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -135,7 +139,7 @@ end % k
 end % exactStokesSLGPU
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stokesSLP = exactStokesSLfmm(vesicle,f,SLPmat)
+function stokesSLP = exactStokesSLfmm(vesicle,f)
 % [stokesSLP,stokeSLPtar] = exactStokesSLfmm(vesicle,f,Xtar,K) uses the
 % FMM to compute the single-layer potential due to all vesicles except
 % itself vesicle is a class of object capsules and f is the density
@@ -149,7 +153,7 @@ oc = curve;
 
 den = f.*[vesicle.sa;vesicle.sa]*2*pi/vesicle.N;
 
-iprec = 4;
+iprec = 3;
 
 [f1,f2] = oc.getXY(den);
 % need to multiply by arclength term.  Seperate it into
