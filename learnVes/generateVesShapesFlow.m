@@ -22,22 +22,22 @@ iCalcVel = 0;
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
 
-prams.N = 256; % num. points for true solve in DNN scheme
+prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
 prams.fmm = ~false; % use FMM for ves2ves
 prams.fmmDLP = ~false; % use FMM for ves2walls
 prams.kappa = 1;
 
-prams.dt = 5E-5/(prams.speed/100); % time step size
+prams.dt = 1E-5/(prams.speed/100); % time step size
 dtInit = prams.dt;
-tsave = 5*dtInit;
+tsave = 50*dtInit;
 
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
 prams.NbdExt = 1024;
-prams.NbdInt = 256;
-prams.nvbdInt = 5;
+prams.NbdInt = 512;
+prams.nvbdInt = 4;
 prams.nvbdExt = 1;
 prams.nvbd = prams.nvbdInt + prams.nvbdExt;
 oc = curve;
@@ -57,6 +57,13 @@ X = X/length;
 % Build tt to initialize vesicles
 tt = buildTstep(X,prams);
 [~,wallsInt,wallsExt] = tt.initialConfined(prams,[],XwallsInt,XwallsExt);
+XwI = zeros(size(XwallsInt));
+for iw = 1 : prams.nvbdInt
+  XwI(1:end/2,iw) = 1.1*(XwallsInt(1:end/2,iw)-mean(XwallsInt(1:end/2,iw))) + mean(XwallsInt(1:end/2,iw));
+  XwI(end/2+1:end,iw) = 1.1*(XwallsInt(end/2+1:end,iw)-mean(XwallsInt(end/2+1:end,iw))) + mean(XwallsInt(end/2+1:end,iw));
+end
+wallsIntL = capsules(XwI,[],[],zeros(prams.nvbdInt,1), zeros(prams.nvbdInt,1), o.antiAlias);
+
 Uwall = wallsExt.u;
 
 % Randomly place vesicles
@@ -185,14 +192,14 @@ while time < prams.Th
   [~,NearV2Wext] = vesicleProv.getZone(wallsExt,2);
   [~,icollisionWallExt] = vesicleProv.collision(wallsExt,...
       NearV2V,NearV2Wext,prams.fmm,tt.op);
-  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInt,...
+  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInitL,...
     NearV2V,NearV2Wint,prams.fmm,tt.op);
   icollisionWall = icollisionWallInt || icollisionWallExt;
   
   if icollisionWall; disp('Vesicle-wall collision occurs'); end;
   if icollisionVes; disp('Vesicle-vesicle collision occurs'); end;
 
-  if errAreaLength >= 5e-3 
+  if errAreaLength > 1e-2 || icollisionWall 
     writeMessage(logFile,message,'%s\n');  
     prams.dt = prams.dt/2;
     message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];

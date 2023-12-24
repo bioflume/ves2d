@@ -3,8 +3,8 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-% Ntests = [64s,128,256,512,1024];
-Ntests = [16];
+Ntests = [64,128,256];
+%Ntests = [16];
 sys_size = Ntests*81;
 
 addpath ../src/
@@ -18,6 +18,7 @@ valGPU = zeros(numel(Ntests),1);
 valFMM = zeros(numel(Ntests),1);
 
 for it = 1 : numel(Ntests)
+  disp(it)
   % Choose discretization
   N = Ntests(it);
   % upsample the vesicle resolution
