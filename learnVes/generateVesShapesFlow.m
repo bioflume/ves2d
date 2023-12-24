@@ -62,7 +62,7 @@ for iw = 1 : prams.nvbdInt
   XwI(1:end/2,iw) = 1.1*(XwallsInt(1:end/2,iw)-mean(XwallsInt(1:end/2,iw))) + mean(XwallsInt(1:end/2,iw));
   XwI(end/2+1:end,iw) = 1.1*(XwallsInt(end/2+1:end,iw)-mean(XwallsInt(end/2+1:end,iw))) + mean(XwallsInt(end/2+1:end,iw));
 end
-wallsIntL = capsules(XwI,[],[],zeros(prams.nvbdInt,1), zeros(prams.nvbdInt,1), o.antiAlias);
+wallsIntL = capsules(XwI,[],[],zeros(prams.nvbdInt,1), zeros(prams.nvbdInt,1),1);
 
 Uwall = wallsExt.u;
 
@@ -192,7 +192,7 @@ while time < prams.Th
   [~,NearV2Wext] = vesicleProv.getZone(wallsExt,2);
   [~,icollisionWallExt] = vesicleProv.collision(wallsExt,...
       NearV2V,NearV2Wext,prams.fmm,tt.op);
-  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInitL,...
+  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsIntL,...
     NearV2V,NearV2Wint,prams.fmm,tt.op);
   icollisionWall = icollisionWallInt || icollisionWallExt;
   
