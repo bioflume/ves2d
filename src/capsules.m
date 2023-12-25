@@ -2551,6 +2551,92 @@ end
 end % collision
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [icollisionVes,collidingIdcs,safeIdcs] = ...
+    collisionWwallOutput(vesicle,walls,NearV2W,fmm,op)
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+
+f = [ones(vesicle.N,vesicle.nv);zeros(vesicle.N,vesicle.nv)];
+% Density function is constant.  Pad second half of it with zero
+
+if ~fmm
+  kernel = @op.exactLaplaceDL;
+else
+  kernel = @op.exactLaplaceDLfmm;
+end
+% kernel for laplace's double layer potential.  Only difference
+% is if FMM is used or not
+
+
+DLP = @(X) zeros(2*size(X,1),size(X,2));
+% can cheat here because we know that the double-layer
+% potential applied to our function f will always be 0
+% This won't work if we are considering density functions
+% that are not one everywhere
+
+Fdlp = op.nearSingInt(vesicle,f,DLP,[],...
+      NearV2W,kernel,kernel,walls,false,false);
+% Apply the double-layer laplace potential with constant boundary
+% condition.  Skips self-vesicle term.  This means that if the vesicles have
+% crossed, the Fdlp will achieve a value of 1.  If they have not crossed, it
+% will be 0
+
+Fdlp = Fdlp(1:vesicle.N,:);
+% this layer-potential is not vector valued, so we throw away the second half.
+
+bufferVes = 2e-3;
+% can't set buffer too big because near singular integration does not
+% assign a value of 1 when near points cross.  This is because I did not
+% swtich the direction of the normal for this case.  So, the lagrange
+% interpolation points may look something like [0 1 1 1 1 ...] instead
+% of [1 1 1 1 1 ...].  The local interpolant is affected by this and
+% a value somewhere between 0 and 1 will be returned
+icollisionVes = any(abs(Fdlp(:)) > bufferVes);
+
+% retrieve the indeces of colliding vesicles
+safeIdcs = [];
+
+ids = find(abs(Fdlp)>bufferVes);
+collidingIdcs = ceil(ids/vesicle.N);
+collidingIdcs = collidingIdcs(:);
+collidingIdcs = unique(collidingIdcs);
+for k = 1 : vesicle.nv
+  if any(collidingIdcs) ~= k
+    safeIdcs = [safeIdcs; k];
+  end
+end
+
+
+% if there is a single vesicle colliding (!), that's a numerical error and
+% there is no collision
+if numel(collidingIdcs) == 1
+  collidingIdcs = [];
+  icollisionVes = 0;
+else
+  % if there are colliding vesicles far from each other, then there is no collision  
+  % numerical error again
+  % centers of vesicles
+  centx = mean(x,1); centy = mean(y,1);  
+  reallyCollIdcs = [];  
+  for i = 1 : numel(collidingIdcs)
+    dist2rest = sqrt((centx(collidingIdcs(i))-centx(collidingIdcs)).^2 + ...
+      (centy(collidingIdcs(i))-centy(collidingIdcs)).^2);
+    [~,sortId] = sort(dist2rest);     
+    if dist2rest(sortId(2))<vesicle.length/2
+       reallyCollIdcs = [reallyCollIdcs;collidingIdcs(i)];   
+    end
+  end
+  collidingIdcs = reallyCollIdcs;
+  if isempty(reallyCollIdcs)
+    icollisionVes = 0;
+  end  
+end
+
+
+
+end % collision
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function InOut = sortPts(vesicle,Xtar,fmm,NearV2T,op)
 % InOut = sortPts(vesicle,Xtar,fmm,nearV2T) determines if the set of
 % points in Xtar are inside or outside of a vesicle configuration

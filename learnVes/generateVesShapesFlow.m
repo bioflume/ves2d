@@ -1,7 +1,7 @@
 % clear; clc;
 % runName = ['dataGenRun'];
 % folderName = './output/';
-% nv = 5;
+% nv = 35;
 % speed = 10000;
 function generateVesShapesFlow(runName, folderName, nv, speed)
 addpath ../src/
@@ -14,7 +14,7 @@ logFile = [prams.folderName runName '.log'];
 
 prams.farField = 'rotateDataGen'; % 'rotation' or 'couette' (w/ solid boundaries)
 prams.speed = speed; 
-iplot = 0;
+iplot = 1;
 iCalcVel = 0;
 
 
@@ -25,14 +25,15 @@ prams.Th = 1.5/(prams.speed/100); % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
-prams.fmm = ~false; % use FMM for ves2ves
-prams.fmmDLP = ~false; % use FMM for ves2walls
+prams.fmm = false; % use FMM for ves2ves
+prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 
-prams.dt = 1E-5/(prams.speed/100); % time step size
+prams.dt = 1E-3/(prams.speed/100); % time step size 1E-5
 dtInit = prams.dt;
-tsave = 50*dtInit;
+tsave = 5*dtInit;
 
+prams.repStrength = 1E+5;
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
 prams.NbdExt = 1024;
@@ -53,6 +54,7 @@ reducedArea = 0.65;
 X = oc.ellipse(prams.N,reducedArea);
 [ra,area,length] = oc.geomProp(X);
 X = X/length;
+Xref = X;
 
 % Build tt to initialize vesicles
 tt = buildTstep(X,prams);
@@ -153,7 +155,7 @@ while time < prams.Th
    % AREA-LENGTH CORRECTION
   message = 'Correcting area-length errors...';
   writeMessage(logFile,message,'%s\n')
-  [Xcorr,ifail] = oc.correctAreaAndLength2(Xnew,prams.area0,prams.len0);
+  [Xcorr,ifail, failedIdcs] = oc.correctAreaAndLength2(Xnew,prams.area0,prams.len0);
   if ifail
     message = 'AREA-LENGTH CANNOT BE CORRECTED!!!';
     writeMessage(logFile,message,'%s\n')
@@ -180,46 +182,64 @@ while time < prams.Th
   writeMessage(logFile,message,'%s\n');
 
   % Collision check
-  vesicleProv = capsules(X,[],[],[],[],1);
+  vesicleProv = capsules(Xnew,[],[],[],[],1);
   vesicleProv.setUpRate(tt.op);
   [NearV2V,NearV2Wint] = vesicleProv.getZone(wallsInt,3);  
   [~,NearV2Wext] = vesicleProv.getZone(wallsExt,2);
-  [~,icollisionWallExt] = vesicleProv.collision(wallsExt,...
-      NearV2V,NearV2Wext,prams.fmm,tt.op);
-  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInt,...
-    NearV2V,NearV2Wint,prams.fmm,tt.op);
-  icollisionWall = icollisionWallInt || icollisionWallExt;
   
-  if icollisionWall
-    message = 'Vesicle-wall collision occurs'; 
+  [icollisionVes,collidingVesVesIdcs,~] = vesicleProv.collisionWVesOutput(NearV2V,prams.fmm,tt.op);
+  [icollisionWallInt,collidingVesWallIntIdcs,~] = vesicleProv.collisionWwallOutput(wallsInt,NearV2Wint,prams.fmm,tt.op);
+  [icollisionWallExt,collidingVesWallExtIdcs,~] = vesicleProv.collisionWwallOutput(wallsExt,NearV2Wext,prams.fmm,tt.op);
+
+  problemVesIDs = [failedIdcs; collidingVesVesIdcs; collidingVesWallIntIdcs; collidingVesWallExtIdcs];
+  problemVesIDs = unique(problemVesIDs);
+  
+  
+  if icollisionWallInt
+    message = 'Vesicle-wall interior collision occurs'; 
+    writeMessage(logFile,message,'%s\n');
+  end
+  if icollisionWallExt
+    message = 'Vesicle-wall exterior collision occurs'; 
     writeMessage(logFile,message,'%s\n');
   end
   if icollisionVes
     message = 'Vesicle-vesicle collision occurs'; 
     writeMessage(logFile,message,'%s\n');
   end
-
-  if errAreaLength > 1e-2 
-    writeMessage(logFile,message,'%s\n');  
-    prams.dt = prams.dt/2;
-    message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
+  
+  
+  if ~isempty(problemVesIDs)
+    message = ['There are problematic vesicles to be replaced by randomly placed vesicles'];
     writeMessage(logFile,message,'%s\n');
-    if prams.dt < 1e-9
-      break
+    % First remove the problematic vesicles
+    Xreplaced = zeros(2*prams.N,prams.nv-numel(problemVesIDs));
+    XLarge = Xreplaced;
+    count = 1;
+    for k = 1 : prams.nv
+      if all(k ~= problemVesIDs)
+        Xreplaced(:,count) = Xnew(:,k);
+        XLarge(1:end/2,count) = 1.1*(Xnew(1:end/2,k)-mean(X(1:end/2,k))) + mean(X(1:end/2,k));
+        XLarge(end/2+1:end,count) = 1.1*(Xnew(end/2+1:end,k)-mean(X(end/2+1:end,k))) + mean(X(end/2+1:end,k));
+        count = count + 1;
+      end
     end
-  else
-    X = Xnew; sig = sigNew; etaExt = etaExtNew; etaInt = etaIntNew; RS = RSNew;  
-    time = time + prams.dt;
-    prams.dt = min(dtInit, prams.dt*1.2);
-    it = it + 1;
-    if time >= nextSave 
-      writeDataWithEta(fileName,X,sig,etaExt,etaInt,RS,time);
-      nextSave = nextSave + tsave;
-      message = ['Saving Data'];
-      writeMessage(logFile,message,'%s\n');
-    end
+
+    % Now initialize new vesicles to maintain the volume fraction
+    Xnew = replaceVesicles(Xref,XLarge,Xreplaced,numel(problemVesIDs),XwallsExt, XwallsInt, prams, tt);
   end
-  tt.dt = prams.dt;
+  
+  X = Xnew; sig = sigNew; etaExt = etaExtNew; etaInt = etaIntNew; RS = RSNew;  
+  time = time + prams.dt;
+  it = it + 1;
+  if time >= nextSave 
+    writeDataWithEta(fileName,X,sig,etaExt,etaInt,RS,time);
+    nextSave = nextSave + tsave;
+    message = ['Saving Data'];
+    writeMessage(logFile,message,'%s\n');
+  end
+  
+  
 
   if iplot
     figure(1); clf;
@@ -450,6 +470,95 @@ while k <= prams.nv
 
 end % end while
 [~,area0,len0] = oc.geomProp(X);
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function X = replaceVesicles(Xref,XLarge,X,num2create,...
+    XwallsExt, XwallsInt, prams, tt)
+
+% Wall structures
+wallsExt = capsules(XwallsExt,[],[],0,0,true);
+% wallsInt = capsules(XwallsInt,[],[],0,0,true);
+XwallsIntLarge = zeros(size(XwallsInt));
+for k = 1 : numel(XwallsInt(1,:))
+  XwallsIntLarge(1:end/2,k) =1.1*(XwallsInt(1:end/2,k)-mean(XwallsInt(1:end/2,k))) + mean(XwallsInt(1:end/2,k));
+  XwallsIntLarge(end/2+1:end,k) =1.1*(XwallsInt(end/2+1:end,k)-mean(XwallsInt(end/2+1:end,k))) + mean(XwallsInt(end/2+1:end,k));
+end
+wallsInt = capsules(XwallsIntLarge,[],[],0,0,true);
+
+% Coordinates of the reference vesicle
+x0 = Xref(1:end/2); y0 = Xref(end/2+1:end);
+
+
+k = 1;
+while k <= num2create
+  cx = -0.9*prams.outWallRad + 1.8*prams.outWallRad*rand;
+  cy = -0.9*prams.outWallRad + 1.8*prams.outWallRad*rand;
+
+  phi = -pi/4+pi/2*rand;
+
+  xpot = cx + x0*cos(phi) + y0*sin(phi);
+  ypot = cy - x0*sin(phi) + y0*cos(phi);
+
+  xpotLarge = cx + 1.1*(x0*cos(phi) + y0*sin(phi));
+  ypotLarge = cy - 1.1*(x0*sin(phi) - y0*cos(phi));
+
+  accept = true; % tentatively accept the vesicle
+
+  % create capsule with the potential vesicle
+  vesicle = capsules([xpotLarge;ypotLarge],[],[],[],[],true);
+
+  [~,NearV2WInt] = vesicle.getZone(wallsInt,3);
+  [~,NearV2WExt] = vesicle.getZone(wallsExt,3);
+
+
+  [~,icollisionWallExt] = vesicle.collision(wallsExt,[],NearV2WExt,...
+    tt.fmm,tt.op);
+  [~,icollisionWallInt] = vesicle.collision(wallsInt,[],NearV2WInt,...
+    tt.fmm,tt.op);
+  if icollisionWallExt || icollisionWallInt
+    accept = false;
+
+    message = ['Vesicle crossed wall.'];
+    disp(message)
+    % at least one of the vesicles's points is outside of one
+    % of the solid wall components
+  end
+
+  if sqrt(cx.^2 + cy.^2) > prams.outWallRad; accept = false; end;
+
+
+  if accept 
+    % if vesicle is not outside of physical walls, accept it as
+    % a potential new vesicle.  It will be kept as long as it intersects
+    % no other vesicles  
+    XPotLarge = [XLarge [xpotLarge;ypotLarge]];
+
+    % create an object with the current configuration of vesicles
+    vesicle = capsules(XPotLarge,[],[],0,0,true);  
+
+
+    % see if vesicles have crossed using collision detection code
+    % Can be used with or without the fmm    
+    NearV2V = vesicle.getZone([],1);
+    icollisionVes = vesicle.collision(...
+        [],NearV2V,[],tt.fmm,tt.op);
+
+    if icollisionVes
+      message = ['Vesicles crossed.'];
+      disp(message)
+      % if they've crossed, reject it
+    else
+      X = [X [xpot;ypot]];
+      k = k + 1;
+      message = [num2str(num2create-k+1,'%d') ' vesicles left to fill the domain'];
+      disp(message)
+      % if they haven't crossed, increase the total number of vesicles
+    end
+  end % if accept
+
+end % end while
 
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

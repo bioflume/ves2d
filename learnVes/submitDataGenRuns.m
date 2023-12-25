@@ -1,7 +1,7 @@
 function submitDataGenRuns(nv,idStart,runNameInit)
 
 folderName = '/work2/03353/gokberk/frontera/newDataGenRuns/';
-speed = 100;
+speed = 1000;
 
 npar = 5;
 p = parcluster('local');

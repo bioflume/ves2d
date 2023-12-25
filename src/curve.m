@@ -3312,7 +3312,7 @@ end
 end % correctAreaAndLength
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Xnew,iFailCorrection] = correctAreaAndLength2(o,X,a0,l0)
+function [Xnew,iFailCorrection, failedIdcs] = correctAreaAndLength2(o,X,a0,l0)
 % Xnew = correctAreaAndLength(X,a0,l0) changes the shape of the vesicle
 % by finding the shape Xnew that is closest to X in the L2 sense and
 % has the same area and length as the original shape
@@ -3335,7 +3335,7 @@ options = optimset('Algorithm','sqp','TolCon',tolConstraint,...
 % 'active-set', 'interior-point', 'interior-point-convex' 'sqp'
 
 Xnew = zeros(size(X));
-
+failedIdcs = [];
 % flag for failing correction
 iFailCorrection = false;
 for k = 1:size(Xnew,2)
@@ -3348,6 +3348,7 @@ for k = 1:size(Xnew,2)
     message = ['Correction scheme failed, do not correct at this step'];
     disp(message)
     Xnew(:,k) = X(:,k);
+    failedIdcs = [failedIdcs; k];
   end
   % if fmincon fails, keep the current iterate for this time step.
   % Hopefully it'll be corrected at a later step.

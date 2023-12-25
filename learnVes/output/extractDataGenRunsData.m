@@ -1,7 +1,7 @@
 clear; clc;
 imovie = 0;
 iplot = 1;
-fileName = './newDataGenRuns/dataGenSpeed10K_IDId17.bin';
+fileName = './newDataGenRuns/dataGenSpeed_Id4.bin';
 fid = fopen(fileName,'r');
 val = fread(fid,'double');
 fclose(fid);
