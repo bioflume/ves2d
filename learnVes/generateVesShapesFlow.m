@@ -57,12 +57,6 @@ X = X/length;
 % Build tt to initialize vesicles
 tt = buildTstep(X,prams);
 [~,wallsInt,wallsExt] = tt.initialConfined(prams,[],XwallsInt,XwallsExt);
-XwI = zeros(size(XwallsInt));
-for iw = 1 : prams.nvbdInt
-  XwI(1:end/2,iw) = 1.1*(XwallsInt(1:end/2,iw)-mean(XwallsInt(1:end/2,iw))) + mean(XwallsInt(1:end/2,iw));
-  XwI(end/2+1:end,iw) = 1.1*(XwallsInt(end/2+1:end,iw)-mean(XwallsInt(end/2+1:end,iw))) + mean(XwallsInt(end/2+1:end,iw));
-end
-wallsIntL = capsules(XwI,[],[],zeros(prams.nvbdInt,1), zeros(prams.nvbdInt,1),1);
 
 Uwall = wallsExt.u;
 
@@ -192,14 +186,20 @@ while time < prams.Th
   [~,NearV2Wext] = vesicleProv.getZone(wallsExt,2);
   [~,icollisionWallExt] = vesicleProv.collision(wallsExt,...
       NearV2V,NearV2Wext,prams.fmm,tt.op);
-  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsIntL,...
+  [icollisionVes,icollisionWallInt] = vesicleProv.collision(wallsInt,...
     NearV2V,NearV2Wint,prams.fmm,tt.op);
   icollisionWall = icollisionWallInt || icollisionWallExt;
   
-  if icollisionWall; disp('Vesicle-wall collision occurs'); end;
-  if icollisionVes; disp('Vesicle-vesicle collision occurs'); end;
+  if icollisionWall
+    message = 'Vesicle-wall collision occurs'; 
+    writeMessage(logFile,message,'%s\n');
+  end
+  if icollisionVes
+    message = 'Vesicle-vesicle collision occurs'; 
+    writeMessage(logFile,message,'%s\n');
+  end
 
-  if errAreaLength > 1e-2 || icollisionWall 
+  if errAreaLength > 1e-2 
     writeMessage(logFile,message,'%s\n');  
     prams.dt = prams.dt/2;
     message = ['Time step rejected, taking it with a smaller step: ' num2str(prams.dt)];
@@ -485,7 +485,7 @@ options.fmmDLP = pramsIn.fmmDLP;
 options.antiAlias = 1;
 options.correctShape = 1;
 options.adhesion = 0;
-options.repulsion = 0;
+options.repulsion = 1;
 
 options.confined = true;
 options.farField = pramsIn.farField;
