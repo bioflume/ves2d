@@ -41,13 +41,13 @@ for it = 1 : numel(Ntests)
   valFMM = exactStokesSLfmm(vesicle,fBend);
 
   % GPU Calculation
-  saGPU = gpuArray(vesicle.sa);
-  fGPU = gpuArray(fBend);
-  XGPU = gpuArray(vesicle.X);
-  stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
+  saGPU = gpuArray(single(vesicle.sa));
+  fGPU = gpuArray(single(fBend));
+  XGPU = gpuArray(single(vesicle.X));
+  stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
-  stokesGPUarr = zeros(2*vesicle.N,vesicle.nv,"gpuArray");
+  stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 end
 save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
@@ -112,7 +112,7 @@ den = f.*[sa;sa]*2*pi/N;
 % multiply by arclength term
 
 for k = 1:nv % vesicle of targets
-  K = [(1:k-1) (k+1:nv)];
+  K = single([(1:k-1) (k+1:nv)]);
   % Loop over all vesicles except k
   for j=1:N
     dis2 = (X(j,k) - X(1:N,K)).^2 + (X(j+N,k) - X(N+1:2*N,K)).^2;
