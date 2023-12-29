@@ -25,8 +25,8 @@ prams.Th = 1.5/(prams.speed/100); % time horizon
 prams.N = 32; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
-prams.fmm = false; % use FMM for ves2ves
-prams.fmmDLP = false; % use FMM for ves2walls
+prams.fmm = ~false; % use FMM for ves2ves
+prams.fmmDLP = ~false; % use FMM for ves2walls
 prams.kappa = 1;
 
 prams.dt = 1E-4/(prams.speed/100); % time step size 1E-5
