@@ -166,6 +166,14 @@ randFreqs
 randAmps
 
 verbose
+
+
+% precomputed matrices
+extMatOnSelf
+extMatOnLayers
+intMatOnSelf
+intMatOnLayers
+
 end % properties
 
 methods
@@ -576,8 +584,69 @@ else % if there are two sets of walls discretized with different Nbds
 end
 
 end % initialConfined
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function precomputeNearField(o,prams,XwallsInt,XwallsExt)
+oc = curve;
+% poten classes for walls
+potWallInt = o.opWallInt;
+potWallExt = o.opWallExt;
+% velocity on solid walls coming from no slip boundary condition
+[uwallsExt,uwallsInt] = o.farField(XwallsExt,XwallsInt);
+
+% build the walls
+wallsInt = capsules(XwallsInt,[],uwallsInt,...
+  zeros(prams.nvbdInt,1),zeros(prams.nvbdInt,1),o.antiAlias);
+wallsExt = capsules(XwallsExt,[],uwallsExt,0,0,o.antiAlias);
+
+% set the upsampling rate for walls
+if o.antiAlias
+  wallsInt.setUpRate(potWallInt);
+  wallsExt.setUpRate(potWallExt);
+end
+
+% For the exterior wall
+[~,tang] = oc.diffProp(XwallsExt);
+nx = tang(wallsExt.N+1:2*wallsExt.N);
+ny = -tang(1:wallsExt.N);
+h = wallsExt.length/wallsExt.N;
+
+Ntra = wallsExt.N*(prams.nLayers-1);
+tracersXwallExt = zeros(2*Ntra,1);
+dlayer = (0:prams.nLayers-1)'/(prams.nLayers-1)' * sqrt(h);
+dlayer = dlayer(2:end);
+for il = 1 : prams.nLayers-1
+  tracersXwallExt((il-1)*wallsExt.N+1:il*wallsExt.N) = XwallsExt(1:end/2)+nx*dlayer(il);
+  tracersXwallExt(Ntra+(il-1)*wallsExt.N+1:Ntra+il*wallsExt.N) = XwallsExt(end/2+1:end) + ny*dlayer(il);
+end
+o.extMatOnSelf = -1/2*eye(2*wallsExt.N) + o.wallDLPext;
+o.extMatOnLayers = potWallExt.stokesDLmatrixFar(wallsExt,tracersXwallExt);
 
 
+% For the interior wall
+
+[~,tang] = oc.diffProp(XwallsInt);
+nx = tang(wallsInt.N+1:2*wallsInt.N,:);
+ny = -tang(1:wallsInt.N,:);
+h = wallsInt.length/wallsInt.N;
+Ntra = wallsInt.N*(prams.nLayers-1);
+tracersXwallInt = zeros(2*Ntra,wallsInt.nv);
+dlayer = (0:prams.nLayers-1)'/(prams.nLayers-1)' * sqrt(h);
+dlayer = dlayer(2:end);
+o.intMatOnSelf = zeros(2*wallsInt.N,2*wallsInt.N,wallsInt.nv);
+o.intMatOnLayers = zeros(2*Ntra,2*wallsInt.N,wallsInt.nv);
+
+for iw = 1 : wallsInt.nv
+  for il = 1 : prams.nLayers-1
+    tracersXwallInt((il-1)*wallsInt.N+1:il*wallsInt.N,iw) = XwallsInt(1:end/2,iw)+nx(:,iw)*dlayer(il);
+    tracersXwallInt(Ntra+(il-1)*wallsInt.N+1:Ntra+il*wallsInt.N,iw) = XwallsInt(end/2+1:end,iw) + ny(:,iw)*dlayer(il);
+  end
+o.intMatOnSelf(:,:,iw) = -1/2*eye(2*wallsInt.N) + o.wallDLPint(:,:,iw);
+end
+o.intMatOnLayers = potWallInt.stokesDLmatrixFar(wallsInt,tracersXwallInt);
+
+
+
+end % precomputeNearField
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xstore,sigStore,uStore,etaStore,RSstore,Xtra] = ...
   firstSteps(o,options,prams,Xinit,walls,Xtra,pressTar)
@@ -7987,7 +8056,13 @@ elseif any(strcmp(varargin,'rotateDataGen'));
 
 elseif any(strcmp(varargin,'couette'));
   vInf = [zeros(2*N,1) 1*[-y(:,2)+mean(y(:,2));x(:,2)-mean(x(:,2))]];
-  
+elseif any(strcmp(varargin,'couetteTwoSep'));
+  % interior walls
+  XwallsInt = varargin{find(strcmp(varargin,'intWalls'))+1};
+  x = XwallsInt(1:end/2,1);
+  y = XwallsInt(end/2+1:end,1);
+  vInf = [1*[-y+mean(y);x-mean(x)]];  
+
 elseif any(strcmp(varargin,'couetteOuter'));
   vInf = [1*[-y(:,1)+mean(y(:,1));x(:,1)-mean(x(:,1))] zeros(2*N,1)];  
 

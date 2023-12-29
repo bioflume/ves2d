@@ -2,7 +2,7 @@
 % runName = ['dataGenRun'];
 % folderName = './output/';
 % nv = 35;
-% speed = 10000;
+% speed = 1000;
 function generateVesShapesFlow(runName, folderName, nv, speed)
 addpath ../src/
 addpath ../examples/
@@ -14,7 +14,7 @@ logFile = [prams.folderName runName '.log'];
 
 prams.farField = 'rotateDataGen'; % 'rotation' or 'couette' (w/ solid boundaries)
 prams.speed = speed; 
-iplot = 1;
+iplot = 0;
 iCalcVel = 0;
 
 
@@ -22,22 +22,22 @@ iCalcVel = 0;
 %-------------------------------------------------------------------------
 prams.Th = 1.5/(prams.speed/100); % time horizon
 
-prams.N = 128; % num. points for true solve in DNN scheme
+prams.N = 32; % num. points for true solve in DNN scheme
 prams.nv = nv; 
 prams.viscCont = ones(prams.nv,1);
-prams.fmm = ~false; % use FMM for ves2ves
-prams.fmmDLP = ~false; % use FMM for ves2walls
+prams.fmm = false; % use FMM for ves2ves
+prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 
-prams.dt = 1E-3/(prams.speed/100); % time step size 1E-5
+prams.dt = 1E-4/(prams.speed/100); % time step size 1E-5
 dtInit = prams.dt;
 tsave = 5*dtInit;
 
 prams.repStrength = 1E+5;
 prams.outWallRad = 2;
 prams.inWallScale = 0.45;
-prams.NbdExt = 1024;
-prams.NbdInt = 512;
+prams.NbdExt = 512;
+prams.NbdInt = 128;
 prams.nvbdInt = 4;
 prams.nvbdExt = 1;
 prams.nvbd = prams.nvbdInt + prams.nvbdExt;
@@ -551,6 +551,7 @@ while k <= num2create
       % if they've crossed, reject it
     else
       X = [X [xpot;ypot]];
+      XLarge = XPotLarge;
       k = k + 1;
       message = [num2str(num2create-k+1,'%d') ' vesicles left to fill the domain'];
       disp(message)

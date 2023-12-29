@@ -1380,6 +1380,65 @@ end % k
 end % stokesDLmatrixOld
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function D = stokesDLmatrixFar(o,vesicle,Xtracers)
+% D = stokesDLmatrixFar(vesicle), generate double-layer potential for 
+% Stokes vesicle is a data structure defined as in the capsules class
+% D is (2N,2Ntar,nv) array where N is the number of points per curve and 
+% nv is the number of curves in X 
+
+% 2*Ntar, 2*N acting on density to get velocity on target points
+% Xtracers hold tracer points for each vesicle
+
+oc = curve;
+[x,y] = oc.getXY(vesicle.X);
+% Vesicle positions
+[tx,ty] = oc.getXY(vesicle.xt);
+sa = vesicle.sa;
+
+norx = ty; nory = -tx;
+
+% Vesicle tangent
+Nsou = vesicle.N;
+
+Ntar = size(Xtracers,1)/2;
+
+% number of points per vesicles
+D = zeros(2*Ntar,2*Nsou,vesicle.nv);
+% initialize space for double-layer potential matrix
+
+for k=1:vesicle.nv  % Loop over curves
+  xtar = Xtracers(1:end/2,k);
+  ytar = Xtracers(end/2+1:end,k);
+  
+  xtar = xtar(:,ones(Nsou,1)); 
+  ytar = ytar(:,ones(Nsou,1));
+
+  xsou = x(:,k); ysou = y(:,k);
+  xsou = xsou(:,ones(Ntar,1))';
+  ysou = ysou(:,ones(Ntar,1))';
+
+  norxtmp = norx(:,k); norytmp = nory(:,k);
+  norxtmp = norxtmp(:,ones(Ntar,1))';
+  norytmp = norytmp(:,ones(Ntar,1))';
+
+  satmp = sa(:,k);
+  satmp = satmp(:,ones(Ntar,1))';
+
+  rho2 = (xtar-xsou).^2 + (ytar-ysou).^2;
+
+  coeff = 1/pi*((xtar-xsou).*norxtmp + ...
+    (ytar-ysou).*norytmp).*satmp./rho2.^2;
+
+  D(1:Ntar,:,k) = 2*pi/Nsou*[coeff.*(xtar-xsou).^2 ...
+    coeff.*(xtar-xsou).*(ytar-ysou)];
+  D(Ntar+1:end,:,k) = 2*pi/Nsou*[coeff.*(ytar-ysou).*(xtar-xsou) ...
+    coeff.*(ytar-ysou).^2];
+
+end % k
+
+end % stokesDLmatrixFar
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function N0 = stokesN0matrix(o,vesicle)
 % N0 = stokesN0matrix(vesicle) generates the the integral operator with kernel
 % normal(x) \otimes normal(y) which removes the rank one defficiency of the

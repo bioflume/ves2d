@@ -1,7 +1,7 @@
 clear; clc;
 imovie = 0;
 iplot = 1;
-fileName = './newDataGenRuns/dataGenSpeed_Id4.bin';
+fileName = './newDataGenRuns/dataGenSpeed_Id10.bin';
 fid = fopen(fileName,'r');
 val = fread(fid,'double');
 fclose(fid);
@@ -90,7 +90,7 @@ if imovie
 drawnow;
 myMovie(it) = getframe(gca);
 else
-pause(0.1)
+pause
 end
 
 end
