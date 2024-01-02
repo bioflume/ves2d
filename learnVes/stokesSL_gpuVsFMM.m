@@ -3,8 +3,8 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-Ntests = [64,128,256];
-%Ntests = [16];
+Ntests = [32;64;128];
+% Ntests = [64];
 sys_size = Ntests*81;
 
 addpath ../src/
@@ -45,7 +45,7 @@ for it = 1 : numel(Ntests)
   fGPU = gpuArray(single(fBend));
   XGPU = gpuArray(single(vesicle.X));
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
-  stokesGPU = @() exactStokesSLGPU(XGPU, saGPU, fGPU, stokesGPUarr);
+  stokesGPU = @() exactStokesSLGPUVect(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
@@ -99,49 +99,61 @@ for k = 1:vesicle.nv % vesicle of targets
 end % k
 % Evaluate single-layer potential at vesicles but oneself
   
-
-
 end % exactStokesSLDirect
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stokesSLP = exactStokesSLGPU(X, sa, f, stokesSLP)
+function stokesSLP = exactStokesSLGPUVect(X, sa, f, stokesSLP)
 N = size(X,1)/2;
 nv = size(X,2);
-
-den = f.*[sa;sa]*2*pi/N;
+Ntar = N;
+fx = f(1:end/2,:);
+fy = f(end/2+1:end,:);
 
 % multiply by arclength term
 
 for k = 1:nv % vesicle of targets
-  K = single([(1:k-1) (k+1:nv)]);
+  K = [(1:k-1) (k+1:nv)];
   % Loop over all vesicles except k
-  for j=1:N
-    dis2 = (X(j,k) - X(1:N,K)).^2 + (X(j+N,k) - X(N+1:2*N,K)).^2;
-    diffxy = [X(j,k) - X(1:N,K); X(j+N,k) - X(N+1:2*N,K)];
-    % distance squared and difference of source and target location
+  allX = X(1:N,K); allX = allX(:);
+  allY = X(N+1:2*N,K); allY = allY(:);
+  allFx = fx(:,K);
+  allFy = fy(:,K);
+  allsa = sa(:,K);
 
-    coeff = 0.5*log(dis2);
-    % first part of single-layer potential for Stokes
-
-    val = coeff.*den(1:N,K);
-    stokesSLP(j,k) = -sum(val(:));
-    val = coeff.*den(N+1:2*N,K);
-    stokesSLP(j+N,k) = -sum(val(:));
-    % logarithm terms in the single-layer potential
+  denx = allFx.*allsa*2*pi/N; denx = denx(:);
+  deny = allFy.*allsa*2*pi/N; deny = deny(:);
   
-    coeff = (diffxy(1:N,:).*den(1:N,K) + diffxy(N+1:2*N,:).*den(N+1:2*N,K))./dis2;
-    % second part of single-layer potential for Stokes
+  ddenx = denx(:,ones(Ntar,1))';
+  ddeny = deny(:,ones(Ntar,1))';
+  
+  xsou = allX(:,ones(Ntar,1))';
+  ysou = allY(:,ones(Ntar,1))';
 
-    val = coeff.*diffxy(1:N,:);
-    stokesSLP(j,k) = stokesSLP(j,k) + sum(val(:));
-    val = coeff.*diffxy(N+1:2*N,:);
-    stokesSLP(j+N,k) = stokesSLP(j+N,k) + sum(val(:));
-    % r \otimes r term of the single-layer potential
+  Nsou = numel(allX);
+  xx = X(1:N,k);
+  yy = X(N+1:2*N,k);
+  xtar = xx(:,ones(Nsou,1));
+  ytar = yy(:,ones(Nsou,1));
+  
+  diffx = xtar-xsou;
+  diffy = ytar-ysou;
+  dis2 = diffx.^2 + diffy.^2;
+  
+  coeff = 0.5*log(dis2);
+  
+  val = coeff.*ddenx;
+  stokesSLP(1:N,k) = -sum(val,2);
+  val = coeff.*ddeny;
+  stokesSLP(N+1:2*N,k) = -sum(val,2);
 
-  end % j
+  coeff = (diffx.*ddenx + diffy.*ddeny)./dis2;
+
+  val = coeff.*diffx;
+  stokesSLP(1:N,k) = stokesSLP(1:N,k) + sum(val,2);
+  val = coeff.*diffy;
+  stokesSLP(N+1:2*N,k) = stokesSLP(N+1:2*N,k) + sum(val,2); 
 end % k
 
-end % exactStokesSLGPU
-
+end % exactStokesSLGPUVect
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stokesSLP = exactStokesSLfmm(vesicle,f)
 % [stokesSLP,stokeSLPtar] = exactStokesSLfmm(vesicle,f,Xtar,K) uses the
