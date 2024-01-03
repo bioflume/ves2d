@@ -3,7 +3,8 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-Ntests = [32;64;128];
+%Ntests = [32;64;128];
+Ntests = [256;512];
 % Ntests = [64];
 sys_size = Ntests*81;
 
@@ -33,12 +34,12 @@ for it = 1 : numel(Ntests)
   % Direct calculation on single core
   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
   cpuTimes(it) = timeit(stokesDirect);
-  valCPU = exactStokesSLDirect(vesicle,fBend);
+  %valCPU = exactStokesSLDirect(vesicle,fBend);
   
   % FMM Calculation
   stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
   fmmTimes(it) = timeit(stokesFMM);
-  valFMM = exactStokesSLfmm(vesicle,fBend);
+  %valFMM = exactStokesSLfmm(vesicle,fBend);
 
   % GPU Calculation
   saGPU = gpuArray(single(vesicle.sa));
@@ -48,7 +49,7 @@ for it = 1 : numel(Ntests)
   stokesGPU = @() exactStokesSLGPUVect(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
-  valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
+  %valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 end
 save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
 
