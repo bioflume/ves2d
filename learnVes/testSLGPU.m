@@ -54,7 +54,8 @@ for it = 1 : numel(Ntests)
   end
   
   nrows = vesicle.N*vesicle.nv;
-  indices = gpuArray(single((cols(:)-1)*nrows + rows(:))); 
+  %indices = gpuArray(single((cols(:)-1)*nrows + rows(:)));
+  indices = (cols(:)-1)*nrows + rows(:); 
   saGPU = gpuArray(single(vesicle.sa));
   fxGPU = gpuArray(single(fBend(1:end/2,:)));
   fyGPU = gpuArray(single(fBend(end/2+1:end,:)));
@@ -71,14 +72,14 @@ for it = 1 : numel(Ntests)
 
   %stokesSLP = zeros(2*vesicle.N,vesicle.nv);
   %stokesSLP = exactStokesSLGPUVect(vesicle.X, vesicle.sa, fBend, stokesSLP);
-  
+  if 0 
   saGPU = gpuArray(single(vesicle.sa));
   fGPU = gpuArray(single(fBend));
   XGPU = gpuArray(single(vesicle.X));
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   stokesGPU = @() exactStokesSLGPUVect(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimesOld(it) = gputimeit(stokesGPU);
-
+  end
 end
 save('comparison.mat','gpuTimesNew')
 
@@ -139,24 +140,25 @@ x = x(:); y = y(:);
 diffx = x(:,ones(Nall,1))-x(:,ones(Nall,1))'; %xtar = xsou'
 diffy = y(:,ones(Nall,1))-y(:,ones(Nall,1))';
 
-dis2 = diffx.^2 + diffy.^2;
 
-coeff = 0.5*log(dis2);
+coeff = 0.5*log(diffx.^2 + diffy.^2);
 coeff(indices) = 0;
 stokesXSLP = stokesXSLP - coeff*denx;
 stokesYSLP = stokesYSLP - coeff*deny;
 
-coeff1 = (diffx.^2 ./ dis2);
-coeff1(indices) = 0;
-coeff2 = (diffx.*diffy)./dis2 ;
-coeff2(indices) = 0;
-stokesXSLP = stokesXSLP + coeff1*denx + coeff2*deny;
+coeff = (diffx.^2 ./ (diffx.^2 + diffy.^2));
+coeff(indices) = 0;
+stokesXSLP = stokesXSLP + coeff*denx;
+coeff = (diffx.*diffy)./ (diffx.^2 + diffy.^2) ;
+coeff(indices) = 0;
+stokesXSLP = stokesXSLP + coeff*deny;
 
-coeff1 = (diffx.*diffy)./dis2;
-coeff1(indices) = 0;
-coeff2 = (diffy.^2 ./ dis2);
-coeff2(indices) = 0;
-stokesYSLP = stokesYSLP + coeff1*denx + coeff2*deny; 
+coeff = (diffx.*diffy)./ (diffx.^2 + diffy.^2);
+coeff(indices) = 0;
+stokesYSLP = stokesYSLP + coeff*denx;
+coeff = (diffy.^2 ./  (diffx.^2 + diffy.^2));
+coeff(indices) = 0;
+stokesYSLP = stokesYSLP + coeff*deny;
 
 
 end % exactStokesSLGPUFastVectMemFriend
