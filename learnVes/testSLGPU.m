@@ -60,7 +60,7 @@ for it = 1 : numel(Ntests)
   gpuTimesOld(it) = gputimeit(stokesGPU);
 
 end
-save('comparison.mat','gpuTimes')
+save('comparison.mat','gpuTimesOld','gpuTimesNew')
 
 
 
