@@ -54,7 +54,7 @@ for it = 1 : numel(Ntests)
   end
   
   nrows = vesicle.N*vesicle.nv;
-  indices = gpuArray(single(cols(:)-1)*nrows + rows(:)); 
+  indices = gpuArray(single((cols(:)-1)*nrows + rows(:))); 
   saGPU = gpuArray(single(vesicle.sa));
   fxGPU = gpuArray(single(fBend(1:end/2,:)));
   fyGPU = gpuArray(single(fBend(end/2+1:end,:)));
