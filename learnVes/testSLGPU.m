@@ -29,11 +29,32 @@ for it = 1 : numel(Ntests)
  
   
   % GPU Calculation
-  indexMat = {};
+%   indexMat = {};
+%   for k = 1 : vesicle.nv
+%     indexMat{k} = ones(vesicle.N)*nan;
+%   end
+%   blkIndMat = gpuArray((single(blkdiag(indexMat{:}))));
+%   saGPU = gpuArray(single(vesicle.sa));
+%   fxGPU = gpuArray(single(fBend(1:end/2,:)));
+%   fyGPU = gpuArray(single(fBend(end/2+1:end,:)));
+%   xGPU = gpuArray(single(vesicle.X(1:end/2,:)));
+%   yGPU = gpuArray(single(vesicle.X(end/2+1:end,:)));
+%   stokesXGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
+%   stokesYGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
+%   stokesGPU = @() exactStokesSLGPUFastVect(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, blkIndMat);
+%   gpuTimesNew(it) = gputimeit(stokesGPU);
+  
+
+  rows = zeros(vesicle.N^2,vesicle.nv);
+  cols = zeros(vesicle.N^2,vesicle.nv);
   for k = 1 : vesicle.nv
-    indexMat{k} = ones(vesicle.N)*nan;
+    [rr,cc] = (meshgrid((k-1)*N+1:k*N, (k-1)*N+1:k*N));
+    rows(:,k) = rr(:);
+    cols(:,k) = cc(:);
   end
-  blkIndMat = gpuArray(single(blkdiag(indexMat{:})));
+  
+  nrows = vesicle.N*vesicle.nv;
+  indices = gpuArray(single(cols(:)-1)*nrows + rows(:)); 
   saGPU = gpuArray(single(vesicle.sa));
   fxGPU = gpuArray(single(fBend(1:end/2,:)));
   fyGPU = gpuArray(single(fBend(end/2+1:end,:)));
@@ -41,10 +62,9 @@ for it = 1 : numel(Ntests)
   yGPU = gpuArray(single(vesicle.X(end/2+1:end,:)));
   stokesXGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
   stokesYGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
-  stokesGPU = @() exactStokesSLGPUFastVect(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, blkIndMat);
+  stokesGPU = @() exactStokesSLGPUFastVectMemFriend(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, indices);
   gpuTimesNew(it) = gputimeit(stokesGPU);
-  
-  %[stokesXGPUarr, stokesYGPUarr] = exactStokesSLGPUFastVect(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, blkIndMat);
+  %[stokesXGPUarr, stokesYGPUarr] = exactStokesSLGPUFastVectMemFriend(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, indices);
 %   stokesXGPUarr = reshape(stokesXGPUarr,[vesicle.N vesicle.nv]);
 %   stokesYGPUarr = reshape(stokesYGPUarr,[vesicle.N vesicle.nv]);
   
@@ -60,7 +80,7 @@ for it = 1 : numel(Ntests)
   gpuTimesOld(it) = gputimeit(stokesGPU);
 
 end
-save('comparison.mat','gpuTimesOld','gpuTimesNew')
+save('comparison.mat','gpuTimesNew')
 
 
 
@@ -101,6 +121,45 @@ stokesYSLP = stokesYSLP + sum(val+blkIndMat,2,"omitnan");
 
 
 end % exactStokesSLGPUFastVect
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [stokesXSLP, stokesYSLP] = exactStokesSLGPUFastVectMemFriend(x, y, sa, fx, fy, stokesXSLP, stokesYSLP,indices)
+N = size(x,1);
+nv = size(x,2);
+Nall = N*nv;
+
+% multiply by arclength term
+% do not even need this for loop
+% all to all calculation, then apply arrayfun to remove itself
+denx = fx.*sa*2*pi/N;
+deny = fy.*sa*2*pi/N;
+denx = denx(:); deny = deny(:);
+
+x = x(:); y = y(:);
+diffx = x(:,ones(Nall,1))-x(:,ones(Nall,1))'; %xtar = xsou'
+diffy = y(:,ones(Nall,1))-y(:,ones(Nall,1))';
+
+dis2 = diffx.^2 + diffy.^2;
+
+coeff = 0.5*log(dis2);
+coeff(indices) = 0;
+stokesXSLP = stokesXSLP - coeff*denx;
+stokesYSLP = stokesYSLP - coeff*deny;
+
+coeff1 = (diffx.^2 ./ dis2);
+coeff1(indices) = 0;
+coeff2 = (diffx.*diffy)./dis2 ;
+coeff2(indices) = 0;
+stokesXSLP = stokesXSLP + coeff1*denx + coeff2*deny;
+
+coeff1 = (diffx.*diffy)./dis2;
+coeff1(indices) = 0;
+coeff2 = (diffy.^2 ./ dis2);
+coeff2(indices) = 0;
+stokesYSLP = stokesYSLP + coeff1*denx + coeff2*deny; 
+
+
+end % exactStokesSLGPUFastVectMemFriend
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stokesSLP = exactStokesSLGPUVect(X, sa, f, stokesSLP)
