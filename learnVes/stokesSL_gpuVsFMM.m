@@ -3,20 +3,22 @@ clear; clc;
 load ./ICs/VF35_81VesIC.mat; % 81 vesicles loaded
 % X loaded, N = 64 
 nv = size(X,2);
-%Ntests = [32;64;128];
-Ntests = [256;512];
+Ntests = [32;64;128;256;512];
+% Ntests = [256;512];
 % Ntests = [64];
 sys_size = Ntests*81;
 
 addpath ../src/
 oc = curve;
 
+% CPU and FMM (how many nodes?) tests are done on 
+
 gpuTimes = zeros(numel(Ntests),1);
-cpuTimes = zeros(numel(Ntests),1);
-fmmTimes = zeros(numel(Ntests),1);
-valCPU = zeros(numel(Ntests),1);
+% cpuTimes = zeros(numel(Ntests),1);
+% fmmTimes = zeros(numel(Ntests),1);
+% valCPU = zeros(numel(Ntests),1);
 valGPU = zeros(numel(Ntests),1);
-valFMM = zeros(numel(Ntests),1);
+% valFMM = zeros(numel(Ntests),1);
 
 for it = 1 : numel(Ntests)
   disp(it)
@@ -29,16 +31,16 @@ for it = 1 : numel(Ntests)
   % calculate bending force
   fBend = vesicle.tracJump(Xv,zeros(N,nv));
 
-  op = poten(N);
+%   op = poten(N);
 
   % Direct calculation on single core
-  stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
-  cpuTimes(it) = timeit(stokesDirect);
+%   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
+%   cpuTimes(it) = timeit(stokesDirect);
   %valCPU = exactStokesSLDirect(vesicle,fBend);
   
   % FMM Calculation
-  stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
-  fmmTimes(it) = timeit(stokesFMM);
+%   stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
+%   fmmTimes(it) = timeit(stokesFMM);
   %valFMM = exactStokesSLfmm(vesicle,fBend);
 
   % GPU Calculation
@@ -48,10 +50,11 @@ for it = 1 : numel(Ntests)
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   stokesGPU = @() exactStokesSLGPUVect(XGPU, saGPU, fGPU, stokesGPUarr);
   gpuTimes(it) = timeit(stokesGPU);
-  stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
+%   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
   %valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
 end
-save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
+% save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
+save('comparison.mat','gpuTimes')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
