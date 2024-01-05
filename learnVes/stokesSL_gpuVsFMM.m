@@ -14,11 +14,9 @@ oc = curve;
 % CPU and FMM (how many nodes?) tests are done on 
 
 gpuTimes = zeros(numel(Ntests),1);
-% cpuTimes = zeros(numel(Ntests),1);
-% fmmTimes = zeros(numel(Ntests),1);
-% valCPU = zeros(numel(Ntests),1);
-valGPU = zeros(numel(Ntests),1);
-% valFMM = zeros(numel(Ntests),1);
+gpuTimesNoLoop = zeros(numel(Ntests),1);
+cpuTimes = zeros(numel(Ntests),1);
+fmmTimes = zeros(numel(Ntests),1);
 
 for it = 1 : numel(Ntests)
   disp(it)
@@ -31,27 +29,48 @@ for it = 1 : numel(Ntests)
   % calculate bending force
   fBend = vesicle.tracJump(Xv,zeros(N,nv));
 
-%   op = poten(N);
 
-  % Direct calculation on single core
+
+  %% Direct calculation on single core
+%   op = poten(N);
 %   stokesDirect = @() exactStokesSLDirect(vesicle,fBend);
 %   cpuTimes(it) = timeit(stokesDirect);
   %valCPU = exactStokesSLDirect(vesicle,fBend);
   
-  % FMM Calculation
+  %% FMM Calculation
 %   stokesFMM = @() exactStokesSLfmm(vesicle,fBend);
 %   fmmTimes(it) = timeit(stokesFMM);
-  %valFMM = exactStokesSLfmm(vesicle,fBend);
 
-  % GPU Calculation
+
+  %% GPU Calculation 
   saGPU = gpuArray(single(vesicle.sa));
   fGPU = gpuArray(single(fBend));
   XGPU = gpuArray(single(vesicle.X));
   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
+  % This is the for loop version -- performs fast for # of points > 10K
+  % For smaller # of points (<10K) use the fastVect version which does not
+  % have any for loop
   stokesGPU = @() exactStokesSLGPUVect(XGPU, saGPU, fGPU, stokesGPUarr);
-  gpuTimes(it) = timeit(stokesGPU);
-%   stokesGPUarr = gpuArray(single(zeros(2*vesicle.N,vesicle.nv)));
-  %valGPU = exactStokesSLGPU(XGPU,saGPU,fGPU,stokesGPUarr);
+  gpuTimes(it) = gputimeit(stokesGPU);
+
+  % Below is the fast vect version -- does not include any for loop
+  % Pretty fast for <10 K points
+  indexMat = {};
+  for k = 1 : vesicle.nv
+    indexMat{k} = ones(vesicle.N)*nan;
+  end
+  blkIndMat = gpuArray(single(blkdiag(indexMat{:})));
+  saGPU = gpuArray(single(vesicle.sa));
+  fxGPU = gpuArray(single(fBend(1:end/2,:)));
+  fyGPU = gpuArray(single(fBend(end/2+1:end,:)));
+  xGPU = gpuArray(single(vesicle.X(1:end/2,:)));
+  yGPU = gpuArray(single(vesicle.X(end/2+1:end,:)));
+  stokesXGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
+  stokesYGPUarr = gpuArray(single(zeros(vesicle.N*vesicle.nv,1)));
+  stokesGPU = @() exactStokesSLGPUFastVect(xGPU, yGPU, saGPU, fxGPU, fyGPU, stokesXGPUarr, stokesYGPUarr, blkIndMat);
+  gpuTimesNoLoop(it) = gputimeit(stokesGPU);
+
+
 end
 % save('comparison.mat','fmmTimes','gpuTimes','cpuTimes')
 save('comparison.mat','gpuTimes')
@@ -158,6 +177,44 @@ for k = 1:nv % vesicle of targets
 end % k
 
 end % exactStokesSLGPUVect
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [stokesXSLP, stokesYSLP] = exactStokesSLGPUFastVect(x, y, sa, fx, fy, stokesXSLP, stokesYSLP,blkIndMat)
+N = size(x,1);
+nv = size(x,2);
+Nall = N*nv;
+
+% multiply by arclength term
+% do not even need this for loop
+% all to all calculation, then apply arrayfun to remove itself
+denx = fx.*sa*2*pi/N;
+deny = fy.*sa*2*pi/N;
+denx = denx(:); deny = deny(:);
+ddenx = denx(:,ones(Nall,1))';
+ddeny = deny(:,ones(Nall,1))';
+
+x = x(:); y = y(:);
+xsou = x(:,ones(Nall,1))';
+ysou = y(:,ones(Nall,1))';
+diffx = xsou'-xsou; %xtar = xsou'
+diffy = ysou'-ysou;
+
+dis2 = diffx.^2 + diffy.^2;
+
+coeff = 0.5*log(dis2);
+val = coeff.*ddenx;
+stokesXSLP = stokesXSLP - sum(val+blkIndMat,2,"omitnan");
+val = coeff.*ddeny;
+stokesYSLP = stokesYSLP - sum(val+blkIndMat,2,"omitnan");
+
+coeff = (diffx.*ddenx + diffy.*ddeny)./dis2;
+val = coeff.*diffx;
+stokesXSLP = stokesXSLP + sum(val+blkIndMat,2,"omitnan");
+val = coeff.*diffy;
+stokesYSLP = stokesYSLP + sum(val+blkIndMat,2,"omitnan"); 
+
+
+end % exactStokesSLGPUFastVect
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stokesSLP = exactStokesSLfmm(vesicle,f)
 % [stokesSLP,stokeSLPtar] = exactStokesSLfmm(vesicle,f,Xtar,K) uses the
