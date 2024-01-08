@@ -38,7 +38,7 @@ prams.outWallRad = 2;
 prams.inWallScale = 0.45;
 prams.NbdExt = 512;
 prams.NbdInt = 128;
-prams.nvbdInt = 4;
+prams.nvbdInt = 3;
 prams.nvbdExt = 1;
 prams.nvbd = prams.nvbdInt + prams.nvbdExt;
 oc = curve;
@@ -595,7 +595,7 @@ options.fmmDLP = pramsIn.fmmDLP;
 options.antiAlias = 1;
 options.correctShape = 1;
 options.adhesion = 0;
-options.repulsion = 1;
+options.repulsion = 0;
 
 options.confined = true;
 options.farField = pramsIn.farField;
