@@ -1,48 +1,38 @@
 clear; clc;
 addpath ../src/
 addpath ../examples/
+addpath ./shannets/
+pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 % FLAGS
 %-------------------------------------------------------------------------
-variableKbDt = ~true;
-interpOrder = 5; % must be an odd number
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 10; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iDNNlike = 0; % whether solve exactly DNNlike or use DNNs
 iplot = 0;
-iJiggle = 0;
-iuseNear = 0; % use wrong near-interactions (if =0, then neglect near-int)
-iTrueNear = 0;
-irepulsion = 0; % use repulsion, this is possible if iTrueNear == 1
-toDown = 16;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
-exactSolveFreq = 1; % solve exactly at every [] time steps
 errTol = 1e-2;
-maxDt = 1e-4;
-prams.Th = 1;%2.5; % time horizon
+maxDt = 1e-3;
+prams.Th = 1; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
-prams.interpOrder = interpOrder;
-prams.dt = 1E-4; % time step size
+prams.dt = 1E-3; % time step size
 prams.Nbd = 0;
 prams.nvbd = 0;
-
+prams.interpOrder = 1;
 oc = curve;
 Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt; 
 bgFlow = prams.bgFlow; speed = prams.speed;
 
 % net parameters
-Nnet = 256; % num. points
+Nnet = 128; % num. points
 nComp = 16; % number of components for networks except relaxation problem
 nCompRelax = 32; % number of PCA components for relaxation problem
 % # of modes for M*vinf's network, inv(DivGT)*Div*vinf uses the same
-nVelModes = 24; activeModes = [(1:nVelModes/2)';(Nnet-nVelModes/2+1:Nnet)'];
-% number of modes for inv(DivGT)*(DivGB)x
-nTenModes = 32; tenPredModes = [(1:nTenModes/2)';(Nnet-nTenModes/2+1:Nnet)'];
+nVelModes = 24; activeModes = [(1:nVelModes/2)';(256-nVelModes/2+1:256)'];
 % load PCA basis vectors and column mean (evects, colMeans) for Nnet = 256
 % load necessaryMatFiles/pcaCoeffsBasis1step.mat
 load necessaryMatFiles/pcaBasisNewest.mat
@@ -55,7 +45,7 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 % -------------------------------------------------------------------------
 initType = 2; % 1: VesID, 2: vesShape, 3: initialVesFile, 4: randomly fill
 vesID = 88201;  % 88201 from the library
-vesShape = 'ellipse'; % 'ellipse' or 'curly' 
+vesShape = 'ellipse'; %'ellipse'; % 'ellipse' or 'curly' 
 initialVesFile = []; %'VF35_81VesIC'; % from another run % probVF20IC: fails in 2it
 cent = [0; 0.4]; % centers of vesicles, if empty, randomly assigned 
 thet = []; % angular positions of vesicles, if empty, randomly assigned
@@ -64,11 +54,14 @@ irandInit = 0; % perturb center, angle and IA of vesicles?
 volFrac = 0;
 [X,area0,len0] = initializeVesiclesAndWalls(vesID,...
     vesShape,initialVesFile,cent,thet,IA,initType,bgFlow,N,nv,oc,[]);
-
+figure(1);clf;
+plot(X(1:end/2),X(end/2+1:end))
+axis equal
+pause
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVesInterp5_Exact.bin'];
+fileName = ['./output/poisDNNnewSingVesInterp5_newNet.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -80,36 +73,22 @@ fclose(fid);
 % BUILD DNN CLASS
 % -------------------------------------------------------------------------
 dnn = dnnToolsSingleVes(X,prams);
-tt = dnn.tt; dnn.oc = oc; dnn.variableKbDt = variableKbDt;
-if irepulsion
-  vesicle = capsules(X(:,1),[],[],prams.kappa,1,true);
-  vesicle.setUpRate();
-  dnn.minDist = 0.4;
-  dnn.repStrength = vesicle.repulStrengthScale(dnn.minDist,tt,prams.speed);
-end    
-% -------------------------------------------------------------------------
-
-% LOAD NETWORKS (SEE THE END OF THE CODE FOR THESE FUNCTIONS)
-% -------------------------------------------------------------------------
-if ~iDNNlike
+tt = dnn.tt; dnn.oc = oc; 
 dnn.nComp = nComp;  dnn.nCompRelax = nCompRelax;
-% LOAD PCA Network for Relaxation Problem
-dnn = loadAllPCAnets4Relax(dnn);
 % LOAD FFT Based Network for M*Vinf 
 dnn = loadFCnet4AdvectFiles(nVelModes,activeModes,dnn);
 % save PCA matrices 
 dnn.colMeans = colMeans; dnn.evects = evects; 
-end
 % -------------------------------------------------------------------------
 
 % INITIALLY TAKE SMALL TIME STEPS WITH IMPLICIT SOLVER
 % ------------------------------------------------------------------------
 % necessary to find correct initial tension, density, rotlet and stokeslet
 tt.dt = maxDt; sig = zeros(N,nv); eta = []; RS = [];
-for iter = 1 : 2
-  vesicle = capsules(X,[],[],prams.kappa,ones(nv,1),1); vesicle.setUpRate();
-  [X,sig,eta,RS] = tt.timeStepSimple(X,sig,[],[],ones(nv,1),[],vesicle);
-end
+% for iter = 1 : 2
+%   vesicle = capsules(X,[],[],prams.kappa,ones(nv,1),1); vesicle.setUpRate();
+%   [X,sig,eta,RS] = tt.timeStepSimple(X,sig,[],[],ones(nv,1),[],vesicle);
+% end
 tt.dt = dt;
 % ------------------------------------------------------------------------
 
@@ -118,7 +97,6 @@ tt.dt = dt;
 time = [0];
 Xhist = X; sigStore = sig; 
 errALPred = 0;
-sigGuess = zeros(N,nv);
 ncountCNN = 0;
 ncountExct = 0;
 % ------------------------------------------------------------------------
@@ -130,20 +108,12 @@ while time(end) < prams.Th
   disp('********************************************') 
   disp([num2str(it) 'th time step, time: ' num2str(time(it))])
   
-  shouldSolveExact = 0;
   
-  if rem(it,exactSolveFreq) == 0
-  disp('Taking an exact time step ...'); tStart = tic;
-  vesicle = capsules(Xhist,sig,[],prams.kappa,ones(1,1),1);
-  vesicle.setUpRate();
-  [Xnew,sig,~,~,iter,iflag] = tt.timeStepSimple(Xhist,sig,[],[],ones(1,1),[],vesicle);
-  ncountExct = ncountExct + 1;
-  else
+  
+  
   disp('Taking a step with DNNs...');  tStart = tic;    
-  Xnew = dnn.DNNsolve(Xhist,Nnet);
+  Xnew = dnn.DNNsolveTorch(Xhist,Nnet);
   ncountCNN = ncountCNN + 1;
-  end
-  
   
   [xIntersect,~,~] = oc.selfintersect(Xnew);
   if ~isempty(xIntersect); 
@@ -162,46 +132,22 @@ while time(end) < prams.Th
   
   [~,area,len] = oc.geomProp(Xnew);
   errArea = max(abs(area-area0)./area0); errLen = max(abs(len-len0)./len0);
-  dtnew = prams.dt;
-  if ~isempty(xIntersect)
-    dtnew = 0.5 * prams.dt;
-    if dtnew > maxDt; dtnew = maxDt; end;
-  else
-  if max(errArea, errLen) >= errTol
-    dtnew = 0.5 * prams.dt; % Reject
-    if dtnew > maxDt; dtnew = maxDt; end;
-  elseif max(errArea, errLen) < 0.9 * errTol
-    dtnew = 1.2 * prams.dt; % Accept
-    if dtnew > maxDt; dtnew = maxDt; end;
-    it = it + 1;
-    Xhist = Xnew;
-    errALPred(it) = max(errArea,errLen);
-    time(it) = time(it-1) + dtnew;  
-  else % still accept but do not change the time step size
-    it = it + 1;
-    Xhist = Xnew;
-    errALPred(it) = max(errArea,errLen);
-    time(it) = time(it-1) + dtnew;  
-  end
-  end
+  
+  it = it + 1;
+  Xhist = Xnew;
+  errALPred(it) = max(errArea,errLen);
+  time(it) = time(it-1) + prams.dt;  
+  
   disp(['Error in area and length: ' num2str(max(errArea, errLen))])   
-  disp(['New time step size: ' num2str(dtnew)])
   disp('********************************************') 
   disp(' ')
   
-  if rem(it,10) == 0
+  if rem(it,1) == 0
     writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
   end
 
   disp(['took ' num2str(toc(tStart)) ' seconds.'])
-  
-  if dtnew ~= prams.dt
-  tt.dt = dtnew;
-  prams.dt = dtnew;
-  dnn.dt = dtnew;
-  dnn.tt = tt;
-  dnn = loadAllPCAnets4Relax(dnn);
-  end
+ 
   
   if iplot
   figure(1);clf;
@@ -226,9 +172,9 @@ function [X,area0,len0] = initializeVesiclesAndWalls(vesID,...
 if initType == 1
   load ./necessaryMatFiles/errInPred100K_FCnetPCA.mat
   errAllPCA = errPCA;
-  load /workspace/gokberk/X100KinitShapes.mat  
+  load ./necessaryMatFiles/X100KinitShapes.mat  
   X0 = Xstore(:,vesID);
-  X0 = [interpft(X0(1:end/2),N);interpft(X0(end/2+1:end),N)];
+  X = [interpft(X0(1:end/2),N);interpft(X0(end/2+1:end),N)];
   %errFFT = ceil(errAllFFT(vesID)*100);
   errPCA = ceil(errAllPCA(vesID)*100);
   disp(['VesID: ' num2str(vesID) ', Error in prediction: (PCA) ' ...
@@ -348,36 +294,7 @@ dnn.MVnets = FCnets; dnn.muChan_MV = muChan1; dnn.sdevChan_MV = sdevChan1;
 dnn.scale_MV = scale; dnn.offset_MV = offset; dnn.MVoutSize = outputSize;
 dnn.nVelModes = nmodes; dnn.velActiveModes = activeModes;
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dnn = loadTenNetFiles(nTenModes,tenPredModes,dnn)
-% network for inverse of tension matrix on self bending
 
-%load('./networks/fcPCAtenMatOnBendN256_FCNet_w1step.mat')
-load('./networks/NEWfcPCAtenMaTonBendN256_32modes_FCNet_w1step.mat')
-dnn.tenBendNets = net; dnn.muChan_tenBend = muChan1; 
-dnn.sdevChan_tenBend = sdevChan1; dnn.scale_tenBend = scale; 
-dnn.offset_tenBend = offset; dnn.nTenModes = nTenModes; 
-dnn.tenPredModes = tenPredModes;
-end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dnn = loadTenVnetFiles(nmodes,activeModes,dnn)
-% network for inverse of tension matrix on vback
-
-% initialize mu,sdev. for PCA net, we do not output any of them.
-muChan1 = []; sdevChan1 = []; scale = []; offset = []; outputSize = [];
-%netFilesFolder = './networks/n256tenMatTimesFFTNets/velPredPCAin_mode';
-netFilesFolder = './networks/NEWn256tenMatTimes24modesFFTNets/velPredPCAin_mode';
-
-for imode = 1 : nmodes
-  pmode = activeModes(imode);
-  load([netFilesFolder num2str(pmode) '_net_w1step.mat'])
-  FCnets{imode} = net;
-end
-
-dnn.tenVnets = FCnets; dnn.muChan_tenV = muChan1; dnn.sdevChan_tenV = sdevChan1;
-dnn.scale_tenV = scale; dnn.offset_tenV = offset; dnn.tenVoutSize = outputSize;
-dnn.nTenVmodes = nmodes; dnn.TenVactiveModes = activeModes;
-end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function writeData(filename,X,sigma,time,ncountNN,ncountExact)
 x = X(1:end/2,:);

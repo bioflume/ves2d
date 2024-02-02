@@ -5,16 +5,16 @@ disp('Single vesicle with background fluid, Exact Solve')
 % FLAGS
 %-------------------------------------------------------------------------
 bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic','rotation'
-speed = 400 % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+speed = 10 % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iSplit = 0; % whether split operators or not
 iequalDist = 0;
-ireparam = 1;
+ireparam = 0;
 kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
-Th = 2.5; % time horizon 
+Th = 1; % time horizon 
 N =  128 % num. points
-dt = 1e-5; % time step size
+dt = 1e-4; % time step size
 oc = curve;
 op = poten(N);
 dnn = dnnTools;
@@ -52,7 +52,7 @@ if strcmp(bgFlow,'parabolic')
 % X = [X(1:end/2);X(end/2+1:end)+0.06];
 X0 = X;
 IA = -0.2;
-cent = [0; 0.1];
+cent = [0; 0.4];
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
@@ -141,7 +141,7 @@ for it = 2 : numel(timeTrue)
   disp('********************************************') 
   disp(' ')
   
-  if rem(it,100)
+  if rem(it,10)
     save(fileName,'XhistTrue','dt','timeTrue','errALTrue','vesID')
   end
   

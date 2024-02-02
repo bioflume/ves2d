@@ -48,7 +48,7 @@ methods
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function o = dnnToolsSingleVes(X,prams)
 o.confined = false;
-o.kappa = prams.kappa;
+o.kappa = 1;
 o.interpOrder = prams.interpOrder;
 o.dt = prams.dt;    
 o.tt = o.buildTstep(X,prams);  
@@ -72,6 +72,27 @@ Xmid = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
 Xnew = o.relaxWNNvariableKbDt(Xmid,N,Nnet);    
 
 end % DNNsolve
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xnew = DNNsolveTorch(o,Xold,Nnet)
+vback = o.vinf(Xold);
+
+% 1) TRANSLATION W/ NETWORK
+% Standardize vesicle
+[Xstand,scaling,rotate,trans,sortIdx] = ...
+    o.standardizationStep(Xold,256);
+%Prepare input for advection network
+Xinput = o.prepareInputForNet(Xstand,'advection');
+%Take a step due to advaction
+Xmid = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
+% tt = o.tt;
+% op = tt.op;
+
+% Xmid = o.translateVinf(vback,o.dt,Xold,op);
+% then relax
+Xnew = o.relaxWTorchNet(Xmid);    
+
+end % DNNsolveTorch
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = translateVinfwNN(o,Xinput,vinf,Xold,rotate,sortIdx)
@@ -185,6 +206,45 @@ Xpred = o.destandardize(Xpred,trans,rotate,scaling,sortIdx);
 
 % downsample to N
 Xnew = [interpft(Xpred(1:end/2),N);interpft(Xpred(end/2+1:end),N)];
+
+end % relaxWNNvariableKbDt
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xnew = relaxWTorchNet(o,Xmid)  
+
+% 1) RELAXATION w/ NETWORK
+% Standardize vesicle Xmid
+[Xin,scaling,rotate,trans,sortIdx] = ...
+  o.standardizationStep(Xmid,128);
+
+% Normalize input
+x_mean = 2.8696319626098088e-11;
+x_std = 0.06018252670764923;
+y_mean = 2.8696319626098088e-11;
+y_std = 0.13689695298671722;
+
+Xin(1:end/2) = (Xin(1:end/2)-x_mean)/x_std;
+Xin(end/2+1:end) = (Xin(end/2+1:end)-y_mean)/y_std;
+XinitShape = zeros(1,2,128);
+XinitShape(1,1,:) = Xin(1:end/2)'; 
+XinitShape(1,2,:) = Xin(end/2+1:end)';
+XinitConv = py.numpy.array(XinitShape);
+
+[XpredictStand] = pyrunfile("relax_predict.py", "predicted_shape", input_shape=XinitConv);
+XpredictStand = double(XpredictStand);
+
+% normalize output
+x_mean = 1.8570537577033974e-05;
+x_std = 0.058794111013412476;
+y_mean = -0.0005655255517922342;
+y_std = 0.13813920319080353;
+Xpred = zeros(size(Xin));
+
+Xpred(1:end/2) = XpredictStand(1,1,:)*x_std + x_mean;
+Xpred(end/2+1:end) = XpredictStand(1,2,:)*y_std + y_mean;
+
+% destandardize
+Xnew = o.destandardize(Xpred,trans,rotate,scaling,sortIdx);
+
 
 end % relaxWNNvariableKbDt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
