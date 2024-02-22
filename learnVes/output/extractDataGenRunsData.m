@@ -1,7 +1,7 @@
 clear; clc;
 imovie = 0;
 iplot = 1;
-fileName = './newDataGenRuns/dataGenSpeed_Id10.bin';
+fileName = './poisDNNnewSingVesInterp5_speed100_newNet.bin';
 fid = fopen(fileName,'r');
 val = fread(fid,'double');
 fclose(fid);

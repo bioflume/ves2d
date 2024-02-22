@@ -1,12 +1,12 @@
 import torch
 import numpy as np
-from Net_ves_relax import Net_ves_relax # from file import model class
+from Net_ves_relax_midfat import Net_ves_midfat # from file import model class
 
 if __name__ == '__main__':
   num_ves = 1
   input_shape = torch.randn(1,2,128)
-  model = Net_ves_relax(num_blocks=12)
-  model.load_state_dict(torch.load("./Ves_relax.pth", map_location="cpu"))
+  model = Net_ves_midfat(num_blocks=14)
+  model.load_state_dict(torch.load("./ves_relax160k_dt1e-5.pth", map_location="cpu"))
   model.eval()
   # input shape is (N,2,128) N is the number of vesicles input
   

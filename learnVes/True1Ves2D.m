@@ -5,16 +5,16 @@ disp('Single vesicle with background fluid, Exact Solve')
 % FLAGS
 %-------------------------------------------------------------------------
 bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic','rotation'
-speed = 10 % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+speed = 8000 % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iSplit = 0; % whether split operators or not
 iequalDist = 0;
-ireparam = 0;
+ireparam = 1;
 kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
-Th = 1; % time horizon 
+Th = 10; % time horizon 
 N =  128 % num. points
-dt = 1e-4; % time step size
+dt = 5e-4; % time step size
 oc = curve;
 op = poten(N);
 dnn = dnnTools;
@@ -36,7 +36,7 @@ if ~isempty(vesID)
   disp(['VesID: ' num2str(vesID) ', Error in prediction: (PCA) ' ...
       num2str(errPCA) '% '])
 else
-  initShape = 'ellipse'
+  initShape = 'ellipse';
   X = oc.initConfig(N,initShape);
   [~,area,len] = oc.geomProp(X);
   X = X/len;
@@ -51,8 +51,8 @@ end
 if strcmp(bgFlow,'parabolic')
 % X = [X(1:end/2);X(end/2+1:end)+0.06];
 X0 = X;
-IA = -0.2;
-cent = [0; 0.4];
+IA = pi/2;
+cent = [0; 0.065];
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
@@ -141,8 +141,12 @@ for it = 2 : numel(timeTrue)
   disp('********************************************') 
   disp(' ')
   
-  if rem(it,10)
+  if rem(it,100) == 0
     save(fileName,'XhistTrue','dt','timeTrue','errALTrue','vesID')
+    figure(1);clf;
+    plot(XhistTrue(1:end/2,it), XhistTrue(end/2+1:end,it))
+    axis equal
+    pause(0.1)
   end
   
   if strcmp(bgFlow,'rotation')

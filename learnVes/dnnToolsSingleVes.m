@@ -42,6 +42,8 @@ oc
 kappa
 confined
 interpOrder
+torchAdvInNorm
+torchAdvOutNorm
 end
 
 methods
@@ -53,6 +55,7 @@ o.interpOrder = prams.interpOrder;
 o.dt = prams.dt;    
 o.tt = o.buildTstep(X,prams);  
 o.vinf = o.setBgFlow(prams.bgFlow,prams.speed);  
+
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = DNNsolve(o,Xold,Nnet)
@@ -74,7 +77,23 @@ Xnew = o.relaxWNNvariableKbDt(Xmid,N,Nnet);
 end % DNNsolve
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = DNNsolveTorch(o,Xold,Nnet)
+function Xnew = DNNsolveTorch(o,Xold)
+vback = o.vinf(Xold);
+
+% 1) TRANSLATION W/ NETWORK
+%Take a step due to advaction
+% Xmid = o.translateVinfwTorch(Xold,vback);
+
+tt = o.tt;
+op = tt.op;
+Xmid = o.translateVinf(vback,o.dt,Xold,op); % exact advection
+% then relax
+Xnew = o.relaxWTorchNet(Xmid);    
+
+end % DNNsolveTorch
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xnew = DNNsolveTorchOld(o,Xold,Nnet)
 vback = o.vinf(Xold);
 
 % 1) TRANSLATION W/ NETWORK
@@ -92,7 +111,7 @@ Xmid = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
 % then relax
 Xnew = o.relaxWTorchNet(Xmid);    
 
-end % DNNsolveTorch
+end % DNNsolveTorchOld
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = translateVinfwNN(o,Xinput,vinf,Xold,rotate,sortIdx)
@@ -141,6 +160,85 @@ end
 Xnew = Xold + o.dt*vinf-o.dt*MVinfMat;
 end % translateVinfwNN
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xnew = translateVinfwTorch(o,Xold,vinf)
+% Xinput is equally distributed in arc-length
+% Xold as well. So, we add up coordinates of the same points.
+N = numel(Xold(:,1))/2;
+nv = numel(Xold(1,:));
+Nnet = 128;
+oc = o.oc;
+
+% Standardize input
+[Xstand,scaling,rotate,trans,sortIdx] = o.standardizationStep(Xold,Nnet);
+
+in_param = o.torchAdvInNorm;
+out_param = o.torchAdvOutNorm;
+
+% Normalize input
+input_net = zeros(nv,2,128);
+
+for imode = 2 : 128
+  x_mean = in_param(imode-1,1);
+  x_std = in_param(imode-1,2);
+  y_mean = in_param(imode-1,3);
+  y_std = in_param(imode-1,4);
+  input_net(:,1,:) = (Xstand(1:end/2)-x_mean)/x_std;
+  input_net(:,2,:) = (Xstand(end/2+1:end)-y_mean)/y_std;
+end % imode
+
+input_conv = py.numpy.array(input_net);
+tS = tic;
+[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv));
+tPyCall = toc(tS);
+
+disp(['Calling python to predict MV takes ' num2str(tPyCall) ' seconds'])
+% we have 128 modes
+% Approximate the multiplication M*(FFTBasis)     
+Z11r = zeros(Nnet,Nnet,nv); Z12r = Z11r;
+Z21r = Z11r; Z22r = Z11r;
+
+tS = tic;
+for imode = 2 : 64
+  pred = double(Xpredict{imode-1}); % size(pred) = [1 2 256]
+
+
+  % denormalize output
+  real_mean = out_param(imode-1,1);
+  real_std = out_param(imode-1,2);
+  imag_mean = out_param(imode-1,3);
+  imag_std = out_param(imode-1,4);
+  
+  % first channel is real
+  pred(1,1,:) = (pred(1,1,:)*real_std) + real_mean;
+  % second channel is imaginary
+  pred(1,2,:) = (pred(1,2,:)*imag_std) + imag_mean;
+
+  Z11r(:,imode,1) = pred(1,1,1:end/2);
+  Z21r(:,imode,1) = pred(1,1,end/2+1:end);
+  Z12r(:,imode,1) = pred(1,2,1:end/2);
+  Z22r(:,imode,1) = pred(1,2,end/2+1:end);
+end
+tOrganize = toc(tS);
+disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
+
+% Take fft of the velocity (should be standardized velocity)
+% only sort points and rotate to pi/2 (no translation, no scaling)
+vinfStand = o.standardize(vinf,[0;0],rotate,1,sortIdx);
+z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
+
+zh = fft(z);
+V1 = real(zh); V2 = imag(zh);
+% Compute the approximate value of the term M*vinf
+MVinfFull = [Z11r*V1+Z12r*V2; Z21r*V1+Z22r*V2];
+% Need to destandardize MVinf (take sorting and rotation back)
+MVinf = zeros(size(MVinfFull));
+MVinf([sortIdx;sortIdx+Nnet]) = MVinfFull;
+MVinf = o.rotationOperator(MVinf,-rotate);
+
+% Update the position
+Xnew = Xold + o.dt*vinf-o.dt*MVinf;
+end % translateVinfwTorch
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = relaxWNNvariableKbDt(o,Xmid,N,Nnet)
 % load network
@@ -217,10 +315,23 @@ function Xnew = relaxWTorchNet(o,Xmid)
   o.standardizationStep(Xmid,128);
 
 % Normalize input
+if o.dt == 1E-3
 x_mean = 2.8696319626098088e-11;
 x_std = 0.06018252670764923;
 y_mean = 2.8696319626098088e-11;
 y_std = 0.13689695298671722;
+elseif o.dt == 1E-5
+x_mean = -9.536742923144104e-11;
+x_std = 0.0624944344162941;
+y_mean = 0.0;
+y_std = 0.1333804577589035;
+
+elseif o.dt == 1.6E-4
+x_mean = 2.6822089688183226e-11;
+x_std = 0.06249642372131348;
+y_mean = 1.192092865393013e-11;
+y_std = 0.13337796926498413;
+end
 
 Xin(1:end/2) = (Xin(1:end/2)-x_mean)/x_std;
 Xin(end/2+1:end) = (Xin(end/2+1:end)-y_mean)/y_std;
@@ -229,16 +340,33 @@ XinitShape(1,1,:) = Xin(1:end/2)';
 XinitShape(1,2,:) = Xin(end/2+1:end)';
 XinitConv = py.numpy.array(XinitShape);
 
-[XpredictStand] = pyrunfile("relax_predict.py", "predicted_shape", input_shape=XinitConv);
-XpredictStand = double(XpredictStand);
-
-% normalize output
+if o.dt == 1E-3
+[XpredictStand] = pyrunfile("relax_predict_dt1E3.py", "predicted_shape", input_shape=XinitConv);
 x_mean = 1.8570537577033974e-05;
 x_std = 0.058794111013412476;
 y_mean = -0.0005655255517922342;
 y_std = 0.13813920319080353;
-Xpred = zeros(size(Xin));
 
+elseif o.dt == 1E-5
+[XpredictStand] = pyrunfile("relax_predict_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+x_mean = -6.816029554101988e-07;
+x_std = 0.06245459243655205;
+y_mean = -9.154259714705404e-06;
+y_std = 0.1334434300661087;
+
+elseif o.dt == 1.6E-4
+[XpredictStand] = pyrunfile("relax_predict_dt1p6E4.py", "predicted_shape", input_shape=XinitConv);
+x_mean = -1.978807085833978e-05;
+x_std = 0.06200513243675232;
+y_mean = -0.000166389683727175;
+y_std = 0.13435733318328857;
+
+end
+
+Xpred = zeros(size(Xin));
+XpredictStand = double(XpredictStand);
+
+% normalize output
 Xpred(1:end/2) = XpredictStand(1,1,:)*x_std + x_mean;
 Xpred(end/2+1:end) = XpredictStand(1,2,:)*y_std + y_mean;
 
@@ -624,7 +752,7 @@ elseif strcmp(bgFlow,'tayGreen')
   vinf = @(X) speed*[sin(X(1:end/2,:)).*cos(X(end/2+1:end,:));-...
     cos(X(1:end/2,:)).*sin(X(end/2+1:end,:))]; % Taylor-Green
 elseif strcmp(bgFlow,'parabolic')
-  vinf = @(X) [speed*(1-(X(end/2+1:end,:)/0.2).^2);...
+  vinf = @(X) [speed*(1-(X(end/2+1:end,:)/1.3).^2);...
       zeros(size(X(1:end/2,:)))];
 elseif strcmp(bgFlow,'rotation')
   vinf = @(X) [-sin(atan2(X(end/2+1:end,:),X(1:end/2,:)))./sqrt(X(1:end/2,:).^2+X(end/2+1:end,:).^2);...

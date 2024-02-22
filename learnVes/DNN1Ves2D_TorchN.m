@@ -2,24 +2,42 @@ clear; clc;
 addpath ../src/
 addpath ../examples/
 addpath ./shannets/
+addpath ./shannets/ves_fft_models/
+
+pathofDocument = fileparts(which('Net_ves_relax_midfat.py'));
+if count(py.sys.path,pathofDocument) == 0
+    insert(py.sys.path,int32(0),pathofDocument);
+end
+
+pathofDocument = fileparts(which('Net_ves_adv_fft.py'));
+if count(py.sys.path,pathofDocument) == 0
+    insert(py.sys.path,int32(0),pathofDocument);
+end
+
+pathofDocument = fileparts(which('ves_fft_mode2.pth'));
+if count(py.sys.path,pathofDocument) == 0
+    insert(py.sys.path,int32(0),pathofDocument);
+end
+
 pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 10; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+prams.speed = 8000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
-maxDt = 1e-3;
-prams.Th = 1; % time horizon
+maxDt = 1.6e-4; % dt = 1e-3, 1.6e-4, 1e-5
+
+prams.Th = 5; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
-prams.dt = 1E-3; % time step size
+prams.dt = maxDt; % time step size
 prams.Nbd = 0;
 prams.nvbd = 0;
 prams.interpOrder = 1;
@@ -36,6 +54,8 @@ nVelModes = 24; activeModes = [(1:nVelModes/2)';(256-nVelModes/2+1:256)'];
 % load PCA basis vectors and column mean (evects, colMeans) for Nnet = 256
 % load necessaryMatFiles/pcaCoeffsBasis1step.mat
 load necessaryMatFiles/pcaBasisNewest.mat
+
+
 %-------------------------------------------------------------------------
 disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
     ', Th = ' num2str(Th)])
@@ -47,21 +67,21 @@ initType = 2; % 1: VesID, 2: vesShape, 3: initialVesFile, 4: randomly fill
 vesID = 88201;  % 88201 from the library
 vesShape = 'ellipse'; %'ellipse'; % 'ellipse' or 'curly' 
 initialVesFile = []; %'VF35_81VesIC'; % from another run % probVF20IC: fails in 2it
-cent = [0; 0.4]; % centers of vesicles, if empty, randomly assigned 
+cent = [0; 0.065]; % centers of vesicles, if empty, randomly assigned 
 thet = []; % angular positions of vesicles, if empty, randomly assigned
-IA = [-0.2]; % initial inclination angles of vesicles
+IA = [pi/2]; % initial inclination angles of vesicles
 irandInit = 0; % perturb center, angle and IA of vesicles?
 volFrac = 0;
 [X,area0,len0] = initializeVesiclesAndWalls(vesID,...
     vesShape,initialVesFile,cent,thet,IA,initType,bgFlow,N,nv,oc,[]);
-figure(1);clf;
-plot(X(1:end/2),X(end/2+1:end))
-axis equal
-pause
+% [/2),X(end/2+1:end),vinf(1:end/2),vinf(end/2+1:end))
+
+
+
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVesInterp5_newNet.bin'];
+fileName = ['./output/poisDNNnewSingVes_speed8000_newNet_exactAdv.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -73,6 +93,13 @@ fclose(fid);
 % BUILD DNN CLASS
 % -------------------------------------------------------------------------
 dnn = dnnToolsSingleVes(X,prams);
+
+% LOAD NORMALIZATION PARAMETERS
+load ./shannets/ves_fft_in_param.mat
+load ./shannets/ves_fft_out_param.mat
+dnn.torchAdvInNorm = in_param;
+dnn.torchAdvOutNorm = out_param;
+
 tt = dnn.tt; dnn.oc = oc; 
 dnn.nComp = nComp;  dnn.nCompRelax = nCompRelax;
 % LOAD FFT Based Network for M*Vinf 
@@ -112,7 +139,7 @@ while time(end) < prams.Th
   
   
   disp('Taking a step with DNNs...');  tStart = tic;    
-  Xnew = dnn.DNNsolveTorch(Xhist,Nnet);
+  Xnew = dnn.DNNsolveTorch(Xhist);
   ncountCNN = ncountCNN + 1;
   
   [xIntersect,~,~] = oc.selfintersect(Xnew);
