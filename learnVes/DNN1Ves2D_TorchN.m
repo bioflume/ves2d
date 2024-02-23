@@ -24,14 +24,14 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 8000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+prams.speed = 30000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
-maxDt = 1.6e-4; % dt = 1e-3, 1.6e-4, 1e-5
+maxDt = 1e-5; % dt = 1e-3, 1.6e-4, 1e-5
 
-prams.Th = 5; % time horizon
+prams.Th = 0.05; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
@@ -81,7 +81,7 @@ volFrac = 0;
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVes_speed8000_newNet_exactAdv.bin'];
+fileName = ['./output/poisDNNnewSingVes_speed30000_newNet_exactAdv.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
