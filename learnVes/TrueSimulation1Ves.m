@@ -8,14 +8,18 @@ bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic','rotation'
 kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
-if speed == 8000; Th = 0.25; end;
-if speed == 12000; Th = 0.15; end;
-if speed == 16000; Th = 0.15; end;
-if speed == 24000; Th = 0.05; end;
-if speed == 30000; Th = 0.05; end;
+if speed == 100; Th = 20; dt = 1e-3; end; % Ca = 2.5
+if speed == 200; Th = 10; dt = 1e-3; end; % Ca = 5
+if speed == 400; Th = 5; dt = 1e-3; end; % Ca = 10
+
+if speed == 8000; Th = 0.25; dt = 1e-4; end;
+if speed == 12000; Th = 0.15; dt = 1e-5; end;
+if speed == 16000; Th = 0.15; dt = 1e-5; end;
+if speed == 24000; Th = 0.05; dt = 1e-5; end;
+if speed == 30000; Th = 0.05; dt = 1e-5; end;
 
 N =  128; % num. points
-dt = 1e-4/(speed/8000); % time step size
+% dt = 1e-4/(speed/8000); % time step size
 oc = curve;
 op = poten(N);
 dnn = dnnTools;
@@ -63,6 +67,7 @@ writeData(fileName,XhistTrue,sigStore,timeTrue(end),0,0);
 
 % TIME STEPPING
 it = 1;
+cx = []; cy = [];
 while timeTrue(end) < Th
   disp('********************************************') 
   disp([num2str(it) 'th time step, time: ' num2str(timeTrue(it))])
@@ -72,7 +77,10 @@ while timeTrue(end) < Th
   
   % SOLVE WITHOUT OPERATOR SPLITTING  
   disp('Solving without operator splitting...') 
-  [Xnew,~] = dnn.exactlySolve(XhistTrue,vinf,dt,area0,len0,oc,op,kappa);
+
+  vesicle = capsules(XhistTrue,[],[],kappa,1,1);
+  vesicle.setUpRate();
+  Xnew = dnn.relaxExactSolve(vesicle,vinf(XhistTrue),dt,XhistTrue,op);
   
   % AREA-LENGTH CORRECTION
   [Xnew2,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
@@ -89,6 +97,10 @@ while timeTrue(end) < Th
 
   it = it + 1;
   timeTrue(it) = timeTrue(it-1) + dt;  
+
+  cx = [cx; mean(XhistTrue(1:end/2))];
+  cy = [cy; mean(XhistTrue(end/2+1:end))];
+
 
   disp(['took ' num2str(toc(tStart)) ' seconds.'])
   disp('---------------------------')    
@@ -111,6 +123,13 @@ while timeTrue(end) < Th
 
   if rem(it,10) == 0
     writeData(fileName,XhistTrue,sigStore,timeTrue(end),0,0);  
+    % figure(2); clf;
+    % plot(cx, cy, 'linewidth',2)
+    % axis square
+    % grid
+    % xlabel('center in x')
+    % ylabel('center in y')
+    % title(['Time: ' num2str(timeTrue(it))])
   end
   
 end % while
