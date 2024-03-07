@@ -41,7 +41,7 @@ plot(linspace(-0.25,0.25,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth
 xlim([-0.25 0.25])
 ylim([-0.3 0.3])
 
-title('Dt = 1E-6, Low Ca')
+title('Dt = 1E-6')
 % title(['Time = ' num2str(time(it))])
 if imovie
 drawnow;
