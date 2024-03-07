@@ -2,7 +2,7 @@ clear; clc;
 imovie = 1;
 
 runTrue = './speed12000.bin';
-runOld = './poisDNNnewSingVes_speed12000_oldNet.bin';
+runOld = './poisDNNnewSingVes_speed12000_newNet_trueAdv_noSplit.bin';
 runNew = './poisDNNnewSingVes_speed12000_newNet_exactAdv.bin';
 
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runTrue);
