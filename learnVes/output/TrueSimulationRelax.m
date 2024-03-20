@@ -1,23 +1,14 @@
-clear; clc;
-speed = 12000;
+function TrueSimulationRelax(dt)
 addpath ../src/
 disp('Single vesicle with background fluid, Exact Solve')
 
 % FLAGS
 %-------------------------------------------------------------------------
-bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic','rotation'
+bgFlow = 'relax'; % 'shear','tayGreen','relax','parabolic','rotation'
 kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
-if speed == 100; Th = 20; dt = 1e-3; end; % Ca = 2.5
-if speed == 200; Th = 10; dt = 1e-3; end; % Ca = 5
-if speed == 400; Th = 5; dt = 1e-3; end; % Ca = 10
-
-if speed == 8000; Th = 0.25; dt = 1e-4; end;
-if speed == 12000; Th = 0.15; dt = 1e-5; end;
-if speed == 16000; Th = 0.15; dt = 1e-5; end;
-if speed == 24000; Th = 0.05; dt = 1e-5; end;
-if speed == 30000; Th = 0.05; dt = 1e-5; end;
+Th = 5;
 
 N =  128; % num. points
 % dt = 1e-4/(speed/8000); % time step size
@@ -28,26 +19,17 @@ dnn = dnnTools;
 
 % VESICLE:
 % -------------------------------------------------------------------------
-if 0
-load('./necessaryMatFiles/X100KinitShapes.mat')
-X0 = Xstore(:,88);
-X0 = [interpft(X0(1:end/2),N);interpft(X0(end/2+1:end),N)];
-else
 X0 = oc.initConfig(N,'ellipse');
-end
-
 [~,~,len] = oc.geomProp(X0);
 X0 = X0./len;
 IA = pi/2;
-cent = [0; -0.065];
+cent = [0; 0.065];
 X = zeros(size(X0));
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
       cos(IA) * X0(N+1:2*N) + cent(2);
 
-load('./equilMirrorX.mat')
-X = Xinit;
 [~,area0,len0] = oc.geomProp(X);
 % -------------------------------------------------------------------------
 
@@ -59,7 +41,7 @@ vinf = dnn.setBgFlow(bgFlow,speed);
 % ------------------------------------------------------------------------
 % folderName = '/work2/03353/gokberk/frontera/truePoisRuns/';
 folderName = './output/';
-fileName = [folderName 'speed' num2str(speed) '_equilShapeMirror.bin'];
+fileName = [folderName 'speed' num2str(speed) '.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;1];
@@ -131,7 +113,7 @@ while timeTrue(end) < Th
   % axis equal
   % pause(0.1)
 
-  if rem(it,1) == 0
+  if rem(it,10) == 0
     writeData(fileName,XhistTrue,sigStore,timeTrue(end),0,0);  
     % figure(2); clf;
     % plot(cx, cy, 'linewidth',2)
@@ -143,7 +125,7 @@ while timeTrue(end) < Th
   end
   
 end % while
-
+end % end function
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function writeData(filename,X,sigma,time,ncountNN,ncountExact)

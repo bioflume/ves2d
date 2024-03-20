@@ -1,12 +1,17 @@
-clear all;
-clc;
-
-[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisDNNnewSingVes_speed12000_newNet_trueAdv_noSplit_equilShape.bin');
-
+clear; clc;
 imovie = 1;
-XN = [vesxN;vesyN];
 
-numberOfFrames = numel(time);
+runTrue = './speed12000_equilShapeMirror.bin';
+runNew = './poisDNNnewSingVes_speed12000_newNet_trueAdv_noSplit_equilShapeMirror.bin';
+
+[vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runTrue);
+[vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
+pause
+
+
+if imovie
+
+numberOfFrames = 2495;
 hFigure = figure;
 allTheFrames = cell(numberOfFrames,1);
 vidHeight = 344;
@@ -24,34 +29,56 @@ myMovie = struct('cdata', allTheFrames, 'colormap', allTheColorMaps);
 % openGL doesn't work and Painters is way too slow.
 set(gcf, 'renderer', 'zbuffer');
 
-count = 1;
-for it = 1 : 1 : numel(time)
-figure(1); clf;
+end
+
+    
+
+
+
+for k = 1 : 1 : numberOfFrames
+
+
 if imovie; cla reset; end;
-Xst = XN(:,it);
-Xst(1:end/2) = Xst(1:end/2) - mean(Xst(1:end/2));
-plot([Xst(1:end/2); Xst(1)], [Xst(end/2+1:end);Xst(end/2+1)], 'r', 'linewidth',2)
+
+xT = vesxT(:,k) - mean(vesxT(:,k)) + 0.0;
+xN = vesxN(:,k) - mean(vesxN(:,k)) + 0.0;
+
+
+yT = vesyT(:,k); yN = vesyN(:,k);
+
+figure(1); clf;
+plot([xT; xT(1)], [yT; yT(1)],'r','linewidth',2)
 hold on
-plot(Xst(1), Xst(end/2+1),'ko','markersize',10,'MarkerFaceColor','k')
-plot(mean(Xst(1:end/2)),mean(Xst(end/2+1:end)),'ko','markerfacecolor','k')
+plot([xN; xN(1)], [yN; yN(1)],'b','linewidth',2)
+
+plot(xT(1), yT(1), 'ro','markerfacecolor','r')
+plot(xN(1), yN(1), 'bo','markerfacecolor','b')
+
+
+plot(mean(xT), mean(yT), 'ro','markerfacecolor','r')
+plot(mean(xN), mean(yN), 'bo','markerfacecolor','b')
+
+
+
 axis equal
 
-
 plot(linspace(-0.25,0.25,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth',2)
-xlim([-0.25 0.25])
-ylim([-0.4 0.4])
 
-% title('True, Dt = 1E-5')
-title(['Time = ' num2str(time(it))])
+legend('True Relax', 'NN Relax','Orientation','horizontal','Location','north')
+legend boxoff
+
+xlim([-0.25 0.25])
+ylim([-0.3 0.3])
+
 if imovie
 drawnow;
-myMovie(count) = getframe(gca);
-count = count + 1;
+myMovie(k) = getframe(gca);
 else
 pause(0.1)
 end
 
 end
+
 
 if imovie
 

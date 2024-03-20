@@ -3339,14 +3339,11 @@ failedIdcs = [];
 % flag for failing correction
 iFailCorrection = false;
 for k = 1:size(Xnew,2)
-    
   minFun = @(z) 1/N*min(sum((z - X(:,k)).^2));
   [Xnew(:,k),~,iflag] = fmincon(minFun,X(:,k),[],[],[],[],[],[],...
       @(z) o.nonlcon(z,a0(k),l0(k)),options);
   if iflag~=1 && iflag~=2
     iFailCorrection = true;
-    message = ['Correction scheme failed, do not correct at this step'];
-    disp(message)
     Xnew(:,k) = X(:,k);
     failedIdcs = [failedIdcs; k];
   end

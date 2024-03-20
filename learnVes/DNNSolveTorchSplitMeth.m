@@ -29,7 +29,9 @@ iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
-maxDt = 1e-5; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
+nInnerStep = 10;
+prams.dtRelax = 1.6E-4;
+maxDt = prams.dtRelax/nInnerStep; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 
 if prams.speed == 100; prams.Th = 20; end; % Ca = 2.5
 if prams.speed == 200; prams.Th = 10; end; % Ca = 5
@@ -47,13 +49,14 @@ prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 prams.dt = maxDt; % time step size
-prams.dtRelax = prams.dt;
+
 prams.Nbd = 0;
 prams.nvbd = 0;
 prams.interpOrder = 1;
 oc = curve;
 Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt; 
 bgFlow = prams.bgFlow; speed = prams.speed;
+
 
 % net parameters
 Nnet = 128; % num. points
@@ -65,7 +68,7 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 % VESICLES and WALLS:
 % -------------------------------------------------------------------------
 
-if 0
+if 1
 load('./necessaryMatFiles/X100KinitShapes.mat')
 X0 = Xstore(:,88);
 X0 = [interpft(X0(1:end/2),N);interpft(X0(end/2+1:end),N)];
@@ -77,26 +80,21 @@ end
 X0 = X0./len;
 IA = pi/2;
 cent = [0; 0.065];
-% cent = [0; -0.065];
 X = zeros(size(X0));
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
       cos(IA) * X0(N+1:2*N) + cent(2);
+
 [~,area0,len0] = oc.geomProp(X);
 
-% load('./trueEquilX.mat')
-% [~,area0,len0] = oc.geomProp(X);
-% X = Xinit;
 
-% figure(1); clf;
-% plot(X(1:end/2),X(end/2+1:end))
-% axis equal
-% pause
+
+
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_newAdv_noSplit.bin'];
+fileName = ['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_opSplit10.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -140,17 +138,34 @@ ncountExct = 0;
 writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);
 
 % TIME STEPPING
+splitCounter = nInnerStep;
 it = 1;
 cx = []; cy = [];
+dX = 0;
+timeLastRelax = 0;
 while time(end) < prams.Th
   disp('********************************************') 
   disp([num2str(it) 'th time step, time: ' num2str(time(it))])
   
-  
+  if splitCounter == nInnerStep
+    Xlast = Xhist;
+    splitCounter = 0;
+    iBoth = 1;
+    timeLastRelax = 0;
+  end
+
   disp('Taking a step with DNNs...');  tStart = tic;    
-  Xnew = dnn.DNNsolveTorchNoSplit(Xhist,area0,len0);
+  Xnew = dnn.DNNsolveTorchSplitTime(Xhist,area0,len0,iBoth,Xlast,dX/(nInnerStep*prams.dt),timeLastRelax);
   ncountCNN = ncountCNN + 1;
   
+  splitCounter = splitCounter + 1;
+  timeLastRelax = timeLastRelax + prams.dt;
+
+  if iBoth == 1
+  dX = Xnew - Xhist;
+  iBoth = 0;
+  end
+
   [xIntersect,~,~] = oc.selfintersect(Xnew);
   if ~isempty(xIntersect); disp('New vesicle shape is self-intersecting!!!'); end;
   
@@ -194,7 +209,7 @@ while time(end) < prams.Th
   xlim([-1 1])
   ylim([-1 1])
   axis equal
-  pause(0.1)
+  pause
   end
 end
 
