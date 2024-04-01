@@ -1,5 +1,6 @@
 clear; clc;
-speed = 12000;
+% speed = 12000;
+speed = 540;
 addpath ../src/
 disp('Single vesicle with background fluid, Exact Solve')
 
@@ -9,6 +10,13 @@ bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic','rotation'
 kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
+
+if speed == 540; Th = 5; dt = 1e-5; end;
+if speed == 360; Th = 10; dt = 1e-5; end;
+if speed == 180; Th = 20; dt = 1e-5; end;
+if speed == 90; Th = 40; dt = 1e-5; end;
+
+
 if speed == 100; Th = 20; dt = 1e-3; end; % Ca = 2.5
 if speed == 200; Th = 10; dt = 1e-3; end; % Ca = 5
 if speed == 400; Th = 5; dt = 1e-3; end; % Ca = 10
@@ -46,7 +54,7 @@ X(1:N) = cos(IA) * X0(1:N) - ...
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
       cos(IA) * X0(N+1:2*N) + cent(2);
 
-load('./equilMirrorX.mat')
+load('./trueEquilX.mat')
 X = Xinit;
 [~,area0,len0] = oc.geomProp(X);
 % -------------------------------------------------------------------------
@@ -59,7 +67,7 @@ vinf = dnn.setBgFlow(bgFlow,speed);
 % ------------------------------------------------------------------------
 % folderName = '/work2/03353/gokberk/frontera/truePoisRuns/';
 folderName = './output/';
-fileName = [folderName 'speed' num2str(speed) '_equilShapeMirror.bin'];
+fileName = [folderName 'speed' num2str(speed) '_equilShapeContinues.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;1];
@@ -122,24 +130,24 @@ while timeTrue(end) < Th
   disp('********************************************') 
   disp(' ')
   
-  % figure(1);clf;
-  % hold on;
-  % x = [XhistTrue(1:end/2); XhistTrue(1)];
-  % y = [XhistTrue(1+end/2:end); XhistTrue(end/2+1)];
-  % plot(x,y,'r','linewidth',2)
-  % plot(XhistTrue(1), XhistTrue(end/2+1),'o','markerfacecolor','r','markersize',8)
-  % axis equal
-  % pause(0.1)
+  figure(1);clf;
+  hold on;
+  x = [XhistTrue(1:end/2); XhistTrue(1)];
+  y = [XhistTrue(1+end/2:end); XhistTrue(end/2+1)];
+  plot(x,y,'r','linewidth',2)
+  plot(XhistTrue(1), XhistTrue(end/2+1),'o','markerfacecolor','r','markersize',8)
+  axis equal
+  pause(0.1)
 
-  if rem(it,1) == 0
+  if rem(it,100) == 0
     writeData(fileName,XhistTrue,sigStore,timeTrue(end),0,0);  
-    % figure(2); clf;
-    % plot(cx, cy, 'linewidth',2)
-    % axis square
-    % grid
-    % xlabel('center in x')
-    % ylabel('center in y')
-    % title(['Time: ' num2str(timeTrue(it))])
+    figure(2); clf;
+    plot(cx, cy, 'linewidth',2)
+    axis square
+    grid
+    xlabel('center in x')
+    ylabel('center in y')
+    title(['Time: ' num2str(timeTrue(it))])
   end
   
 end % while

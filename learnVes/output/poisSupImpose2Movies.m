@@ -1,17 +1,40 @@
 clear; clc;
 imovie = 1;
 
-runTrue = './speed12000_equilShapeMirror.bin';
-runNew = './poisDNNnewSingVes_speed12000_newNet_trueAdv_noSplit_equilShapeMirror.bin';
+runTrue = './poisDNNnewSingVes_speed12000_exactRelax_exactAdv_noSplit_mirrdNet_originalInit.bin';
+runNew = './poisDNNnewSingVes_speed12000_newNet_exactAdv_noSplit_mirrdNet_originalInit.bin';
+runNew2 = './poisDNNnewSingVes_speed12000_newNet_exactAdv_noSplit_netEquiv2.bin';
 
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runTrue);
 [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
-pause
+% pause
 
+cxT = []; cyT = [];
+cxN = []; cyN = [];
+for k = 1 : 6301
+cxT(k,1) = mean(vesxT(:,k));
+cyT(k,1) = mean(vesyT(:,k));
+
+cxN(k,1) = mean(vesxN(:,k));
+cyN(k,1) = mean(vesyN(:,k));
+
+% figure(1);clf;
+% plot(cxT(1:k),cyT(1:k),'r','linewidth',2)
+% hold on
+% plot(cxN(1:k),cyN(1:k),'b','linewidth',2)
+% axis square
+% legend('True','New')
+% xlabel('cx')
+% ylabel('cy')
+% grid on
+% pause(0.1)
+end
+
+pause
 
 if imovie
 
-numberOfFrames = 2495;
+numberOfFrames = 6301;
 hFigure = figure;
 allTheFrames = cell(numberOfFrames,1);
 vidHeight = 344;
@@ -65,6 +88,7 @@ axis equal
 plot(linspace(-0.25,0.25,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth',2)
 
 legend('True Relax', 'NN Relax','Orientation','horizontal','Location','north')
+%legend('Supposed2be', 'NetEquil','Orientation','horizontal','Location','north')
 legend boxoff
 
 xlim([-0.25 0.25])

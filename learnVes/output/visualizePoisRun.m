@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisDNNnewSingVes_speed12000_newNet_trueAdv_noSplit_equilShape.bin');
+[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisDNNnewSingVes_speed400_newNet_exactAdv_noSplit_mirrdNet.bin');
 
 imovie = 1;
 XN = [vesxN;vesyN];
@@ -39,7 +39,7 @@ axis equal
 
 plot(linspace(-0.25,0.25,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth',2)
 xlim([-0.25 0.25])
-ylim([-0.4 0.4])
+ylim([-0.5 0.5])
 
 % title('True, Dt = 1E-5')
 title(['Time = ' num2str(time(it))])

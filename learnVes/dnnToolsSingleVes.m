@@ -57,12 +57,29 @@ o.dt = prams.dt;
 o.tt = o.buildTstep(X,prams);  
 o.vinf = o.setBgFlow(prams.bgFlow,prams.speed);  
 o.dtRelax = prams.dtRelax;
+o.oc = curve;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = DNNsolve(o,Xold,Nnet)
+function [Xnew,dyNet,dyAdv] = DNNsolve(o,Xold,Nnet,area0,len0)
+oc = o.oc;
 vback = o.vinf(Xold);
 N = numel(Xold)/2;
 
+
+if 1
+[XoldC,~] = oc.reparametrize(Xold,[],6,20);
+Xold = oc.alignCenterAngle(Xold,XoldC);
+
+tt = o.tt;
+op = tt.op;
+vesicle = capsules(Xold,[],[],1,1,0);
+ 
+G = op.stokesSLmatrix(vesicle);
+[~,Ten,Div] = vesicle.computeDerivs;
+
+M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
+Xadv = Xold + o.dt*(eye(2*vesicle.N)-M)*vback;
+else
 % 1) TRANSLATION W/ NETWORK
 % Standardize vesicle
 [Xstand,scaling,rotate,trans,sortIdx] = ...
@@ -70,10 +87,26 @@ N = numel(Xold)/2;
 % Prepare input for advection network
 Xinput = o.prepareInputForNet(Xstand,'advection');
 % Take a step due to advaction
-Xmid = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
+Xadv = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
+end
+
+dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
+% AREA-LENGTH CORRECTION
+disp('Area-Length correction after advection step')
+[XadvC,ifail] = oc.correctAreaAndLength2(Xadv,area0,len0);
+if ifail; disp('Error in AL cannot be corrected!!!'); end;
+Xadv = oc.alignCenterAngle(Xadv,XadvC);
 
 % then relax
-Xnew = o.relaxWNNvariableKbDt(Xmid,N,Nnet);    
+Xnew = o.relaxWNNvariableKbDt(Xadv,N,Nnet);    
+
+dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
+
+% AREA-LENGTH CORRECTION
+disp('Area-Length correction after relaxation step')
+[XnewC,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
+if ifail; disp('Error in AL cannot be corrected!!!'); end;
+Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
 end % DNNsolve
 
@@ -103,10 +136,10 @@ Xnew = o.relaxWTorchNet(Xmid);
 
 end % DNNsolveTorch
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = DNNsolveTorchNoSplit(o,Xold,area0,len0)
+function [Xnew,dyNet,dyAdv] = DNNsolveTorchNoSplit(o,Xold,area0,len0)
 oc = o.oc;
 vback = o.vinf(Xold);
-advType = 3; % 1: exact, 2: with old net, 3: with Torch net
+advType = 1; % 1: exact, 2: with old net, 3: with Torch net
 % 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
 if advType == 1
   [XoldC,~] = oc.reparametrize(Xold,[],6,20);
@@ -128,6 +161,8 @@ elseif advType == 3
   Xadv = o.translateVinfwTorch(Xold,vback);
 end
 
+dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
+
 % AREA-LENGTH CORRECTION
 disp('Area-Length correction after advection step')
 [XadvC,ifail] = oc.correctAreaAndLength2(Xadv,area0,len0);
@@ -135,13 +170,28 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 Xadv = oc.alignCenterAngle(Xadv,XadvC);
 
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
+if 0
+vesicle = capsules(Xold,[],[],1,1,1); vesicle.setUpRate();
+G = op.stokesSLmatrix(vesicle);
+% Bending, tension and surface divergence
+[Ben,Ten,Div] = vesicle.computeDerivs;
+M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
+rhs = Xadv;
+LHS = (eye(2*vesicle.N)-vesicle.kappa*o.dt*(-G*Ben+M*G*Ben));
+Xnew = LHS\rhs;
+else
 Xnew = o.relaxWTorchNet(Xadv);    
+end
+
+dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
 
 % AREA-LENGTH CORRECTION
 disp('Area-Length correction after relaxation step')
 [XnewC,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 Xnew = oc.alignCenterAngle(Xnew,XnewC);
+
+
   
 end % DNNsolveTorchNoSplit
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -437,10 +487,17 @@ x_std = 0.062479957938194275;
 y_mean = 1.072883587527329e-10;
 y_std =  0.13340480625629425;
 elseif o.dtRelax == 1E-5
-x_mean = -9.536742923144104e-11;
-x_std = 0.0624944344162941;
-y_mean = 0.0;
-y_std = 0.1333804577589035;
+% For 160K data
+% x_mean = -9.536742923144104e-11;
+% x_std = 0.0624944344162941;
+% y_mean = 0.0;
+% y_std = 0.1333804577589035;
+
+% For the mirrored data
+x_mean = 0.0;
+x_std = 0.0626431405544281;
+y_mean = -3.8579057483334456e-13;
+y_std = 0.13317376375198364;
 
 elseif o.dtRelax == 1.6E-4
 x_mean = 2.6822089688183226e-11;
@@ -479,11 +536,20 @@ y_mean = -0.000920235994271934;
 y_std = 0.13736717402935028;
 
 elseif o.dtRelax == 1E-5
-[XpredictStand] = pyrunfile("relax_predict_dt1E5.py", "predicted_shape", input_shape=XinitConv);
-x_mean = -6.816029554101988e-07;
-x_std = 0.06245459243655205;
-y_mean = -9.154259714705404e-06;
-y_std = 0.1334434300661087;
+% [XpredictStand] = pyrunfile("relax_predict_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+[XpredictStand] = pyrunfile("relax_predict_mirrdt1E5.py", "predicted_shape", input_shape=XinitConv);
+
+% For 160K data
+% x_mean = -6.816029554101988e-07;
+% x_std = 0.06245459243655205;
+% y_mean = -9.154259714705404e-06;
+% y_std = 0.1334434300661087;
+
+% For the mirrored data
+x_mean = 7.819789971108548e-07;
+x_std = 0.0626022145152092;
+y_mean = 1.7029760934761384e-09;
+y_std = 0.13323849439620972;
 
 
 elseif o.dtRelax == 1E-6
