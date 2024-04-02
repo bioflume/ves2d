@@ -9,10 +9,14 @@ oc = curve;
 % set of vesicle shapes
 %load /workspace/gokberk/X100KinitShapes.mat
 % load /mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/X100KinitShapes.mat
-load ./necessaryMatFiles/X100KinitShapes.mat
+%load ./necessaryMatFiles/X106KinitShapes.mat
+%load ./output/diverseNewDataSet.mat
+
+load ./output/mirroredDataSet.mat
 % Xstore
 
-istandard = false; % if the shapes are already standardized
+istandard = true; % if the shapes are already standardized
+Xstore = XstandStore;
 
 % number of vesicles
 nves = size(Xstore,2);
@@ -20,7 +24,7 @@ nves = size(Xstore,2);
 N = 128;
 
 % time step size
-dt = 1E-4;
+dt = 1E-6;
 
 % store aligned shapes
 XstandStore = [];
@@ -46,7 +50,8 @@ vinf = @(X) zeros(size(X));
 idx = 0;
 for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   % change the resolution
-  Xinit = [interpft(Xstore(1:end/2,k),N); interpft(Xstore(end/2+1:end,k),N)]; 
+  Xinit = Xstore(:,k);
+  %Xinit = [interpft(Xstore(1:end/2,k),N); interpft(Xstore(end/2+1:end,k),N)]; 
   % Standardize if not done yet
   if ~istandard
     [Xinit,scaling,rotate,trans,sortIdx] = dnn.standardizationStep(Xinit,oc);
@@ -72,9 +77,9 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   disp([num2str(k-sum(nSamples(1:iset-1))) 'th vesicle of out of ' num2str(nSamples(iset)) ' vesicles is done.'])
   disp(['There are ' num2str(idx) ' samples.'])   
 
-  if rem(idx,10) == 0 
+  if rem(idx,100) == 0 
     nInstances = idx; 
-    fileName = ['/work2/03353/gokberk/frontera/relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+    fileName = ['./output/relaxNewData/n128Dt' num2str(dtEffect) 'RelaxMirrd_part' num2str(iset) '.mat'];
 %     fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
     %fileName = ['/workspace/gokberk/relax1step/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat']; 
     save(fileName,'nves','N','XstandStore','nInstances','XnewStandStore','dt','idx')
@@ -82,7 +87,7 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
 end
 nInstances = idx;
 
-fileName = ['./relaxData/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
+fileName = ['./output/relaxNewData/n128Dt' num2str(dtEffect) 'RelaxMirrd_part' num2str(iset) '.mat'];
 % fileName = ['/mnt/ceph/users/gkabacaoglu/SVTGRuns/workspace/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat'];
 %fileName = ['/workspace/gokberk/relax1step/n256Dt' num2str(dtEffect) 'Relax100K_part' num2str(iset) '.mat']; 
 save(fileName,'nves','N','XstandStore','nInstances','XnewStandStore','dt')

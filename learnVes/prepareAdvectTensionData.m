@@ -1,4 +1,4 @@
-clear; clc;
+function prepareAdvectTensionData(iset,npar)
 %load /workspace/gokberk/relax1step/N96DataSets/n96Relax100KAllDataSet.mat
 %load /workspace/gokberk/relax1step/only1timeStepPCAData.mat
 %load /workspace/gokberk/relax1step/n256Dt1E4Kb1RelaxAllDataSet.mat
@@ -8,14 +8,10 @@ load ./necessaryMatFiles/X106KinitShapes.mat
 % Xstore Loaded
 % clear sum of the data to have some space
 
-%clear XnewCoeffs; clear XnewRec; clear XnewStandStore;
-%clear XoldCoeffs; clear Xrec; clear colMeans;
-%clear errInNew; clear evects;
-
 addpath ../src/
 oc = curve;
 % num. points
-N = 256;
+N = 128;
 op = poten(N);
 nmodes = 128;
 
@@ -34,24 +30,35 @@ basis = 1/N*exp(1i*theta*ks');
 activeModes = [(1:nmodes/2)';(N-nmodes/2+1:N)'];
 % we cannot look at statistics of velocity's energy spectrum
 % because we consider arbitrary velocity
+dnn = dnnTools;
 
-iset = 4
-nSamples = ones(4,1)*floor(nInstances/4);
-nSamples(end) = nInstances-3*nSamples(1);
+nInstances = size(Xstore,2);
+
+nSamples = ones(npar,1)*floor(nInstances/npar);
+nSamples(end) = nInstances-(npar-1)*nSamples(1);
 
 zRealStore = zeros(N,nmodes,nSamples(iset));
 zImagStore = zeros(N,nmodes,nSamples(iset));
 
 benRealStore = zeros(N,nSamples(iset));
 benImagStore = zeros(N,nSamples(iset));
+XstandStore = [];
 
 idx = 1;
 for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   disp(['Vesicle #' num2str(idx) ' out of ' num2str(nSamples(iset)) ' being processed...'])
   tstart = tic;
+  
+  % change the resolution
+  Xinit = [interpft(Xstore(1:end/2,ives),N); interpft(Xstore(end/2+1:end,ives),N)]; 
+  
+  % standardize
+  [Xinit,scaling,rotate,trans,sortIdx] = dnn.standardizationStep(Xinit,oc);
+
+  XstandStore(:,idx) = Xinit;
 
   % Build vesicle
-  vesicle = capsules(XstandStore(:,ives),[],[],1,1,1);
+  vesicle = capsules(Xinit,[],[],1,1,1);
   vesicle.setUpRate();
   
   % derivatives
@@ -68,13 +75,6 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   zRealStore(:,:,idx) = Z11; 
   zImagStore(:,:,idx) = Z12;
    
-  if 1
-  % Compute the action of M on G*(-Ben)
-  benTerm = M*G*(-Ben)*XstandStore(:,ives); 
-  benH = fft(benTerm)/N;
-  benRealStore(:,idx) = real(benH); % predict 48 modes
-  benImagStore(:,idx) = imag(benH);
-  end
 
   % RECONSTRUCTION WORKS AS FOLLOWS
   % PREDICT zReal;zImag for every mode on reduced dimension, i.e.,
@@ -96,16 +96,11 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
 end
 
 
-fileName = ['/workspace/gokberk/relax1step/NEWn256trainTenBasis24modesData_' num2str(iset) '.mat']; 
+fileName = ['./output/advectTensionData/TenBasis128modesData_' num2str(iset) '.mat']; 
 nsampInSet = nSamples(iset);
-save(fileName,'nInstances','nsampInSet','zRealStore','zImagStore',...
+save(fileName,'XstandStore','nInstances','nsampInSet','zRealStore','zImagStore',...
   'activeModes','N','nmodes','-v7.3')
-if 1
-fileName = ['/workspace/gokberk/relax1step/NEWn256trainTenBendingData_' num2str(iset) '.mat']; 
-nsampInSet = nSamples(iset);
-save(fileName,'nInstances','nsampInSet',...
-  'activeModes','N','nmodes','benRealStore','benImagStore','-v7.3')
-end
+
 
 
 

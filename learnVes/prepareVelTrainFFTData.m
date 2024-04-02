@@ -95,7 +95,7 @@ end
 
 
 % fileName = ['/work2/03353/gokberk/frontera/velocityRuns/elocityTrain128modesFFTData_' num2str(iset) '.mat']; 
-fileName = ['./output/relaxData/completeData/veltrain128modesFFTData_' num2str(iset) '.mat']; 
+fileName = ['./output/advectData/veltrain128modesFFTData_' num2str(iset) '.mat']; 
 nsampInSet = nSamples(iset);
 save(fileName,'nInstances','nsampInSet','zRealStore','zImagStore',...
   'activeModes','N','nmodes','-v7.3')

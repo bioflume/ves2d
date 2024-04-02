@@ -3,7 +3,8 @@ function prepareNearFieldVelocityData(iset,npar)
 % Load Xstore containing nves number of vesicles 
 % Xstore holds 2*N entries in its columns as [x;y] coordinates of nves
 % number of vesicles
-load /work2/03353/gokberk/frontera/X100KinitShapes.mat
+load ./necessaryMatFiles/X106KinitShapes.mat 
+%/work2/03353/gokberk/frontera/X100KinitShapes.mat
 addpath ../src/
 
 oc = curve;
@@ -13,8 +14,9 @@ nves = size(Xstore,2); % number of vesicles in the data set
 Nstore = size(Xstore,1)/2; % number of discretization points on vesicles
 
 % Upsampling maybe necessary
-Nup = 256;
-
+Nup = 128;
+nlayers = 5; 
+maxLayerDist = @(h) sqrt(h);
 
 % store aligned shapes -- we standardize vesicle shapes
 XstandStore = [];
@@ -33,8 +35,8 @@ dnn = dnnTools;
 nSamples = ones(npar,1)*floor(nves/npar);
 nSamples(end) = nSamples(end) + nves-sum(nSamples);
 nSamplesInSet = sum(nSamples(1:iset)) - (sum(nSamples(1:iset-1))+1) + 1;
-nearVelocity = zeros(2*Nup,5,nSamplesInSet);
-tracersXstore = zeros(2*Nup,5,nSamplesInSet);
+nearVelocity = zeros(2*Nup,nlayers,nSamplesInSet);
+tracersXstore = zeros(2*Nup,nlayers,nSamplesInSet);
 XstandStore = zeros(2*Nup,nSamplesInSet);
 
 idx = 1;
@@ -59,7 +61,7 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   ny = -tang(1:Nup);
 
   % Points where velocity is calculated involve the points on vesicle
-  tracersX = zeros(2*Nup, 4);
+  tracersX = zeros(2*Nup, nlayers-1);
   tracersX(:,1) = Xinit;
 
   % initialize vesicle
@@ -68,16 +70,16 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
 
   % Generate tracers
   h = vesicle.length/vesicle.N;  % arc-length spacing
-  tracersX(:,2) = [Xinit(1:end/2)+nx*h/2; Xinit(end/2+1:end)+ny*h/2]; % at h/2
-  tracersX(:,3) = [Xinit(1:end/2)+nx*h; Xinit(end/2+1:end)+ny*h]; % at h
-  tracersX(:,4) = [Xinit(1:end/2)+nx*1.5*h; Xinit(end/2+1:end)+ny*1.5*h]; % at 3/2 * h
-  tracersX(:,5) = [Xinit(1:end/2)+nx*2*h; Xinit(end/2+1:end)+ny*2*h]; % at 2 * h
+  dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist(h);
+  for il = 2 : nlayers
+    tracersX(:,il) = [Xinit(1:end/2)+nx*dlayer(il);Xinit(end/2+1:end)+ny*dlayer(il)];
+  end
 
   tracersXstore(:,:,idx) = tracersX;
 
   tracers.N = Nup;
-  tracers.nv = 4;
-  tracers.X = tracersX(:,2:5);
+  tracers.nv = nlayers-1;
+  tracers.X = tracersX(:,2:nlayers);
  
   if 0
   figure(1); clf;
@@ -129,5 +131,5 @@ for k = sum(nSamples(1:iset-1))+1 : sum(nSamples(1:iset))
   disp(['took ' num2str(tend) ' seconds'])
 end
 
-fileName = ['/work2/03353/gokberk/frontera/nearFieldDataSet/nearFieldData_' num2str(iset) '.mat']; 
+fileName = ['./output/nearFieldData/nearFieldData_' num2str(iset) '.mat']; 
 save(fileName,'nSamplesInSet','XstandStore','nearVelocity','Nup','tracersXstore','-v7.3')

@@ -1,6 +1,7 @@
 function submitDataPrep(idt,npar)
-mul = 2.^(0:15)';
-dts = 1E-4*mul;
+%mul = 2.^(0:10)';
+%dts = 1E-5*mul;
+dts = [1E-6;1E-5;1E-4];
 p = parcluster('local');
 p.NumWorkers = npar;
 %parpool(npar);
