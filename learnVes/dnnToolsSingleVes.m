@@ -65,82 +65,6 @@ o.dtRelax = prams.dtRelax;
 o.oc = curve;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Xnew,dyNet,dyAdv] = DNNsolve(o,Xold,Nnet,area0,len0)
-oc = o.oc;
-vback = o.vinf(Xold);
-N = numel(Xold)/2;
-
-
-if 1
-[XoldC,~] = oc.reparametrize(Xold,[],6,20);
-Xold = oc.alignCenterAngle(Xold,XoldC);
-
-tt = o.tt;
-op = tt.op;
-vesicle = capsules(Xold,[],[],1,1,0);
- 
-G = op.stokesSLmatrix(vesicle);
-[~,Ten,Div] = vesicle.computeDerivs;
-
-M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
-Xadv = Xold + o.dt*(eye(2*vesicle.N)-M)*vback;
-else
-% 1) TRANSLATION W/ NETWORK
-% Standardize vesicle
-[Xstand,scaling,rotate,trans,sortIdx] = ...
-    o.standardizationStep(Xold,Nnet);
-% Prepare input for advection network
-Xinput = o.prepareInputForNet(Xstand,'advection');
-% Take a step due to advaction
-Xadv = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
-end
-
-dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
-% AREA-LENGTH CORRECTION
-disp('Area-Length correction after advection step')
-[XadvC,ifail] = oc.correctAreaAndLength2(Xadv,area0,len0);
-if ifail; disp('Error in AL cannot be corrected!!!'); end;
-Xadv = oc.alignCenterAngle(Xadv,XadvC);
-
-% then relax
-Xnew = o.relaxWNNvariableKbDt(Xadv,N,Nnet);    
-
-dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
-
-% AREA-LENGTH CORRECTION
-disp('Area-Length correction after relaxation step')
-[XnewC,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
-if ifail; disp('Error in AL cannot be corrected!!!'); end;
-Xnew = oc.alignCenterAngle(Xnew,XnewC);
-
-end % DNNsolve
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = DNNsolveTorch(o,Xold)
-vback = o.vinf(Xold);
-
-% 1) TRANSLATION W/ NETWORK
-%Take a step due to advaction
-
-% Standardize vesicle
-% [Xstand,scaling,rotate,trans,sortIdx] = ...
-%     o.standardizationStep(Xold,256);
-% %Prepare input for advection network
-% Xinput = o.prepareInputForNet(Xstand,'advection');
-% %Take a step due to advaction
-% Xmid = o.translateVinfwNN(Xinput,vback,Xold,rotate,sortIdx);
-
-
-% Xmid = o.translateVinfwTorch(Xold,vback);
-
-tt = o.tt;
-op = tt.op;
-Xmid = o.translateVinf(vback,o.dt,Xold,op); % exact advection
-% then relax
-Xnew = o.relaxWTorchNet(Xmid);    
-
-end % DNNsolveTorch
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xnew,dyNet,dyAdv] = DNNsolveTorchNoSplit(o,Xold,area0,len0,iExact)
 oc = o.oc;
 vback = o.vinf(Xold);
@@ -179,7 +103,7 @@ dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
 if iExact
 disp('ExactSolve')
-vesicle = capsules(Xold,[],[],1,1,1); vesicle.setUpRate();
+vesicle = capsules(Xold,[],[],1,1,0); 
 G = op.stokesSLmatrix(vesicle);
 % Bending, tension and surface divergence
 [Ben,Ten,Div] = vesicle.computeDerivs;
@@ -207,73 +131,6 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
   
 end % DNNsolveTorchNoSplit
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Xnew,dyNet,dyAdv] = DNNsolveMixedNets(o,Xold,area0,len0,iExact)
-oc = o.oc;
-
-
-% 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
-[XoldC,~] = oc.reparametrize(Xold,[],6,20);
-Xold = oc.alignCenterAngle(Xold,XoldC);
-% for iter = 1 : 10
-% [Xold,~,~] = oc.redistributeArcLength(Xold);
-% end
-vback = o.vinf(Xold);
-
-tt = o.tt;
-op = tt.op;
-vesicle = capsules(Xold,[],[],1,1,0);
-
-G = op.stokesSLmatrix(vesicle);
-[~,Ten,Div] = vesicle.computeDerivs;
-
-M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
-Xadv = Xold + o.dt*(eye(2*vesicle.N)-M)*vback;
-
-
-dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
-
-% AREA-LENGTH CORRECTION
-% disp('Area-Length correction after advection step')
-% [XadvC,ifail] = oc.correctAreaAndLength2(Xadv,area0,len0);
-% if ifail; disp('Error in AL cannot be corrected!!!'); end;
-% Xadv = oc.alignCenterAngle(Xadv,XadvC);
-
-% 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
-if iExact
-vesicle = capsules(Xold,[],[],1,1,1); vesicle.setUpRate();
-G = op.stokesSLmatrix(vesicle);
-% Bending, tension and surface divergence
-[Ben,Ten,Div] = vesicle.computeDerivs;
-M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
-rhs = Xadv;
-LHS = (eye(2*vesicle.N)-vesicle.kappa*o.dt*(-G*Ben+M*G*Ben));
-Xnew = LHS\rhs;
-disp('Taking exact relaxation step')
-else
-Xnew = o.relaxWTorchNet(Xadv);
-
-% PREDICT THE CENTER OF MASS DRIFT
-[cxNew,cyNew] = o.predictRelaxDrift(Xadv);
-
-%XnewO = o.relaxWNNvariableKbDt(Xadv,128,256);
-%cxNew = mean(XnewO(1:end/2)); cyNew = mean(XnewO(end/2+1:end));
-
-Xnew(1:end/2) = Xnew(1:end/2) - mean(Xnew(1:end/2)) + cxNew;
-Xnew(end/2+1:end) = Xnew(end/2+1:end) - mean(Xnew(end/2+1:end)) + cyNew;
-
-end
-
-dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
-
-% AREA-LENGTH CORRECTION
-disp('Area-Length correction after relaxation step')
-[Xnew,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
-if ifail; disp('Error in AL cannot be corrected!!!'); end;
-% Xnew = oc.alignCenterAngle(Xnew,XnewC);
-
-
-end % DNNsolveMixedNets
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = DNNsolveTorchSplitTime(o,Xold,area0,len0,iBoth,Xlast,dXdt,timeLastRelax)
 oc = o.oc;
@@ -325,30 +182,6 @@ Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
   
 end % DNNsolveTorchSplitTime
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = DNNsolveExactOpSplitting(o,Xold)
-vback = o.vinf(Xold);
-
-% 1) TRANSLATION W/ NETWORK
-%Take a step due to advaction
-% Xmid = o.translateVinfwTorch(Xold,vback);
-dt = o.dt;
-tt = o.tt;
-op = tt.op;
-Xmid = o.translateVinf(vback,o.dt,Xold,op); % exact advection
-% then relax
-
-vesicle = capsules(Xmid,[],[],1,1,1); vesicle.setUpRate();
-G = op.stokesSLmatrix(vesicle);
-% Bending, tension and surface divergence
-[Ben,Ten,Div] = vesicle.computeDerivs;
-M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
-rhs = Xmid;
-LHS = (eye(2*vesicle.N)-vesicle.kappa*dt*(-G*Ben+M*G*Ben));
-Xnew = LHS\rhs;
-
-
-end % DNNsolveExactOpSplitting
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = translateVinfwNN(o,Xinput,vinf,Xold,rotate,sortIdx)
 % Xinput is equally distributed in arc-length
@@ -380,7 +213,7 @@ vinfUp = [interpft(vinf(1:end/2,:),Nnet);interpft(vinf(end/2+1:end,:),Nnet)];
 MVinfMat = zeros(2*N,nv);
 for k = 1 : nv
   % only sort points and rotate to pi/2 (no translation, no scaling)
-  vinfStand = o.standardize(vinfUp(:,k),[0;0],rotate(k),1,sortIdx(:,k));
+  vinfStand = o.standardize(vinfUp(:,k),[0;0],rotate(k),[0;0],1,sortIdx(:,k));
   z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
 
   zh = fft(z);
@@ -390,48 +223,13 @@ for k = 1 : nv
   % Need to destandardize MVinf (take sorting and rotation back)
   MVinf = zeros(size(MVinfFull));
   MVinf([sortIdx(:,k);sortIdx(:,k)+Nnet]) = MVinfFull;
-  MVinf = o.rotationOperator(MVinf,-rotate(k));
+  MVinf = o.rotationOperator(MVinf,-rotate(k),[0; 0]);
   % downsample MVinf
   MVinfMat(:,k) = [interpft(MVinf(1:end/2),N);interpft(MVinf(end/2+1:end),N)];
 end
 % Update the position
 Xnew = Xold + o.dt*vinf-o.dt*MVinfMat;
 end % translateVinfwNN
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [cxNew, cyNew] = predictRelaxDrift(o,Xadv)
-% Standardize vesicle
-N = 128;
-[Xstand,scaling,rotate,trans,sortIdx] = o.standardizationStep(Xadv,128);
-modes = [(0:N/2-1) (-N/2:-1)];
-
-% Find its 9 important modes without the 0th mode
-z = Xstand(1:end/2) + 1i*Xstand(end/2+1:end);
-zh = fft(z)/N;
-
-XinFFT = zeros(36,1);
-XinFFT(1:end/2) = real(zh(abs(modes)<10 & modes~=0));
-XinFFT(end/2+1:end) = imag(zh(abs(modes)<10 & modes~=0));
-
-XinFFT = (XinFFT-o.driftNet_muChan) / o.driftNet_sdevChan;
-
-% Make the prediction, the output is drift
-DriftXY = predict(o.driftNet, XinFFT);
-
-DriftXY = DriftXY * o.driftNet_sdevOutput + o.driftNet_muOutput;
-
-% Destandardize drift -- like velocity
-XstandMoved = zeros(size(Xstand));
-XstandMoved(1:end/2) = Xstand(1:end/2) + DriftXY(1);
-XstandMoved(end/2+1:end) = Xstand(end/2+1:end) + DriftXY(2);
-
-
-% destandardize
-XMoved = o.destandardize(XstandMoved,trans,rotate,scaling,sortIdx);
-cxNew = mean(XMoved(1:end/2));
-cyNew = mean(XMoved(end/2+1:end));
-
-end % predictRelaxDrift
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = translateVinfwTorch(o,Xold,vinf)
 % Xinput is equally distributed in arc-length
@@ -496,7 +294,7 @@ disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
 
 % Take fft of the velocity (should be standardized velocity)
 % only sort points and rotate to pi/2 (no translation, no scaling)
-vinfStand = o.standardize(vinf,[0;0],rotate,rotCent,1,sortIdx);
+vinfStand = o.standardize(vinf,[0;0],rotate,[0;0],1,sortIdx);
 z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
 
 zh = fft(z);
@@ -506,7 +304,7 @@ MVinfStand = [Z11r*V1+Z12r*V2; Z21r*V1+Z22r*V2];
 % Need to destandardize MVinf (take sorting and rotation back)
 MVinf = zeros(size(MVinfStand));
 MVinf([sortIdx;sortIdx+Nnet]) = MVinfStand;
-MVinf = o.rotationOperator(MVinf,-rotate,rotCent);
+MVinf = o.rotationOperator(MVinf,-rotate,[0;0]);
 
 Xnew = Xold + o.dt * vinf - o.dt*MVinf;
 
@@ -529,7 +327,7 @@ nnets = numel(KbDts);
 
 % 2) RELAXATION w/ NETWORK
 % Standardize vesicle Xmid
-[Xstand,scaling,rotate,trans,sortIdx] = ...
+[Xstand,scaling,rotate,rotCent, trans,sortIdx] = ...
   o.standardizationStep(Xmid,Nnet);
 Xin = (Xstand'-o.colMeans)*o.evects(:,1:o.nCompRelax);
 
@@ -575,7 +373,7 @@ end
 Xpred = (YpredInt'*o.evects(:,1:o.nCompRelax)'+o.colMeans)';
 
 % destandardize
-Xpred = o.destandardize(Xpred,trans,rotate,scaling,sortIdx);
+Xpred = o.destandardize(Xpred,trans,rotate,rotCent,scaling,sortIdx);
 
 % downsample to N
 Xnew = [interpft(Xpred(1:end/2),N);interpft(Xpred(end/2+1:end),N)];
@@ -586,9 +384,6 @@ function Xnew = relaxWTorchNet(o,Xmid)
 
 % 1) RELAXATION w/ NETWORK
 % Standardize vesicle Xmid
-% [Xin,scaling,rotate,trans,sortIdx] = ...
-%   o.standardizationStep(Xmid,128);
-
 [Xin,scaling,rotate,rotCent,trans,sortIdx] = ...
   o.standardizationStep(Xmid,128);
 
@@ -601,10 +396,10 @@ function Xnew = relaxWTorchNet(o,Xmid)
 % y_std = 0.1333947628736496;
 
 % For the 625k - June8 - Dt = 1E-5 data
-% x_mean = -8.430413700466488e-09; 
-% x_std = 0.06278684735298157;
-% y_mean = 6.290720477863943e-08; 
-% y_std = 0.13339413702487946;
+x_mean = -8.430413700466488e-09; 
+x_std = 0.06278684735298157;
+y_mean = 6.290720477863943e-08; 
+y_std = 0.13339413702487946;
 
 % For the 625k - June8 - Dt = 5E-5 data
 % x_mean = 2.4658157826706883e-07; 
@@ -613,10 +408,10 @@ function Xnew = relaxWTorchNet(o,Xmid)
 % y_std = 0.13339488208293915;
 
 % For the 625k - June8 - Dt = 1E-4 data
-x_mean = 7.684710645605719e-09; 
-x_std = 0.06278636306524277;
-y_mean = 7.071167829053593e-08; 
-y_std = 0.13339479267597198;
+% x_mean = 7.684710645605719e-09; 
+% x_std = 0.06278636306524277;
+% y_mean = 7.071167829053593e-08; 
+% y_std = 0.13339479267597198;
 
 
 
@@ -637,13 +432,13 @@ XinitConv = py.numpy.array(XinitShape);
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_IT3_dt1E5.py", "predicted_shape", input_shape=XinitConv);
 
 % June8 - Dt1E5
-% [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+[DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E5.py", "predicted_shape", input_shape=XinitConv);
 
 % June8 - Dt5E5
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt5E5.py", "predicted_shape", input_shape=XinitConv);
 
 % June8 - Dt1E5
-[DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E4.py", "predicted_shape", input_shape=XinitConv);
+% [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E4.py", "predicted_shape", input_shape=XinitConv);
 
 
 % 625k IT3 DIFF net
@@ -653,10 +448,10 @@ XinitConv = py.numpy.array(XinitShape);
 % y_std = 0.00017724868666846305;
 
 % For the 625k - June8 - Dt = 1E-5 data
-% x_mean = -2.884585348361668e-10; 
-% x_std = 0.00020574081281665713;
-% y_mean = -5.137390512999218e-10; 
-% y_std = 0.0001763451291481033;
+x_mean = -2.884585348361668e-10; 
+x_std = 0.00020574081281665713;
+y_mean = -5.137390512999218e-10; 
+y_std = 0.0001763451291481033;
 
 % For the 625k - June8 - Dt = 5E-5 data
 % x_mean = 2.9649513400009653e-10; 
@@ -665,10 +460,10 @@ XinitConv = py.numpy.array(XinitShape);
 % y_std = 0.0007752174278721213;
 
 % For the 625k - June8 - Dt = 1E-4 data
-x_mean = 4.258172037197028e-09; 
-x_std = 0.001633652369491756;
-y_mean = 7.698989001880818e-09; 
-y_std = 0.0014213572721928358;
+% x_mean = 4.258172037197028e-09; 
+% x_std = 0.001633652369491756;
+% y_mean = 7.698989001880818e-09; 
+% y_std = 0.0014213572721928358;
 
 
 
@@ -683,77 +478,46 @@ DXpredScaled = DXpred; %/1E-5 * o.dt;
 Xpred = Xstand + DXpredScaled;
 Xnew = o.destandardize(Xpred,trans,rotate,rotCent,scaling,sortIdx);
 
-% DX = o.destandardize(DXpredScaled,[0;0],rotate,[0;0],1,sortIdx);
-% Xnew = Xmid + DX;
 
 
-end % relaxWNNvariableKbDt
+end % relaxWTorchNet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xnew, timeStand, timePred, timeDestand] = relaxWTorchBenchmark(o,Xmid)  
 
 % 1) RELAXATION w/ NETWORK
-% Standardize vesicle Xmid
-% [Xin,scaling,rotate,trans,sortIdx] = ...
-%   o.standardizationStep(Xmid,128);
-
 tStandI = tic;
 [Xin,scaling,rotate,rotCent,trans,sortIdx] = ...
   o.standardizationStep(Xmid,128);
 
-
 % INPUT NORMALIZATION INFO
-% For the mirrored 619k data
-% x_mean = -2.321531638801999e-12;
-% x_std = 0.0626436322927475;
-% y_mean = -3.3723935102814018e-12;
-% y_std = 0.13317303359508514;
-
-
-% For the FFT network
-% x_mean = -2.6738842251461392e-08;
-% x_std = 0.012947053648531437;
-% y_mean = 3.0156275897752494e-05;
-% y_std = 0.0012597391614690423;
-% 
-
-% For the 5k parabolic data net
-% x_mean = -2.2492318771383246e-11; 
-% x_std = 0.06732139736413956;
-% y_mean = -5.6230796928458116e-12; 
-% y_std = 0.1296529471874237;
-
-% For the 5k (FFT) parabolic data net
-% x_mean = 0.0004800978640560061; 
-% x_std = 0.012839892879128456;
-% y_mean = 2.9182436264818534e-05; 
-% y_std = 0.001283341902308166;
-
-
-% For the 160k data for differences
-% x_mean = 7.75830164001512e-11; 
-% x_std = 0.06249058619141579;
-% y_mean = -1.909735841687521e-10; 
-% y_std = 0.13338665664196014;
 
 % For the 625k (IT3) data
-x_mean = -3.775884049872502e-09; 
-x_std = 0.06278640776872635;
-y_mean = -5.037749133407488e-07; 
-y_std = 0.1333947628736496;
+% x_mean = -3.775884049872502e-09; 
+% x_std = 0.06278640776872635;
+% y_mean = -5.037749133407488e-07; 
+% y_std = 0.1333947628736496;
 
+% For the 625k - June8 - Dt = 1E-5 data
+x_mean = -8.430413700466488e-09; 
+x_std = 0.06278684735298157;
+y_mean = 6.290720477863943e-08; 
+y_std = 0.13339413702487946;
+
+% For the 625k - June8 - Dt = 5E-5 data
+% x_mean = 2.4658157826706883e-07; 
+% x_std = 0.06278616935014725;
+% y_mean = -4.5408405924263207e-08; 
+% y_std = 0.13339488208293915;
+
+% For the 625k - June8 - Dt = 1E-4 data
+% x_mean = 7.684710645605719e-09; 
+% x_std = 0.06278636306524277;
+% y_mean = 7.071167829053593e-08; 
+% y_std = 0.13339479267597198;
 
 
 
 % INPUT NORMALIZING
-%FOURIER
-% z = Xin(1:end/2) + 1i*Xin(end/2+1:end);
-% zh = fft(z)/128;
-% 
-% XinitShape = zeros(1,2,128);
-% XinitShape(1,1,:) = (real(zh)-x_mean)/x_std; 
-% XinitShape(1,2,:) = (imag(zh)-y_mean)/y_std;
-% XinitShape(1,:,1) = 0;
-% XinitConv = py.numpy.array(XinitShape);
 
 % REAL SPACE
 Xstand = Xin; % before normalization
@@ -768,99 +532,58 @@ timeStand = tStandO;
 
 XinitConv = py.numpy.array(XinitShape);
 
-
-% OUTPUT
-% [XpredictStand] = pyrunfile("relax_predict_mirrdt1E5_619k.py", "predicted_shape", input_shape=XinitConv);
-
-% disp('Taking a step with FFT network')
-% [XpredictStand] = pyrunfile("relax_predict_dt1E5FFT.py", "predicted_shape", input_shape=XinitConv);
-
-% [XpredictStand] = pyrunfile("relax_predict_dt1E5_para.py", "predicted_shape", input_shape=XinitConv);
-% [XpredictStand] = pyrunfile("relax_predict_dt1E5_FFTpara.py", "predicted_shape", input_shape=XinitConv);
-
-% [DXpredictStand] = pyrunfile("relax_predict_DIFF_dt1E5.py", "predicted_shape", input_shape=XinitConv);
-
 tPredI = tic;
-[DXpredictStand] = pyrunfile("relax_predict_DIFF_IT3_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+% OUTPUT
+
+% [DXpredictStand] = pyrunfile("relax_predict_DIFF_IT3_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+
+% June8 - Dt1E5
+[DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+
+% June8 - Dt5E5
+% [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt5E5.py", "predicted_shape", input_shape=XinitConv);
+
+% June8 - Dt1E5
+% [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E4.py", "predicted_shape", input_shape=XinitConv);
+
 tPredO = toc(tPredI);
 timePred = tPredO;
 
-% [XpredictStand] = pyrunfile("relax_predict_dt1E5.py", "predicted_shape", input_shape=XinitConv);
-
-
-% % For the mirrored 619k data
-% x_mean = -3.548781546403035e-10;
-% x_std = 0.06260271370410919;
-% y_mean = -6.015386522228994e-10;
-% y_std = 0.13323774933815002;
-
-% For the FFT data
-% x_mean = -2.6712143608165206e-08;
-% x_std = 0.012950770556926727;
-% y_mean = 3.0183153285179287e-05;
-% y_std =  0.00125909096095711;
-
-% 5k parabolic net
-% x_mean = 9.922328899847344e-06;
-% x_std = 0.06724867224693298;
-% y_mean = 1.266331537408405e-07; 
-% y_std = 0.12969861924648285;
-
-% 5k FFT parabolic
-% x_mean = 0.0004795934073626995;
-% x_std = 0.012840917333960533;
-% y_mean = 2.918478821811732e-05; 
-% y_std = 0.0012796446681022644;
-
-% 160k data
-% x_mean = -6.816029554101988e-07; 
-% x_std = 0.06245459243655205;
-% y_mean = -9.154259714705404e-06; 
-% y_std = 0.1334434300661087;
-
-
-% 160k DIFF net
-% x_mean = -5.551860340347048e-07; 
-% x_std = 0.00021676094911526889;
-% y_mean = -9.133571438724175e-06; 
-% y_std = 0.0001912113220896572;
-
 % 625k IT3 DIFF net
-x_mean = -1.1276009015404043e-09; 
-x_std = 0.00020668248180299997;
-y_mean = 1.3305034157751194e-11; 
-y_std = 0.00017724868666846305;
+% x_mean = -1.1276009015404043e-09; 
+% x_std = 0.00020668248180299997;
+% y_mean = 1.3305034157751194e-11; 
+% y_std = 0.00017724868666846305;
+
+% For the 625k - June8 - Dt = 1E-5 data
+x_mean = -2.884585348361668e-10; 
+x_std = 0.00020574081281665713;
+y_mean = -5.137390512999218e-10; 
+y_std = 0.0001763451291481033;
+
+% For the 625k - June8 - Dt = 5E-5 data
+% x_mean = 2.9649513400009653e-10; 
+% x_std = 0.0008968145120888948;
+% y_mean = 1.698907792224702e-09; 
+% y_std = 0.0007752174278721213;
+
+% For the 625k - June8 - Dt = 1E-4 data
+% x_mean = 4.258172037197028e-09; 
+% x_std = 0.001633652369491756;
+% y_mean = 7.698989001880818e-09; 
+% y_std = 0.0014213572721928358;
 
 
 DXpred = zeros(size(Xin));
 DXpredictStand = double(DXpredictStand);
 
-% normalize output
 tDestandI = tic;
+% normalize output
 DXpred(1:end/2) = DXpredictStand(1,1,:)*x_std + x_mean;
 DXpred(end/2+1:end) = DXpredictStand(1,2,:)*y_std + y_mean;
 
-DXpredScaled = DXpred/1E-5 * o.dt;
-
+DXpredScaled = DXpred; %/1E-5 * o.dt;
 Xpred = Xstand + DXpredScaled;
-
-
-% Xpred = zeros(size(Xin));
-% XpredictStand = double(XpredictStand);
-% % 
-% % normalize output
-% Xpred(1:end/2) = XpredictStand(1,1,:)*x_std + x_mean;
-% Xpred(end/2+1:end) = XpredictStand(1,2,:)*y_std + y_mean;
-% 
-% % For FFT
-% % modes = [(0:128/2-1) (-128/2:-1)];
-% zh = Xpred(1:end/2) + 1i*Xpred(end/2+1:end);
-% % zh(abs(modes) > 1/2*128/2) = 0;
-% z = ifft(zh*128);
-% Xpred(1:end/2) = real(z); Xpred(end/2+1:end) = imag(z);
-
-% destandardize
-% Xnew = o.destandardize(Xpred,trans,rotate,scaling,sortIdx);
 Xnew = o.destandardize(Xpred,trans,rotate,rotCent,scaling,sortIdx);
 tDestandO = toc(tDestandI);
 timeDestand = tDestandO ;
@@ -1046,8 +769,7 @@ else
 end
 
 % Semi-implicit time stepping w/splitting
-vesicle = capsules(Xold,[],[],o.kappa,1,1);
-vesicle.setUpRate();
+vesicle = capsules(Xold,[],[],o.kappa,1,0);
 nv = vesicle.nv;
 N = vesicle.N;
 % Build the operators
@@ -1215,7 +937,7 @@ for k = 1 : nv
   %Xmid = o.translateVinf(vext,o.dt,Xold(:,k),op);
   
   % Second, solve bending problem
-  vesicle = capsules(Xold(:,k),[],[],1,1,1); vesicle.setUpRate();
+  vesicle = capsules(Xold(:,k),[],[],1,1,0); 
   Xnew(:,k) = o.relaxExactSolve(vesicle,vext,o.dt,Xold(:,k),op);
 end
 
@@ -1238,8 +960,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = translateVinf(o,vinf,dt,Xold,op)
 % ADVECTION PART FOR OPERATOR SPLITTING
-vesicle = capsules(Xold,[],[],1,1,1);
-vesicle.setUpRate();
+vesicle = capsules(Xold,[],[],1,1,0);
  
 G = op.stokesSLmatrix(vesicle);
 [~,Ten,Div] = vesicle.computeDerivs;

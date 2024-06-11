@@ -12,10 +12,10 @@ timeHorizons = [0.4 0.2 0.15;
 
 dt = 5e-5;
 for iw = 1 : numel(chanWidths)
-  for is = 1 : 3
+  for is = 2 : 3
       %driver_mixedRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
-      % driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
-      driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
+      driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
+      % driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
   end
 end
 
