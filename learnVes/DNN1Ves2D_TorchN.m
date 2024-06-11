@@ -24,21 +24,27 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 400; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 0;
+prams.speed = 8000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+iplot = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
-maxDt = 1e-5; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
+maxDt = 1E-5; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 
-if prams.speed == 100; prams.Th = 20; end; % Ca = 2.5
-if prams.speed == 200; prams.Th = 10; end; % Ca = 5
-if prams.speed == 400; prams.Th = 5; end; % Ca = 10
-if prams.speed == 8000; prams.Th = 0.25; end; % Ca = 200
-if prams.speed == 12000; prams.Th = 0.15; end; % Ca = 267
-if prams.speed == 16000; prams.Th = 0.15; end;
-if prams.speed == 24000; prams.Th = 0.05; end;
-if prams.speed == 30000; prams.Th = 0.05; end;
+
+if prams.speed == 750; prams.Th = 0.1; end;
+if prams.speed == 500; prams.Th = 0.15; end;
+if prams.speed == 250; prams.Th = 0.3; end;
+if prams.speed == 125; prams.Th = 0.6; end;
+
+if prams.speed == 100; prams.Th = 10; end; % Ca = 2.5
+if prams.speed == 200; prams.Th = 5; end; % Ca = 5
+if prams.speed == 400; prams.Th = 2.5; end; % Ca = 10
+if prams.speed == 8000; prams.Th = 0.12; end; % Ca = 200
+if prams.speed == 12000; prams.Th = 0.1; end; % Ca = 267
+if prams.speed == 16000; prams.Th = 0.05; end;
+if prams.speed == 24000; prams.Th = 0.02; end;
+if prams.speed == 30000; prams.Th = 0.02; end;
 
 % prams.Th = 0.05; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
@@ -77,7 +83,7 @@ end
 X0 = X0./len;
 IA = pi/2;
 cent = [0; 0.065];
-% cent = [0; -0.2];
+%cent = [0; 0.04];
 X = zeros(size(X0));
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
@@ -97,7 +103,8 @@ X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_noSplit_mirrdNet.bin'];
+%fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
+fileName = ['./output/poisTrueSingVes_speed' num2str(prams.speed) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -154,6 +161,14 @@ while time(end) < prams.Th
   [Xnew, dyNet, dyAdv] = dnn.DNNsolveTorchNoSplit(Xhist,area0,len0);
   driftyNet = [driftyNet;dyNet];
   driftyAdv = [driftyAdv;dyAdv];
+  % figure(1);clf;
+  % plot(driftyNet,'linewidth',2)
+  % hold on
+  % plot(driftyAdv,'linewidth',2)
+  % legend('Relax','Adv')
+  % grid
+  % axis square
+  % pause(0.1)
   
   [xIntersect,~,~] = oc.selfintersect(Xnew);
   if ~isempty(xIntersect); disp('New vesicle shape is self-intersecting!!!'); end;
@@ -176,13 +191,13 @@ while time(end) < prams.Th
   
   if rem(it,1) == 0
     writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
-    figure(2); clf;
-    plot(cx, cy, 'linewidth',2)
-    axis square
-    grid
-    xlabel('center in x')
-    ylabel('center in y')
-    title(['Time: ' num2str(time(it))])
+    % figure(2); clf;
+    % plot(cx, cy, 'linewidth',2)
+    % axis square
+    % grid
+    % xlabel('center in x')
+    % ylabel('center in y')
+    % title(['Time: ' num2str(time(it))])
   end
 
 

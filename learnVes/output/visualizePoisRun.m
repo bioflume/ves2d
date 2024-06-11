@@ -1,7 +1,8 @@
 clear all;
 clc;
 
-[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisDNNnewSingVes_speed400_newNet_exactAdv_noSplit_mirrdNet.bin');
+[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisTrueRuns_dt5e-05_speed4500_width0.6455.bin');
+
 
 imovie = 1;
 XN = [vesxN;vesyN];
@@ -22,10 +23,10 @@ myMovie = struct('cdata', allTheFrames, 'colormap', allTheColorMaps);
 % open(writerObj);
 % Need to change from the default renderer to zbuffer to get it to work right.
 % openGL doesn't work and Painters is way too slow.
-set(gcf, 'renderer', 'zbuffer');
+% set(gcf, 'renderer', 'zbuffer');
 
 count = 1;
-for it = 1 : 1 : numel(time)
+for it = 1 : 10 : numel(time)
 figure(1); clf;
 if imovie; cla reset; end;
 Xst = XN(:,it);
@@ -42,9 +43,9 @@ xlim([-0.25 0.25])
 ylim([-0.5 0.5])
 
 % title('True, Dt = 1E-5')
-title(['Time = ' num2str(time(it))])
+% title(['Time = ' num2str(time(it))])
 if imovie
-drawnow;
+drawnow();
 myMovie(count) = getframe(gca);
 count = count + 1;
 else

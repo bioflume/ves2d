@@ -50,6 +50,62 @@ end
 
 end % getCenter
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function center = getPhysicalCenter(o,X)
+% center = getCenter(o,X) finds the center of each capsule
+N = size(X,1)/2;
+nv = size(X,2);
+
+[jac,tan,curv] = o.diffProp(X);
+tanx = tan(1:end/2,:); tany = tan(end/2+1:end,:);
+nx = tany; ny = -tanx;
+x = X(1:end/2,:); y = X(end/2+1:end,:);
+
+
+
+center = zeros(2,nv);
+
+for k = 1 : nv
+    xv = (x(:,k)-mean(x(:,k)));
+    yv = (y(:,k)-mean(y(:,k)));
+    xdotn = xv.*nx(:,k) + yv.*ny(:,k);
+    center(1,k) = sum(xv.*xdotn.*jac(:,k))./sum(xdotn.*jac(:,k));
+    center(2,k) = sum(yv.*xdotn.*jac(:,k))./sum(xdotn.*jac(:,k));
+    center(1,k) = mean(x(:,k)) + center(1,k);
+    center(2,k) = mean(y(:,k)) + center(2,k);
+end
+
+end % getPhysicalCenter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function center = getPhysicalCenterShan(o,X)
+% center = getCenter(o,X) finds the center of each capsule
+N = size(X,1)/2;
+nv = size(X,2);
+
+[jac,tan,curv] = o.diffProp(X);
+tanx = tan(1:end/2,:); tany = tan(end/2+1:end,:);
+nx = tany; ny = -tanx;
+x = X(1:end/2,:); y = X(end/2+1:end,:);
+
+
+
+center = zeros(2,nv);
+
+for k = 1 : nv
+    xv = (x(:,k));
+    yv = (y(:,k));
+    xdotn = xv.*nx(:,k); ydotn = yv.*ny(:,k);
+    xdotn_sum = sum(xdotn.*jac(:,k));
+    ydotn_sum = sum(ydotn.*jac(:,k));
+
+    center(1,k) = 0.5*sum(xv.*xdotn.*jac(:,k))./xdotn_sum;
+    center(2,k) = 0.5*sum(yv.*ydotn.*jac(:,k))./ydotn_sum;
+end
+
+end % getPhysicalCenterShan
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function IA = getIncAngle(o,X)
 % IA = getIncAngle(o,X) finds the inclination angle of each capsule
@@ -104,6 +160,34 @@ end
 end % getIncAngle
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function V = getPrincAxesGivenCentroid(o,X,center)
+N = numel(X(:,1))/2;
+nv = numel(X(1,:));
+% compute inclination angle on an upsampled grid
+for k = 1 : nv
+  Xcent = [X(1:end/2,k)-center(1,k); X(end/2+1:end,k)-center(2,k)];
+  
+  xCent = Xcent(1:end/2,k); yCent = Xcent(end/2+1:end,k);
+  [jacCent,tanCent,curvCent] = o.diffProp(Xcent);
+  
+  nxCent = tanCent(end/2+1:end); nyCent = -tanCent(1:end/2);
+  rdotn = xCent.*nxCent + yCent.*nyCent;
+  rho2 = xCent.^2 + yCent.^2;
+
+  J11 = 0.25*sum(rdotn.*(rho2 - xCent.*xCent).*jacCent)*2*pi/N;
+  J12 = 0.25*sum(rdotn.*(-xCent.*yCent).*jacCent)*2*pi/N;
+  J21 = 0.25*sum(rdotn.*(-yCent.*xCent).*jacCent)*2*pi/N;
+  J22 = 0.25*sum(rdotn.*(rho2 - yCent.*yCent).*jacCent)*2*pi/N;
+
+  J = [J11 J12; J21 J22];
+  [V,D] = eig(J);
+
+  [~,ind] = min(abs(diag(D)));
+  V = V(:,ind);
+end
+
+end % getPrincAxesGivenCentroid
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function V = getPrincAxes(o,X)

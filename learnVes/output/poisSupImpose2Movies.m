@@ -1,17 +1,22 @@
 clear; clc;
 imovie = 1;
 
-runTrue = './poisDNNnewSingVes_speed12000_exactRelax_exactAdv_noSplit_mirrdNet_originalInit.bin';
-runNew = './poisDNNnewSingVes_speed12000_newNet_exactAdv_noSplit_mirrdNet_originalInit.bin';
-runNew2 = './poisDNNnewSingVes_speed12000_newNet_exactAdv_noSplit_netEquiv2.bin';
+
+
+% runNew = './mixedNetsFourierParaData_poisRuns_speed750_width0.32275.bin';
+runNew = './test_exAdv_diff625kNet_poisRuns_speed400_width0.17213.bin';
+runTrue = './truePoisRuns/poisTrueRuns_speed400_width0.17213.bin';
+% runNew = './secondPhaseRuns128modes/poisRuns_speed1500_width0.32275.bin';
+
 
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runTrue);
 [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
-% pause
+
 
 cxT = []; cyT = [];
 cxN = []; cyN = [];
-for k = 1 : 6301
+nsteps = min(numel(timeT),numel(timeN));
+for k = 1 : nsteps
 cxT(k,1) = mean(vesxT(:,k));
 cyT(k,1) = mean(vesyT(:,k));
 
@@ -34,7 +39,7 @@ pause
 
 if imovie
 
-numberOfFrames = 6301;
+numberOfFrames = nsteps;
 hFigure = figure;
 allTheFrames = cell(numberOfFrames,1);
 vidHeight = 344;
@@ -85,14 +90,14 @@ plot(mean(xN), mean(yN), 'bo','markerfacecolor','b')
 
 axis equal
 
-plot(linspace(-0.25,0.25,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth',2)
+plot(linspace(-0.5,0.5,100)',zeros(100,1),'Color',[253 219 199]/255,'linewidth',2)
 
-legend('True Relax', 'NN Relax','Orientation','horizontal','Location','north')
+legend('True', 'NN','Orientation','horizontal','Location','north')
 %legend('Supposed2be', 'NetEquil','Orientation','horizontal','Location','north')
 legend boxoff
 
-xlim([-0.25 0.25])
-ylim([-0.3 0.3])
+xlim([-0.5 0.5])
+ylim([-0.5 0.5])
 
 if imovie
 drawnow;
