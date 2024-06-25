@@ -132,6 +132,74 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
   
 end % DNNsolveTorchNoSplit
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [Xnew,dyNet,dyAdv] = DNNsolve(o,Xold,area0,len0,iExact)
+oc = o.oc;
+vback = o.vinf(Xold);
+advType = 1; % 1: exact, 2: with old net, 3: with Torch net
+% 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
+if advType == 1
+  [XoldC,~] = oc.reparametrize(Xold,[],6,20);
+  Xold = oc.alignCenterAngle(Xold,XoldC);
+
+  vback = o.vinf(Xold);
+
+  tt = o.tt;
+  op = tt.op;
+  vesicle = capsules(Xold,[],[],1,1,0);
+ 
+  G = op.stokesSLmatrix(vesicle);
+  [~,Ten,Div] = vesicle.computeDerivs;
+
+  M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
+  Xadv = Xold + o.dt*(eye(2*vesicle.N)-M)*vback;
+elseif advType == 2
+  % Take a step due to advection
+  Xadv = o.translateVinfwNN(Xold,vback);
+elseif advType == 3
+  Xadv = o.translateVinfwTorch(Xold,vback);
+end
+
+dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
+
+% AREA-LENGTH CORRECTION
+% disp('Area-Length correction after advection step')
+% [XadvC,ifail] = oc.correctAreaAndLength2(Xadv,area0,len0);
+% if ifail; disp('Error in AL cannot be corrected!!!'); end;
+% Xadv = oc.alignCenterAngle(Xadv,XadvC);
+
+% 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
+if iExact
+disp('ExactSolve')
+vesicle = capsules(Xold,[],[],1,1,0); 
+G = op.stokesSLmatrix(vesicle);
+% Bending, tension and surface divergence
+[Ben,Ten,Div] = vesicle.computeDerivs;
+M = G*Ten*((Div*G*Ten)\eye(vesicle.N))*Div;
+rhs = Xadv;
+LHS = (eye(2*vesicle.N)-vesicle.kappa*o.dt*(-G*Ben+M*G*Ben));
+Xnew = LHS\rhs;
+disp('Taking exact relaxation step')
+else
+N = numel(Xadv)/2;
+Xnew = o.relaxWNNvariableKbDt(Xadv,N,256);
+end
+
+dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
+
+% First reparameterize
+[XnewC,~] = oc.reparametrize(Xnew,[],6,20);
+Xnew = oc.alignCenterAngle(Xnew,XnewC);
+
+% AREA-LENGTH CORRECTION
+disp('Area-Length correction after relaxation step')
+[Xnew,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
+if ifail; disp('Error in AL cannot be corrected!!!'); end;
+% Xnew = oc.alignCenterAngle(Xnew,XnewC);
+
+
+  
+end % DNNsolve
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = DNNsolveTorchSplitTime(o,Xold,area0,len0,iBoth,Xlast,dXdt,timeLastRelax)
 oc = o.oc;
 vback = o.vinf(Xold);
@@ -474,7 +542,7 @@ DXpredictStand = double(DXpredictStand);
 DXpred(1:end/2) = DXpredictStand(1,1,:)*x_std + x_mean;
 DXpred(end/2+1:end) = DXpredictStand(1,2,:)*y_std + y_mean;
 
-DXpredScaled = DXpred; %/1E-5 * o.dt;
+DXpredScaled = DXpred/1E-5 * o.dt;
 Xpred = Xstand + DXpredScaled;
 Xnew = o.destandardize(Xpred,trans,rotate,rotCent,scaling,sortIdx);
 

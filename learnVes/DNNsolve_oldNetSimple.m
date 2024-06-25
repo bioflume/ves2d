@@ -1,4 +1,4 @@
-clear; clc;
+function DNNsolve_oldNetSimple(chanWidth, speed, Th)
 addpath ../src/
 addpath ../examples/
 
@@ -7,7 +7,6 @@ addpath ../examples/
 variableKbDt = false;
 interpOrder = 5; % must be an odd number
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 12000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iDNNlike = 0; % whether solve exactly DNNlike or use DNNs
 iplot = 0;
 iJiggle = 0;
@@ -19,22 +18,23 @@ toDown = 32;
 %-------------------------------------------------------------------------
 exactSolveFreq = 0; % solve exactly at every [] time steps
 errTol = 1e-2;
-maxDt = 1e-5;
-prams.Th = 0.15;%2.5; % time horizon
+maxDt = 5e-6;
+prams.Th = Th;%2.5; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
 prams.interpOrder = interpOrder;
-prams.dt = 1E-5; % time step size
+prams.dt = 5E-6; % time step size
 prams.dtRelax = prams.dt;
 prams.Nbd = 0;
 prams.nvbd = 0;
+prams.chanWidth = chanWidth;
+prams.speed = speed;
 
 oc = curve;
-Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt; 
-bgFlow = prams.bgFlow; speed = prams.speed;
+Th = prams.Th; N = prams.N; nv = prams.nv; 
 
 % net parameters
 Nnet = 256; % num. points
@@ -57,9 +57,8 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 X0 = oc.initConfig(N,'ellipse');
 [~,~,len] = oc.geomProp(X0);
 X0 = X0./len;
-IA = pi/2;
-cent = [0; 0.065];
-% cent = [0; -0.065];
+IA = 0;
+cent = [0; chanWidth/2];
 X = zeros(size(X0));
 X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
@@ -73,8 +72,8 @@ X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
 
 % -------------------------------------------------------------------------
 
-solveType = 'DNN';
-fileName = ['./output/poisDNNnewSingVesInterp5_oldNN_higher.bin'];
+
+fileName = ['./output/poisDNN_dt' num2str(prams.dt) '_oldNN_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -130,7 +129,7 @@ while time(end) < prams.Th
   
   
   disp('Taking a step with DNNs...');  tStart = tic;    
-  [Xnew, dyNet, dyAdv] = dnn.DNNsolve(Xhist,Nnet,area0,len0);
+  [Xnew, dyNet, dyAdv] = dnn.DNNsolve(Xhist,area0,len0,0);
   driftyNet = [driftyNet;dyNet];
   driftyAdv = [driftyAdv;dyAdv];
   
@@ -155,15 +154,15 @@ while time(end) < prams.Th
   disp('********************************************') 
   disp(' ')
   
-  if rem(it,1) == 0
+  if rem(it,10) == 0
     writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
-    figure(2); clf;
-    plot(cx, cy, 'linewidth',2)
-    axis square
-    grid
-    xlabel('center in x')
-    ylabel('center in y')
-    title(['Time: ' num2str(time(it))])
+    % figure(2); clf;
+    % plot(cx, cy, 'linewidth',2)
+    % axis square
+    % grid
+    % xlabel('center in x')
+    % ylabel('center in y')
+    % title(['Time: ' num2str(time(it))])
     
   end
 
@@ -173,6 +172,7 @@ end
 
 % Save data to a mat-file:
 writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [X,area0,len0] = initializeVesiclesAndWalls(vesID,...
     vesShape,initialVesFile,cent,thet,IA,initType,bgFlow,N,nv,oc,tt)
