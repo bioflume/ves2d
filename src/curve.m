@@ -50,34 +50,6 @@ end
 
 end % getCenter
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function center = getPhysicalCenter(o,X)
-% center = getCenter(o,X) finds the center of each capsule
-N = size(X,1)/2;
-nv = size(X,2);
-
-[jac,tan,curv] = o.diffProp(X);
-tanx = tan(1:end/2,:); tany = tan(end/2+1:end,:);
-nx = tany; ny = -tanx;
-x = X(1:end/2,:); y = X(end/2+1:end,:);
-
-
-
-center = zeros(2,nv);
-
-for k = 1 : nv
-    xv = (x(:,k)-mean(x(:,k)));
-    yv = (y(:,k)-mean(y(:,k)));
-    xdotn = xv.*nx(:,k) + yv.*ny(:,k);
-    center(1,k) = sum(xv.*xdotn.*jac(:,k))./sum(xdotn.*jac(:,k));
-    center(2,k) = sum(yv.*xdotn.*jac(:,k))./sum(xdotn.*jac(:,k));
-    center(1,k) = mean(x(:,k)) + center(1,k);
-    center(2,k) = mean(y(:,k)) + center(2,k);
-end
-
-end % getPhysicalCenter
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function center = getPhysicalCenterShan(o,X)
 % center = getCenter(o,X) finds the center of each capsule
