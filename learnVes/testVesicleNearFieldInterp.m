@@ -50,7 +50,7 @@ tracers.nv = nlayers-1;
 tracers.X = tracersX(:,2:nlayers);
 
 
-Vinf = @(x,y) [y;zeros(size(x))];
+Vinf = @(x,y) [y;-x];
 
 % SLP 
 G = op.stokesSLmatrix(vesicle);
@@ -132,8 +132,8 @@ selfDensityY = selfVelactual(end/2+1:end);
 layersDensityX = gridVelActual(1:end/2,:);
 layersDensityY = gridVelActual(end/2+1:end,:);
 
-opX = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityX;layersDensityX(:)]','RBFFunction','cubic');
-opY = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityY;layersDensityY(:)]','RBFFunction','cubic');
+opX = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityX;layersDensityX(:)]','RBFFunction','linear');
+opY = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityY;layersDensityY(:)]','RBFFunction','linear');
 rbfVelX = rbfinterp(queryX(:,idsIn), opX);
 rbfVelY = rbfinterp(queryX(:,idsIn), opY);
 slpTracers(1,idsIn) = rbfVelX;
