@@ -1,4 +1,4 @@
-function driver_torchRuns(chanWidth,speed,Th,dt)
+function driver_resume_torchRuns(chanWidth,speed,Th,dt)
 addpath ../src/
 addpath ../examples/
 addpath ./shannets/
@@ -61,42 +61,16 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 % VESICLES and WALLS:
 % -------------------------------------------------------------------------
 
-if 0
-load('./necessaryMatFiles/X100KinitShapes.mat')
-X0 = Xstore(:,88);
-X0 = [interpft(X0(1:end/2),N);interpft(X0(end/2+1:end),N)];
-else
-X0 = oc.initConfig(N,'ellipse');
-end
+ICfile = ['DNN_speed' num2str(speed) '_width' num2str(chanWidth) '_FinalIC.mat'];
+load(ICfile)
+X = Xic;
 
-[~,~,len] = oc.geomProp(X0);
-X0 = X0./len;
-IA = 0;
-cent = [0; chanWidth/2];
-X = zeros(size(X0));
-X(1:N) = cos(IA) * X0(1:N) - ...
-      sin(IA) * X0(N+1:2*N) + cent(1);
-X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
-      cos(IA) * X0(N+1:2*N) + cent(2);
 [~,area0,len0] = oc.geomProp(X);
-% 
-% load testDiffNetIC
-% X = Xic;
-
-% load('./trueEquilX.mat')
-% X = Xinit;
-% [~,area0,len0] = oc.geomProp(X);
-
-
-% figure(1); clf;
-% plot(X(1:end/2),X(end/2+1:end))
-% axis equal
-% pause
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
 %fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
-fileName = ['./output/test_exAdv_diff625kNetJune8_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
+fileName = ['./output/resume_test_exAdv_diff625kNetJune8_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin']; 
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');

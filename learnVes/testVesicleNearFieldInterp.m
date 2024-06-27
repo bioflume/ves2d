@@ -9,7 +9,8 @@ N = 128;
 nlayers = 3;
 
 
-load testICmulti
+% load testICmulti
+load trueEquilX
 X = Xinit(:,1);
 
 maxLayerDist = @(h) sqrt(h);
@@ -78,9 +79,18 @@ plot(X(1:end/2), X(end/2+1:end),'linewidth',2)
 hold on
 axis equal
 plot(tracersX(1:end/2,:),tracersX(end/2+1:end,:),'k.','markersize',8)
-quiver(tracersX(1:end/2,1),tracersX(end/2+1:end,1),selfVelactual(1:end/2),selfVelactual(end/2+1:end))
-quiver(tracersX(1:end/2,2:3),tracersX(end/2+1:end,2:3),gridVelActual(1:end/2,:),gridVelActual(end/2+1:end,:))
-
+% quiver(tracersX(1:end/2,1),tracersX(end/2+1:end,1),selfVelactual(1:end/2),selfVelactual(end/2+1:end))
+% quiver(tracersX(1:end/2,2:3),tracersX(end/2+1:end,2:3),gridVelActual(1:end/2,:),gridVelActual(end/2+1:end,:))
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+set(gca,'ztick',[]);
+        
+set(gca,'xcolor','w');
+set(gca,'ycolor','w');
+set(gca,'zcolor','w');
+box on
+set(gca,'visible','off')
+% pause
 
 % query points
 % queryX(:,1) = [X(2)+nx(2)*sqrt(h)/3;X(2+end/2)+ny(2)*sqrt(h)/3];
@@ -102,23 +112,32 @@ queryX = [queryXx';queryXy'];
 
 figure(1);
 plot(queryX(1,:),queryX(2,:),'ro','markersize',8,'markerfacecolor','r')
+ax = gca;
+exportgraphics(ax,'~/Desktop/velocityNear.png','Resolution',300)
 
 % Check the near zone
 Xlarge = [X(1:end/2)+nx*sqrt(h); X(end/2+1:end)+ny*sqrt(h)];
+Xlarge = [interpft(Xlarge(1:end/2),1024);interpft(Xlarge(end/2+1:end),1024)];
 vesicleLarge = capsules(Xlarge, [], [], 1, 1, 0);
-fCheck = [ones(vesicle.N,1);zeros(vesicle.N,1)];
+fCheck = [ones(vesicleLarge.N,1);zeros(vesicleLarge.N,1)];
+opCheck = poten(vesicleLarge.N);
 
 tracersCheck.N = 2;
 tracersCheck.nv = numel(queryX(1,:));
 tracersCheck.X = queryX;
 
-[DLP,laplaceDLPtar] = op.exactLaplaceDL(vesicleLarge,fCheck,[],queryX,1);
+[DLP,laplaceDLPtar] = opCheck.exactLaplaceDL(vesicleLarge,fCheck,[],queryX,1);
 % laplaceDLPtar == 1 or positive -- inside
 % laplaceDLPtar == 0 or negative -- outside
 
 buffer = 1e-4;
 idsIn = abs(laplaceDLPtar(1,:)) > buffer;
 idsOut = abs(laplaceDLPtar(1,:)) <= buffer;
+
+figure(1);
+plot(queryX(1,idsIn),queryX(2,idsIn),'bo','markersize',8,'markerfacecolor','b')
+ax = gca;
+exportgraphics(ax,'~/Desktop/velocityNearQuP.png','Resolution',300)
 
 slpTracers = zeros(2,tracers.nv);
 %% CALCULATE THOSE OUTSIDE USING EXACT KERNEL
