@@ -49,18 +49,18 @@ speeds = [6000 7500;
 timeHorizons = [0.04 0.05;
     0.020 0.015; % first two is additional
     0.015 0.015;
-    0.010 0.008];
+    0.012 0.010];
 
-for iw = 1 : 2
-  for is = 1 : 2
-    driver_resume_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dtTorch(iw,is));
-    driver_resume_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dtTorch(iw,is));
-  end
-end
+% for iw = 1 : 2
+%   for is = 1 : 2
+%     driver_resume_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dtTorch(iw,is));
+%     driver_resume_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dtTorch(iw,is));
+%   end
+% end
 
-for iw = 3 : 4 %numel(chanWidths)
-  for is = 1 : 2
-    driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dtTorch(iw,is));
+for iw = 4 : 4 %numel(chanWidths)
+  for is = 1: 2
+    driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),2.5E-6);
   end
 end
 
