@@ -34,7 +34,7 @@ for iw = 1 : numel(chanWidths)
     speed = speeds(iw,is);
     chanWidth = chanWidths(iw);
 
-    runNew = ['./poisDNN_dt1e-05_oldNN_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    runNew = ['./poisDNN_dt5e-06_oldNN_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
     [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
     vesxN = vesxN(:,1:end-100);
     vesyN = vesyN(:,1:end-100);
@@ -71,7 +71,7 @@ for iw = 1 : numel(chanWidths)
 
       disp(['speed = ' num2str(speed), ' width = ' num2str(chanWidth)])
 
-      runNew = ['./poisDNN_dt1e-05_oldNN_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+      runNew = ['./poisDNN_dt5e-06_oldNN_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
 
       
       [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);

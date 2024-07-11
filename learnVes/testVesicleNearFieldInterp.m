@@ -116,16 +116,17 @@ ax = gca;
 exportgraphics(ax,'~/Desktop/velocityNear.png','Resolution',300)
 
 % Check the near zone
+opCheck = poten(1024);
 Xlarge = [X(1:end/2)+nx*sqrt(h); X(end/2+1:end)+ny*sqrt(h)];
 Xlarge = [interpft(Xlarge(1:end/2),1024);interpft(Xlarge(end/2+1:end),1024)];
 vesicleLarge = capsules(Xlarge, [], [], 1, 1, 0);
 fCheck = [ones(vesicleLarge.N,1);zeros(vesicleLarge.N,1)];
-opCheck = poten(vesicleLarge.N);
 
 tracersCheck.N = 2;
 tracersCheck.nv = numel(queryX(1,:));
 tracersCheck.X = queryX;
 
+tInt = tic;
 [DLP,laplaceDLPtar] = opCheck.exactLaplaceDL(vesicleLarge,fCheck,[],queryX,1);
 % laplaceDLPtar == 1 or positive -- inside
 % laplaceDLPtar == 0 or negative -- outside
@@ -134,10 +135,10 @@ buffer = 1e-4;
 idsIn = abs(laplaceDLPtar(1,:)) > buffer;
 idsOut = abs(laplaceDLPtar(1,:)) <= buffer;
 
-figure(1);
-plot(queryX(1,idsIn),queryX(2,idsIn),'bo','markersize',8,'markerfacecolor','b')
-ax = gca;
-exportgraphics(ax,'~/Desktop/velocityNearQuP.png','Resolution',300)
+%figure(1);
+%plot(queryX(1,idsIn),queryX(2,idsIn),'bo','markersize',8,'markerfacecolor','b')
+%ax = gca;
+%exportgraphics(ax,'~/Desktop/velocityNearQuP.png','Resolution',300)
 
 slpTracers = zeros(2,tracers.nv);
 %% CALCULATE THOSE OUTSIDE USING EXACT KERNEL
@@ -155,13 +156,16 @@ opX = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityX;layersDensityX(:)]','RBF
 opY = rbfcreate([xxInput(:)';yyInput(:)'],[selfDensityY;layersDensityY(:)]','RBFFunction','linear');
 rbfVelX = rbfinterp(queryX(:,idsIn), opX);
 rbfVelY = rbfinterp(queryX(:,idsIn), opY);
+tInt = toc(tInt);
 slpTracers(1,idsIn) = rbfVelX;
 slpTracers(2,idsIn) = rbfVelY;
 
+
 %% COMPARE THAT WITH OUR NEAR SINGULAR SCHEME
+tNear = tic;
 [~,NearV2T] = vesicle.getZone(tracersCheck,2);
 slpNearSing = op.nearSingInt(vesicle,vinf,SLP,[],NearV2T,kernel,kernelDirect,tracersCheck,false,false);
-
+tNear = toc(tNear);
 
 %% Errors
 errVelx = max(abs(slpNearSing(1,:)-slpTracers(1,:))./abs(slpNearSing(1,:)));

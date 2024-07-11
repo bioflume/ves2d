@@ -18,7 +18,7 @@ toDown = 32;
 %-------------------------------------------------------------------------
 exactSolveFreq = 0; % solve exactly at every [] time steps
 errTol = 1e-2;
-maxDt = 5e-6;
+maxDt = 2.5e-6;
 prams.Th = Th;%2.5; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles

@@ -11,7 +11,14 @@ nlayers = 3;
 % load n128Dt1e-05RelaxMirrdDataSet.mat
 % k = 11212;
 % Xinit =  [interpft(XstandStore(1:end/2,k),Nup); interpft(XstandStore(end/2+1:end,k),Nup)];
-load testIC
+load finalShearX.mat
+X = Xhist;
+Xinit = X(:,1);
+
+% Now reconstruct from the fourier coeff of velocity
+% Choose vinf
+vinf = [Xinit(end/2+1:end); 0*Xinit(1:end/2)];
+% vinf = [0*Xinit(end/2+1:end); Xinit(1:end/2)];
 
 maxLayerDist = @(h) sqrt(h);
 
@@ -24,7 +31,7 @@ basis = 1/N * exp(1i*theta*ks');
 
 op = poten(Nup);
 
-[Xinit,scaling,rotate,rotCent,trans,sortIdx] = standardizationStep(Xinit,128);
+% [Xinit,scaling,rotate,rotCent,trans,sortIdx] = standardizationStep(Xinit,128);
 [~,area,len] = oc.geomProp(Xinit);
 
 
@@ -54,7 +61,7 @@ tracers.nv = nlayers-1;
 tracers.X = tracersX(:,2:nlayers);
 
 
-Vinf = @(x,y) [y;zeros(size(x))];
+
 
 % SLP 
 G = op.stokesSLmatrix(vesicle);
@@ -87,9 +94,6 @@ for imode = 1 : nmodes
   selfVelModesImag(:,imode) = G*forImagVels;
 end
 
-% Now reconstruct from the fourier coeff of velocity
-% Choose vinf
-vinf = [Xinit(end/2+1:end); 0*Xinit(1:end/2)];
  
 vz = vinf(1:end/2)+1i*vinf(end/2+1:end);
 coeffs = fft(vz);
@@ -119,6 +123,16 @@ end
 
 gridVelActual = op.nearSingInt(vesicle,vinf,SLP,[],NearV2T,kernel,kernelDirect,tracers,false,false);
 
+figure(1); clf;
+plot(Xinit(1:end/2),Xinit(end/2+1:end),'linewidth',2)
+hold on
+velx = [selfVelX_recon gridVelX_recon];
+vely = [selfVelY_recon gridVelY_recon];
+plot(tracersX(1:end/2,:),tracersX(end/2+1:end,:),'k.','markersize',8)
+quiver(tracersX(1:end/2,:),tracersX(end/2+1:end,:), velx, vely)
+axis equal
+
+save trueNear1 Xinit tracersX velx vely
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [X,scaling,rotate,rotCent,trans,sortIdx] = standardizationStep(Xin,Nnet)
 oc = curve;

@@ -4,7 +4,7 @@ import numpy as np
 
 # vesicle coordinates are normalized
 # convert MATLAB's numpy array into PyTorch tensor
-input_shape = torch.from_numpy(input_shape).float()
+#input_shape = torch.from_numpy(input_shape).float()
 
 theta = np.arange(128)/128*2*np.pi
 theta = theta.reshape(128,1)
@@ -17,11 +17,16 @@ rr_ii_Mat = np.concatenate((rrMat, iiMat)).transpose()
 # [256, 128] shape transposed to 128 x 256
 rr_ii_Mat = torch.from_numpy(rr_ii_Mat).float()
 
+N = 128
+modes = np.concatenate((np.arange(0, int(N/2)), np.arange(-int(N/2), 0)))
+mod_list = np.where(np.abs(modes) <= 16)[0] + 1 # keeps indices in MATLAB order
 
+nmodes = np.size(mod_list)# skip zeroth mode
 model = Net_ves_adv_fft(12, 1.7, 20)
 
 output_list = []
-for imode in np.arange(2,65):
+for ij in np.arange(0,nmodes-1):
+  imode = mod_list[ij+1]
   imode_net = "/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/ves_fft_models/ves_fft_mode" + str(imode) + ".pth"
   model.load_state_dict(torch.load(imode_net, map_location="cpu"))
   model.eval()
@@ -31,10 +36,10 @@ for imode in np.arange(2,65):
     
   # tile the fourier mode array for num_ves
   fourX_tile = torch.tile(basis,(num_ves,1,1))
-  
+  input_vec = torch.from_numpy(input_shape[ij]).float()
   input_net = torch.zeros(num_ves,2,256)
-  input_net[:,0,:128] = input_shape[:,0,:]
-  input_net[:,0,128:] = input_shape[:,1,:]
+  input_net[:,0,:128] = input_vec[:,0,:] #input_shape[:,0,:]
+  input_net[:,0,128:] = input_vec[:,1,:] #input_shape[:,1,:]
   input_net[:,1,:] = fourX_tile
   
   with torch.no_grad():

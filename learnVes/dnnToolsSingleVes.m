@@ -307,6 +307,10 @@ nv = numel(Xold(1,:));
 Nnet = 128;
 oc = o.oc;
 
+modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
+modesInUse = 16;
+modeList = find(abs(modes)<=modesInUse);
+
 % Standardize input
 [Xstand,scaling,rotate,rotCent,trans,sortIdx] = o.standardizationStep(Xold,Nnet);
 
@@ -314,20 +318,24 @@ in_param = o.torchAdvInNorm;
 out_param = o.torchAdvOutNorm;
 
 % Normalize input
-input_net = zeros(nv,2,128);
-
-for imode = 2 : 64
+input_list = []; 
+cnt = 1;
+for imode = modeList
+  if imode ~= 1
+  input_net = zeros(nv,2,128);  
   x_mean = in_param(imode-1,1);
   x_std = in_param(imode-1,2);
   y_mean = in_param(imode-1,3);
   y_std = in_param(imode-1,4);
   input_net(:,1,:) = (Xstand(1:end/2)-x_mean)/x_std;
   input_net(:,2,:) = (Xstand(end/2+1:end)-y_mean)/y_std;
+  input_list{cnt} = py.numpy.array(input_net);
+  cnt = cnt + 1;
+  end
 end % imode
 
-input_conv = py.numpy.array(input_net);
 tS = tic;
-[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv));
+[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv));
 tPyCall = toc(tS);
 
 disp(['Calling python to predict MV takes ' num2str(tPyCall) ' seconds'])
@@ -337,8 +345,10 @@ Z11r = zeros(Nnet,Nnet,nv); Z12r = Z11r;
 Z21r = Z11r; Z22r = Z11r;
 
 tS = tic;
-for imode = 2 : 64
-  pred = double(Xpredict{imode-1}); % size(pred) = [1 2 256]
+for ij = 1 : numel(modeList)-1
+  
+  imode = modeList(ij+1); % mode index # skipping the first mode
+  pred = double(Xpredict{ij}); % size(pred) = [1 2 256]
 
 
   % denormalize output
