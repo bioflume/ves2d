@@ -802,7 +802,7 @@ input_list = [];
 cnt = 1;
 for imode = modeList
   if imode ~= 1
-  input_net = zeros(nv,2,128);  
+  input_net = zeros(1,2,128);  
   x_mean = in_param(imode-1,1);
   x_std = in_param(imode-1,2);
   y_mean = in_param(imode-1,3);
@@ -814,7 +814,6 @@ for imode = modeList
   end
 end % imode
 
-input_conv = py.numpy.array(input_net);
 tS = tic;
 [Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv));
 tPyCall = toc(tS);
