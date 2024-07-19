@@ -1,17 +1,19 @@
 clear; clc;
-imovie = 0;
+imovie = 1;
 set(0,'defaultAxesFontSize',25)
 set(groot, 'defaultAxesTickLabelInterpreter','latex')
 set(groot, 'defaultLegendInterpreter','latex')
 set(groot, 'DefaultTextInterpreter','latex')
 
 
-fileNameNN = 'smoothing_rayCasting_shear_interpNetNear_relaxNet_diff625kNetJune8_dt1e-05_speed1000.bin';
-fileNameTR = 'smoothing_rayCasting_shear_interpNear_relaxNet_diff625kNetJune8_dt1e-05_speed1000.bin';
-% fileNameTR = 'shearTrueRuns_dt1e-05_speed1000.bin';
+% fileNameNN = 'smoothing_rayCasting_shear_interpNetNear_relaxNet_diff625kNetJune8_dt1e-05_speed1000.bin';
+% fileNameTR = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
+fileNameTR = 'shearTrueRuns_dt1e-05_speed2000.bin';
 
-[vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameNN);
+% [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameNN);
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameTR);
+
+load testShearNearInterpSpeed2000 
 
 nsteps = min([numel(timeN); numel(timeT)]);
 
@@ -29,12 +31,14 @@ for k = 1 : 1 :nsteps
   plot(vesxT(1,:,k),vesyT(1,:,k),'bo','markersize',8,'markerfacecolor','b')
   axis equal
   
-  xlim([-1 1])
-  ylim([-1 1])
-
+  xlim([-0.5 1])
+  ylim([-0.5 0.5])
+  
+  % legend('Network','Ignoring near-field')
+  % legend boxoff
   title(['Time: ' num2str(timeN(k))])
    
-  pause(0.1);
+  pause(0.1)
 
 end
 end
@@ -63,16 +67,43 @@ for k = 1 :  numberOfFrames
 cla reset;
 
 figure(1); clf;
-plot([vesxN(:,:,k);vesxN(1,:,k)], [vesyN(:,:,k);vesyN(1,:,k)], 'r', 'linewidth', 2)
+xvec = [vesxT(:,1,k);vesxT(1,1,k)];
+yvec = [vesyT(:,1,k);vesyT(1,1,k)];
+plot(xvec, yvec, 'Color',[244,165,130]/255,'linewidth',2)
 hold on
-plot([vesxT(:,:,k);vesxT(1,:,k)], [vesyT(:,:,k);vesyT(1,:,k)], 'b', 'linewidth', 2)
+hFill = fill(xvec, yvec, [244,165,130]/255);
+set(hFill,'EdgeColor', [244,165,130]/255);
+plot(vesxT(1,1,k),vesyT(1,1,k),'ko','markersize',8,'markerfacecolor','k')
 
-plot(vesxN(1,:,k),vesyN(1,:,k),'ro','markersize',8,'markerfacecolor','r')
-plot(vesxT(1,:,k),vesyT(1,:,k),'bo','markersize',8,'markerfacecolor','b')
-axis equal
-  
-xlim([-1 1])
-ylim([-1 1])
+xvec = [vesxT(:,2,k);vesxT(1,2,k)];
+yvec = [vesyT(:,2,k);vesyT(1,2,k)];
+plot(xvec, yvec, 'Color',[146,197,222]/255,'linewidth',2)
+hold on
+hFill = fill(xvec, yvec, [146,197,222]/255);
+hFill.FaceAlpha = 0.5;
+set(hFill,'EdgeColor', [146,197,222]/255);
+plot(vesxT(1,2,k),vesyT(1,2,k),'ko','markersize',8,'markerfacecolor','k')
+
+
+
+% figure(1); clf;
+xvec = [vesxN(:,1,k);vesxN(1,1,k)];
+yvec = [vesyN(:,1,k);vesyN(1,1,k)];
+plot(xvec, yvec, 'Color',[202,0,32]/255,'linewidth',2)
+hold on
+hFill = fill(xvec, yvec, [202,0,32]/255);
+set(hFill,'EdgeColor', [202,0,32]/255);
+plot(vesxN(1,1,k),vesyN(1,1,k),'ko','markersize',8,'markerfacecolor','k')
+
+xvec = [vesxN(:,2,k);vesxN(1,2,k)];
+yvec = [vesyN(:,2,k);vesyN(1,2,k)];
+plot(xvec, yvec, 'Color',[5,113,176]/255,'linewidth',2)
+hold on
+hFill = fill(xvec, yvec, [5,113,176]/255);
+hFill.FaceAlpha = 0.5;
+set(hFill,'EdgeColor', [5,113,176]/255);
+plot(vesxN(1,2,k),vesyN(1,2,k),'ko','markersize',8,'markerfacecolor','k')
+
 
 set(gca,'xtick',[]);
 set(gca,'ytick',[]);
@@ -84,7 +115,11 @@ set(gca,'zcolor','w');
 box on
 set(gca,'visible','off')
 
-titleStr = ['t = ' num2str(timeN(k),'%.2f')];
+axis equal
+xlim([-0.75 1])
+ylim([-0.35 0.35])
+
+titleStr = ['t = ' num2str(timeT(k),'%.2f')];
 title(titleStr,'FontSize',28)
 
 drawnow;

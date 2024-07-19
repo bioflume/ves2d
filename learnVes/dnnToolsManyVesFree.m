@@ -47,6 +47,8 @@ torchAdvInNorm
 torchAdvOutNorm
 torchNearInNorm
 torchNearOutNorm
+Nfmm
+opNfmm
 end
 
 methods
@@ -60,6 +62,8 @@ o.tt = o.buildTstep(X,prams);
 o.vinf = o.setBgFlow(prams.bgFlow,prams.speed,prams.chanWidth);  
 o.dtRelax = prams.dtRelax;
 o.oc = curve;
+o.Nfmm = prams.Nfmm;
+o.opNfmm = poten(o.Nfmm);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xnew,dyNet,dyAdv] = DNNsolveTorchSingle(o,Xold,area0,len0,iExact)
@@ -134,6 +138,7 @@ function [Xnew,tenNew] = DNNsolveTorchMany(o,Xold,tenOld,area0,len0,iExactTensio
 oc = o.oc;
 tt = o.tt;
 op = tt.op;
+opNfmm = o.opNfmm;
 advType = 1; % 1: exact, 2: with old net, 3: with Torch net
 
 % background velocity on vesicles
@@ -148,6 +153,9 @@ N = vesicle.N;
 fBend = vesicle.tracJump(Xold,zeros(N,nv));
 fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
 tracJump = fBend+fTen;
+
+% Filter traction jump
+tracJump = oc.upsThenFilterShape(tracJump,512,32);
 % -----------------------------------------------------------
 % 1) Explicit Tension at the Current Step
 
@@ -158,7 +166,8 @@ if iIgnoreNear
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
 if ~iExactNear
-farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
+farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+% farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
 else
 % single layer matrix without correction
 SLPnoCorr = []; % it would SLPdiag if fmm is on
@@ -193,9 +202,13 @@ else % Tension network solve
   tenNew = -(vBackSolve + selfBendSolve);
 end
 
+
 % update the traction jump calculation
 fTen = vesicle.tracJump(zeros(2*N,nv), tenNew); 
 tracJump = fBend + fTen;
+
+% Filter traction jump
+tracJump = oc.upsThenFilterShape(tracJump,512,32);
 % -----------------------------------------------------------
 
 % Calculate far-field again and correct near field before advection
@@ -205,7 +218,8 @@ if iIgnoreNear
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
 if ~iExactNear
-farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
+farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+% farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
 else
 kernel = @op.exactStokesSL;
 kernelDirect = @op.exactStokesSL;    
@@ -245,6 +259,9 @@ elseif advType == 3
   Xadv = o.translateVinfwTorch(Xold,vbackTotal);
 end
 
+% filter shape
+Xadv = oc.upsThenFilterShape(Xadv,512,32);
+
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
 if iExact
 
@@ -270,6 +287,9 @@ disp('Area-Length correction after relaxation step')
 [Xnew,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
+
+% filter shape
+Xnew = oc.upsThenFilterShape(Xnew,512,32);
 end % DNNsolveTorchMany
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xlayers, ylayers, velx, vely] = predictNearLayersWTorchNet(o, X, tracJump)
@@ -333,7 +353,7 @@ for k = 1 : nv
 end
 
 input_conv = py.numpy.array(input_net);
-[Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv));
+[Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
 
 for k = 1 : nv
 velx_real{k} = zeros(128,128,3);
@@ -343,7 +363,7 @@ vely_imag{k} = zeros(128,128,3);
 end
 
 % denormalize output
-for ij = 1 : numel(modList)
+for ij = 1 : numel(modeList)
   imode = modeList(ij);
   pred = double(Xpredict{ij});
   % its size is (nv x 12 x 128) 
@@ -431,18 +451,18 @@ xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
 
 % Compute near/far hydro interactions
 % with upsampling by 2
-Nup = 2*N;
+% Nup = N;
+% 
+% Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
+% fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
 
-Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
-fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
-
-vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
+% vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
 
 % First calculate the far-field
 farField = zeros(2*N,nv);
 for k = 1 : nv
   K = [(1:k-1) (k+1:nv)];
-  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, fup, [], vesicle.X(:,k), K);
+  [~,farField(:,k)] = op.exactStokesSL(vesicle, tracJump, [], vesicle.X(:,k), K);
 end
 
 
@@ -553,7 +573,7 @@ xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
 
 % Compute near/far hydro interactions
 % with upsampling by 2
-Nup = 2*N;
+Nup = o.Nfmm;
 
 Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
 fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
@@ -663,68 +683,68 @@ function farField = ignoreNearInteractions(o,vesicle, tracJump, op, oc)
 disp('Near-singular interaction IGNORED')
 N = vesicle.N;
 nv = vesicle.nv;
-maxLayerDist = sqrt(vesicle.length/vesicle.N);
-
-% Predictions on three layers
-nlayers = 3;
-
-% Tangent
-[~,tang] = oc.diffProp(vesicle.X);
-% Normal
-nx = tang(N+1:2*N,:);
-ny = -tang(1:N,:);
-
-xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
+% maxLayerDist = sqrt(vesicle.length/vesicle.N);
+% 
+% % Predictions on three layers
+% nlayers = 3;
+% 
+% % Tangent
+% [~,tang] = oc.diffProp(vesicle.X);
+% % Normal
+% nx = tang(N+1:2*N,:);
+% ny = -tang(1:N,:);
+% 
+% xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
 
 % Compute near/far hydro interactions
 % with upsampling by 2
-Nup = 2*N;
-
-Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
-fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
-
-vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
+% Nup = 2*N;
+% 
+% Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
+% fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
+% 
+% vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
 
 % First calculate the far-field
 farField = zeros(2*N,nv);
 for k = 1 : nv
   K = [(1:k-1) (k+1:nv)];
-  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, fup, [], vesicle.X(:,k), K);
+  [~,farField(:,k)] = op.exactStokesSL(vesicle, tracJump, [], vesicle.X(:,k), K);
 end
 
 
-% Then correct the near-field
-% find the outermost layers of all vesicles, then perform Laplace kernel
-Xlarge = zeros(2*Nup,nv);
-fCheck = [ones(Nup,nv);zeros(Nup,nv)];
-for k = 1 : nv
-Xq = [xvesicle(:,k)+nx(:,k)*maxLayerDist; yvesicle(:,k)+ny(:,k)*maxLayerDist];  
-Xlarge(:,k) = [interpft(Xq(1:end/2),Nup);interpft(Xq(end/2+1:end),Nup)];
-end
-
-vesicleLarge = capsules(Xlarge,[],[],vesicle.kappa,vesicle.viscCont,0);
-DLPnear = zeros(2*N,nv);
-% this is wrong if we work with more than two vesicles
-% we have to repeat this calculation for every pair
-buffer = 1e-4;
-
-for k = 1 : nv
-  K = [(1:k-1) (k+1:nv)];
-  [~,DLPnear(:,k)] = op.exactLaplaceDL(vesicleLarge,fCheck,[],vesicle.X(:,k), K);
-  idsIn = abs(DLPnear(1:end/2,k)) > buffer;
-  
-  % for ids-in we need to remove
-
-  if any(idsIn)
-    % replace the interpolated one with the direct calculation
-    %farX = farField(1:end/2,k); farY = farField(end/2+1:end,k);
-    %farX(idsIn) = 0;
-    %farY(idsIn) = 0;
-    %farField(:,k) = [farX; farY];
-
-  end % end if any(idsIn)
-
-end % for k = 1 : nv
+% % Then correct the near-field
+% % find the outermost layers of all vesicles, then perform Laplace kernel
+% Xlarge = zeros(2*Nup,nv);
+% fCheck = [ones(Nup,nv);zeros(Nup,nv)];
+% for k = 1 : nv
+% Xq = [xvesicle(:,k)+nx(:,k)*maxLayerDist; yvesicle(:,k)+ny(:,k)*maxLayerDist];  
+% Xlarge(:,k) = [interpft(Xq(1:end/2),Nup);interpft(Xq(end/2+1:end),Nup)];
+% end
+% 
+% vesicleLarge = capsules(Xlarge,[],[],vesicle.kappa,vesicle.viscCont,0);
+% DLPnear = zeros(2*N,nv);
+% % this is wrong if we work with more than two vesicles
+% % we have to repeat this calculation for every pair
+% buffer = 1e-4;
+% 
+% for k = 1 : nv
+%   K = [(1:k-1) (k+1:nv)];
+%   [~,DLPnear(:,k)] = op.exactLaplaceDL(vesicleLarge,fCheck,[],vesicle.X(:,k), K);
+%   idsIn = abs(DLPnear(1:end/2,k)) > buffer;
+% 
+%   % for ids-in we need to remove
+% 
+%   if any(idsIn)
+%     % replace the interpolated one with the direct calculation
+%     %farX = farField(1:end/2,k); farY = farField(end/2+1:end,k);
+%     %farX(idsIn) = 0;
+%     %farY(idsIn) = 0;
+%     %farField(:,k) = [farX; farY];
+% 
+%   end % end if any(idsIn)
+% 
+% end % for k = 1 : nv
 
 
 end % ignoreNearInteractions
@@ -815,7 +835,7 @@ for imode = modeList
 end % imode
 
 tS = tic;
-[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv));
+[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
 tPyCall = toc(tS);
 
 disp(['Calling python to predict MV takes ' num2str(tPyCall) ' seconds'])
@@ -1358,6 +1378,8 @@ elseif strcmp(bgFlow,'parabolic')
 elseif strcmp(bgFlow,'rotation')
   vinf = @(X) [-sin(atan2(X(end/2+1:end,:),X(1:end/2,:)))./sqrt(X(1:end/2,:).^2+X(end/2+1:end,:).^2);...
     cos(atan2(X(end/2+1:end,:),X(1:end/2,:)))./sqrt(X(1:end/2,:).^2+X(end/2+1:end,:).^2)]*speed;
+elseif strcmp(bgFlow,'exten') 
+  vinf = @(X) speed*[-X(1:end/2,:);X(end/2+1:end,:)]; 
 end
     
 end % setBgFlow

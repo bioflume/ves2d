@@ -68,7 +68,7 @@ end
 function [Xnew,dyNet,dyAdv] = DNNsolveTorchNoSplit(o,Xold,area0,len0,iExact)
 oc = o.oc;
 vback = o.vinf(Xold);
-advType = 1; % 1: exact, 2: with old net, 3: with Torch net
+advType = 3; % 1: exact, 2: with old net, 3: with Torch net
 % 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
 if advType == 1
   [XoldC,~] = oc.reparametrize(Xold,[],6,20);
@@ -90,6 +90,8 @@ elseif advType == 2
   Xadv = o.translateVinfwNN(Xold,vback);
 elseif advType == 3
   Xadv = o.translateVinfwTorch(Xold,vback);
+  % filter shape
+  Xadv = oc.upsThenFilterShape(Xadv,512,32);
 end
 
 dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
@@ -128,6 +130,9 @@ disp('Area-Length correction after relaxation step')
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 % Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
+
+% filter shape
+Xnew = oc.upsThenFilterShape(Xnew,512,32);
 
   
 end % DNNsolveTorchNoSplit
@@ -203,7 +208,7 @@ end % DNNsolve
 function Xnew = DNNsolveTorchSplitTime(o,Xold,area0,len0,iBoth,Xlast,dXdt,timeLastRelax)
 oc = o.oc;
 vback = o.vinf(Xold);
-advType = 1; % 1: exact, 2: with old net, 3: with Torch net
+advType = 3; % 1: exact, 2: with old net, 3: with Torch net
 % 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
 if advType == 1
   [XoldC,~] = oc.reparametrize(Xold,[],6,20);
@@ -306,9 +311,9 @@ N = numel(Xold(:,1))/2;
 nv = numel(Xold(1,:));
 Nnet = 128;
 oc = o.oc;
-
+disp('taking advection step with nets')
 modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
-modesInUse = 16;
+modesInUse = 48;
 modeList = find(abs(modes)<=modesInUse);
 
 % Standardize input
@@ -335,7 +340,7 @@ for imode = modeList
 end % imode
 
 tS = tic;
-[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv));
+[Xpredict] = pyrunfile("advect_predict.py","output_list",input_shape=input_list,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
 tPyCall = toc(tS);
 
 disp(['Calling python to predict MV takes ' num2str(tPyCall) ' seconds'])

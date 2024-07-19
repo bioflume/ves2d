@@ -11,7 +11,7 @@ model = Ves_near_factor_Fourier(14, 3.2, 28)
 output_list = []
 N = 128
 modes = np.concatenate((np.arange(0, int(N/2)), np.arange(-int(N/2), 0)))
-mod_list = np.where(np.abs(modes) <= 16)[0] + 1 # mod indices in MATLAB ordering
+mod_list = np.where(np.abs(modes) <= modesInUse)[0] + 1 # mod indices in MATLAB ordering
 
 nmodes = np.size(mod_list)
 

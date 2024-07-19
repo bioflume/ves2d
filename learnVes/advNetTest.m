@@ -46,7 +46,7 @@ Nves = 1;
 
 % Normalize input
 modes = [(0:N/2-1) (-N/2:-1)];
-modesInUse = 16;
+modesInUse = 32;
 modeList = find(abs(modes)<=modesInUse);
 
 
@@ -78,7 +78,6 @@ Z21r = Z11r; Z22r = Z11r;
 for ij = 1 : numel(modeList)-1  
   
   imode = modeList(ij+1); % mode index
-  disp(imode)
   pred = double(XpredictStand{ij}); % size(pred) = [1 2 256]
 
 

@@ -19,8 +19,7 @@ rr_ii_Mat = torch.from_numpy(rr_ii_Mat).float()
 
 N = 128
 modes = np.concatenate((np.arange(0, int(N/2)), np.arange(-int(N/2), 0)))
-mod_list = np.where(np.abs(modes) <= 16)[0] + 1 # keeps indices in MATLAB order
-
+mod_list = np.where(np.abs(modes) <= modesInUse)[0] + 1 # keeps indices in MATLAB order
 nmodes = np.size(mod_list)# skip zeroth mode
 model = Net_ves_adv_fft(12, 1.7, 20)
 

@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('poisTrueRuns_dt5e-05_speed4500_width0.6455.bin');
+[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('test_netAdv16modes_diff625kNetJune8_dt1e-05poisRuns_speed750_width0.32275.bin');
 
 
 imovie = 1;
@@ -26,7 +26,7 @@ myMovie = struct('cdata', allTheFrames, 'colormap', allTheColorMaps);
 % set(gcf, 'renderer', 'zbuffer');
 
 count = 1;
-for it = 1 : 10 : numel(time)
+for it = 1 : 1 : numel(time)
 figure(1); clf;
 if imovie; cla reset; end;
 Xst = XN(:,it);

@@ -17,8 +17,9 @@ oc = curve;
 
 % VESICLE:
 % -------------------------------------------------------------------------
-cx = [-0.4; 0];
-cy = [0.05; 0];
+cx = [-0.3; 0];
+cy = [0.040; 0];
+
 IA = [0; pi/2];
 
 
@@ -41,6 +42,7 @@ prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 1000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic
 prams.Th = Th;
 prams.N = 128; % num. points for true solve in DNN scheme
+prams.Nfmm = 128;
 prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls

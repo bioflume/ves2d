@@ -5,16 +5,15 @@ addpath ./output/
 
 R = 0.1291;
 chanWidths = R ./ [0.2; 0.4; 0.6; 0.75];
-speeds = [1500 3000 4500;
-    750 1500 2250;
-    500 1000 1500;
-    400 800 1200];
-
+speeds = [1500 3000 4500 6000 7500;
+    750 1500 2250 3000 3750;
+    500 1000 1500 2000 2500;
+    400 800 1200 1600 2000];
 Cks = zeros(numel(chanWidths)*3,1);
 Cns = Cks;
 count = 1;
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 3
+    for is = 1 : 5
       w = chanWidths(iw);
       vmax = speeds(iw,is);
       Cks(count,1) = 2*vmax*R^3/w;
@@ -28,15 +27,15 @@ oc = curve;
 op = poten(N);
 
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 3
+    for is = 1 : 5
     speed = speeds(iw,is);
     chanWidth = chanWidths(iw);
 
-    runNew = ['./output/phaseDiagJune9/test_exAdv_diff625kNet_poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    runNew = ['./output/truePoisRuns/poisTrueRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
     [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
-    vesxN = vesxN(:,end-400:end-100);
-    vesyN = vesyN(:,end-400:end-100);
-    timeN = timeN(end-400:end-100);
+    vesxN = vesxN(:,end-150:end-50);
+    vesyN = vesyN(:,end-150:end-50);
+    timeN = timeN(end-150:end-50);
     
     Xs = [vesxN;vesyN];
     Xs1 = Xs;
@@ -75,7 +74,7 @@ for iw = 1 : numel(chanWidths)
       magVel(:,k) = sqrt(selfVel(1:end/2,k).^2 + selfVel(end/2+1:end,k).^2);
     end
 
-    ppDataFile = ['ppData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
+    ppDataFile = ['./VelocityData/ppTrueData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
     save(ppDataFile, 'Xs', 'selfVel')
 
     cxV = abs(movmean(mean(selfVel(1:end/2,:),1),1));

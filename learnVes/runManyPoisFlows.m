@@ -13,9 +13,9 @@ dt = 1e-5;
 for iw = 1 : numel(chanWidths)
   for is = 1 : 3
       %driver_mixedRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
-      %driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
+      driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
       % driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
-      DNNsolve_oldNetSimple(chanWidths(iw), speeds(iw,is), timeHorizons(iw,is))
+      %DNNsolve_oldNetSimple(chanWidths(iw), speeds(iw,is), timeHorizons(iw,is))
   end
 end
 

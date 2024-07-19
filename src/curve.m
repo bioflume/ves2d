@@ -3579,6 +3579,33 @@ end % filterShape
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xfinal = upsThenFilterShape(o,X,Nup,modeCut)
+% delete high frequencies from the vesicle shape
+N = size(X,1)/2;
+nv = size(X,2);
+
+% modeCut = 32; works fine; Nup = 512;
+
+modes = [(0:Nup/2-1) (-Nup/2:-1)];
+xup = interpft(X(1:end/2,:),Nup);
+yup = interpft(X(end/2+1:end,:),Nup);
+
+Xfinal = zeros(size(X));
+
+for k = 1:nv
+  z = xup(:,k) + 1i*yup(:,k);
+  z = fft(z);
+  z(abs(modes) > modeCut) = 0;
+  z = ifft(z);
+  Xfinal(1:end/2,k) = interpft(real(z),N);
+  Xfinal(end/2+1:end,k) = interpft(imag(z),N);
+end
+
+end % filterShape
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [X,filtered,ratio] = adapFilterShape(o,X)
 % delete high frequencies from the vesicle shape
 N = size(X,1)/2;

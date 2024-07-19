@@ -96,7 +96,7 @@ X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
 
 solveType = 'DNN';
 %fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
-fileName = ['./output/test_exAdv_diff625kNetJune8_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
+fileName = ['./output/test_netAdv16modes_diff625kNetJune8_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');

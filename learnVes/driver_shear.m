@@ -1,13 +1,17 @@
 clear; clc;
 dt = 1E-5;
-Th = 0.007;
-cx = [-0.4; 0];
-cy = [0.05; 0];
+Th = 0.0074; %0.01;
+% cx = [-0.4; 0];
+% cy = [0.05; 0];
+
+cx = [-0.3; 0];
+cy = [0.040; 0];
+
 IA = [0; pi/2];
 
 iExactTension = 1;
 iExactNear = 0;
-iExact = 1; % exact relaxation
+iExact = 0; % exact relaxation
 iIgnoreNear = 0;
 
 addpath ../src/
@@ -35,7 +39,7 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 1000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+prams.speed = 2000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
@@ -45,6 +49,7 @@ prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
 prams.N = 128; % num. points for true solve in DNN scheme
+prams.Nfmm = 64;
 prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -81,36 +86,36 @@ X(N+1:2*N,k) = sin(IA(k)) * X0(1:N)  + ...
 end
 [~,area0,len0] = oc.geomProp(X);
 
-load finalShearX.mat
-X = Xhist;
-
-Xnew = zeros(size(X));
-
-Xup = [interpft(X(1:end/2,:),1024);interpft(X(end/2+1:end,:),1024)];
-Nup = size(Xup,1)/2;
-nv = size(Xup,2);
-modes = [(0:Nup/2-1) (-Nup/2:-1)];
-
-for k = 1 : nv
-  z = Xup(1:end/2,k) + 1i*Xup(end/2+1:end,k);
-  z = fft(z);
-  z(abs(modes) > 32) = 0;
-  z = ifft(z);
-  Xnew(:,k) = [interpft(real(z),128);interpft(imag(z),128)];
-end
-
-X = Xnew;
+load finalShearXclose.mat
+X = Xf;
+% 
+% Xnew = zeros(size(X));
+% 
+% Xup = [interpft(X(1:end/2,:),1024);interpft(X(end/2+1:end,:),1024)];
+% Nup = size(Xup,1)/2;
+% nv = size(Xup,2);
+% modes = [(0:Nup/2-1) (-Nup/2:-1)];
+% 
+% for k = 1 : nv
+%   z = Xup(1:end/2,k) + 1i*Xup(end/2+1:end,k);
+%   z = fft(z);
+%   z(abs(modes) > 32) = 0;
+%   z = ifft(z);
+%   Xnew(:,k) = [interpft(real(z),128);interpft(imag(z),128)];
+% end
+% 
+% X = Xnew;
 
 % figure(1); clf;
 % plot(X(1:end/2,:),X(end/2+1:end,:),'k')
 % hold on
-% plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r')
+% % plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r')
 % axis equal
 % pause
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/smoothing_rayCasting_shear_interpNear_relaxNet_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/res_test_shear_interpNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -165,20 +170,6 @@ while time(end) < prams.Th
   
   disp('Taking a step with DNNs...');  tStart = tic;    
   [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear);
-  
-  Xnew = zeros(size(Xhist));
-
-  Xup = [interpft(Xhist(1:end/2,:),1024);interpft(Xhist(end/2+1:end,:),1024)];
- 
-  for k = 1 : nv
-    z = Xup(1:end/2,k) + 1i*Xup(end/2+1:end,k);
-    z = fft(z);
-    z(abs(modes) > 32) = 0;
-    z = ifft(z);
-    Xnew(:,k) = [interpft(real(z),128);interpft(imag(z),128)];
-  end
-
-  Xhist = Xnew;
 
 
   [xIntersect,~,~] = oc.selfintersect(Xhist);
