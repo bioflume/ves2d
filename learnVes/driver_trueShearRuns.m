@@ -39,10 +39,10 @@ end
 nv = 2;
 
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 1000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic
+prams.speed = speed; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic
 prams.Th = Th;
-prams.N = 128; % num. points for true solve in DNN scheme
-prams.Nfmm = 128;
+prams.N = N; % num. points for true solve in DNN scheme
+prams.Nfmm = N;
 prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -60,7 +60,7 @@ dnn = dnnToolsManyVesFree(X,prams);
 % INITIALIZE MATRICES AND COUNTERS
 % ------------------------------------------------------------------------
 % folderName = '/work2/03353/gokberk/frontera/truePoisRuns/';
-fileName = ['./output/shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
+fileName = ['./output/N128again_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;nv];

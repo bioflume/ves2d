@@ -66,7 +66,7 @@ o.Nfmm = prams.Nfmm;
 o.opNfmm = poten(o.Nfmm);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Xnew,dyNet,dyAdv] = DNNsolveTorchSingle(o,Xold,area0,len0,iExact)
+function Xnew = DNNsolveTorchSingle(o,Xold,area0,len0,iExact)
 oc = o.oc;
 vback = o.vinf(Xold);
 advType = 1; % 1: exact, 2: with old net, 3: with Torch net
@@ -92,7 +92,7 @@ elseif advType == 2
 elseif advType == 3
   Xadv = o.translateVinfwTorch(Xold,vback);
 end
-
+Xadv = oc.upsThenFilterShape(Xadv,512,16);
 dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
 
 % AREA-LENGTH CORRECTION
@@ -129,7 +129,8 @@ disp('Area-Length correction after relaxation step')
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 % Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
-
+% filter shape
+Xnew = oc.upsThenFilterShape(Xnew,512,16);
   
 end % DNNsolveTorchSingle
 
@@ -155,7 +156,7 @@ fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
 tracJump = fBend+fTen;
 
 % Filter traction jump
-tracJump = oc.upsThenFilterShape(tracJump,512,32);
+tracJump = oc.upsThenFilterShape(tracJump,512,16);
 % -----------------------------------------------------------
 % 1) Explicit Tension at the Current Step
 
@@ -166,21 +167,27 @@ if iIgnoreNear
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
 if ~iExactNear
-farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-% farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
+[velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+    rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnce(vesicle.X);    
+% farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
+    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+    rotCentNear, scalingNear, sortIdxNear);
 else
 % single layer matrix without correction
 SLPnoCorr = []; % it would SLPdiag if fmm is on
+G = op.stokesSLmatrix(vesicle);
 
 % Get the near structure (this will be done using NN in Python)
 NearV2V = vesicle.getZone([],1);    
 
 kernel = @op.exactStokesSL;
 kernelDirect = @op.exactStokesSL;
-    
-[~,nearField,farFieldtracJump] = op.divideNearFarSLP(vesicle,...
-        tracJump,SLPnoCorr,NearV2V,kernel,kernelDirect,vesicle,true); 
-farFieldtracJump = farFieldtracJump + nearField;
+
+SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
+farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
+    kernel,kernelDirect,vesicle,true,false);
+
 end
 end
 
@@ -208,7 +215,7 @@ fTen = vesicle.tracJump(zeros(2*N,nv), tenNew);
 tracJump = fBend + fTen;
 
 % Filter traction jump
-tracJump = oc.upsThenFilterShape(tracJump,512,32);
+tracJump = oc.upsThenFilterShape(tracJump,512,16);
 % -----------------------------------------------------------
 
 % Calculate far-field again and correct near field before advection
@@ -218,14 +225,20 @@ if iIgnoreNear
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
 if ~iExactNear
-farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-% farFieldtracJump = o.computeStokesInteractions(vesicle, tracJump, op, oc);
+% farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
+    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+    rotCentNear, scalingNear, sortIdxNear);
 else
+
+
 kernel = @op.exactStokesSL;
-kernelDirect = @op.exactStokesSL;    
-[~,nearField,farFieldtracJump] = op.divideNearFarSLP(vesicle,...
-        tracJump,SLPnoCorr,NearV2V,kernel,kernelDirect,vesicle,true); 
-farFieldtracJump = farFieldtracJump + nearField;
+kernelDirect = @op.exactStokesSL;
+
+SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
+farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
+    kernel,kernelDirect,vesicle,true,false);
+
 end
 end
 
@@ -241,6 +254,7 @@ vbackTotal = vback + farFieldtracJump;
 % quiver(Xold(1:end/2,:), Xold(end/2+1:end,:),farFieldtracJump(1:end/2,:),farFieldtracJump(end/2+1:end,:))
 % axis equal
 % pause
+
 
 if advType == 1
   Xadv = zeros(2*N,nv);
@@ -260,7 +274,7 @@ elseif advType == 3
 end
 
 % filter shape
-Xadv = oc.upsThenFilterShape(Xadv,512,32);
+Xadv = oc.upsThenFilterShape(Xadv,512,16);
 
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
 if iExact
@@ -289,7 +303,7 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
 
 % filter shape
-Xnew = oc.upsThenFilterShape(Xnew,512,32);
+Xnew = oc.upsThenFilterShape(Xnew,512,16);
 end % DNNsolveTorchMany
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xlayers, ylayers, velx, vely] = predictNearLayersWTorchNet(o, X, tracJump)
@@ -430,6 +444,151 @@ end
 
 
 end % predictNearLayersWTorchNet
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [velx, vely] = buildVelocityInNear(o,tracJump, velx_real, vely_real, velx_imag, vely_imag, trans, rotate, rotCent, scaling, sortIdx)
+nv = numel(rotate);
+
+% standardize tracJump
+fstandRe = zeros(128, nv);
+fstandIm = zeros(128, nv);
+for k = 1 : nv
+  fstand = o.standardize(tracJump(:,k),[0;0], rotate(k), [0;0], 1, sortIdx(:,k));
+  z = fstand(1:end/2) + 1i*fstand(end/2+1:end);
+  zh = fft(z);
+  fstandRe(:,k) = real(zh); 
+  fstandIm(:,k) = imag(zh);
+end
+
+
+velx = zeros(128,3,nv); 
+vely = zeros(128,3,nv);
+for k = 1 : nv
+  velx_stand = zeros(128,3);
+  vely_stand = zeros(128,3);
+  for il = 1 : 3
+     velx_stand(:,il) = velx_real{k}(:,:,il) * fstandRe(:,k) + velx_imag{k}(:,:,il)*fstandIm(:,k);
+     vely_stand(:,il) = vely_real{k}(:,:,il) * fstandRe(:,k) + vely_imag{k}(:,:,il)*fstandIm(:,k);
+     
+     vx = zeros(128,1);
+     vy = zeros(128,1);
+     
+     vx(sortIdx(:,k)) = velx_stand(:,il);
+     vy(sortIdx(:,k)) = vely_stand(:,il);
+
+     VelBefRot = [vx;vy];
+     
+     VelRot = o.rotationOperator(VelBefRot, -rotate(k), [0;0]);
+     velx(:,il,k) = VelRot(1:end/2); vely(:,il,k) = VelRot(end/2+1:end);
+  end
+end
+
+
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx] = predictNearLayersOnce(o, X)
+Nnet = 128;
+oc = o.oc;
+
+disp('PREDICTING NEAR FIELD')
+
+in_param = o.torchNearInNorm;
+out_param = o.torchNearOutNorm;
+
+maxLayerDist = sqrt(1/Nnet); % length = 1, h = 1/Nnet;
+% Predictions on three layers
+nlayers = 3;
+dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist;
+
+% standardize input
+Xstand = zeros(size(X));
+nv = numel(X(1,:));
+scaling = zeros(nv,1);
+rotate = zeros(nv,1);
+rotCent = zeros(2,nv);
+trans = zeros(2,nv);
+sortIdx = zeros(Nnet,nv);
+
+tracersX = zeros(2*Nnet,3,nv);
+for k = 1 : nv
+  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(X(:,k),128);
+  [~,tang] = oc.diffProp(Xstand(:,k));
+  nx = tang(Nnet+1:2*Nnet);
+  ny = -tang(1:Nnet);
+
+  tracersX(:,1,k) = Xstand(:,k);
+  for il = 2 : nlayers 
+    tracersX(:,il,k) = [Xstand(1:end/2,k)+nx*dlayer(il); Xstand(end/2+1:end,k)+ny*dlayer(il)];
+  end
+end
+
+% Normalize input
+input_net = zeros(nv,2,128);
+
+for k = 1 : nv
+  input_net(k,1,:) = (Xstand(1:end/2,k)-in_param(1,1))/in_param(1,2);
+  input_net(k,2,:) = (Xstand(end/2+1:end,k)-in_param(1,3))/in_param(1,4);
+end
+
+
+modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
+modesInUse = 16;
+modeList = find(abs(modes)<=modesInUse);
+
+
+
+input_conv = py.numpy.array(input_net);
+[Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+
+for k = 1 : nv
+velx_real{k} = zeros(128,128,3);
+vely_real{k} = zeros(128,128,3);
+velx_imag{k} = zeros(128,128,3);
+vely_imag{k} = zeros(128,128,3);
+end
+
+% denormalize output
+for ij = 1 : numel(modeList)
+  imode = modeList(ij);
+  pred = double(Xpredict{ij});
+  % its size is (nv x 12 x 128) 
+  % channel 1-3: vx_real_layers 0, 1, 2
+  % channel 4-6; vy_real_layers 0, 1, 2
+  % channel 7-9: vx_imag_layers 0, 1, 2
+  % channel 10-12: vy_imag_layers 0, 1, 2
+
+  % denormalize output
+  for k = 1 : nv
+    velx_real{k}(:,imode,1) = (pred(k,1,:)*out_param(imode,2,1))  + out_param(imode,1,1);
+    velx_real{k}(:,imode,2) = (pred(k,2,:)*out_param(imode,2,2))  + out_param(imode,1,2);
+    velx_real{k}(:,imode,3) = (pred(k,3,:)*out_param(imode,2,3))  + out_param(imode,1,3);
+    vely_real{k}(:,imode,1) = (pred(k,4,:)*out_param(imode,2,4))  + out_param(imode,1,4);
+    vely_real{k}(:,imode,2) = (pred(k,5,:)*out_param(imode,2,5))  + out_param(imode,1,5);
+    vely_real{k}(:,imode,3) = (pred(k,6,:)*out_param(imode,2,6))  + out_param(imode,1,6);
+
+    velx_imag{k}(:,imode,1) = (pred(k,7,:)*out_param(imode,2,7))  + out_param(imode,1,7);
+    velx_imag{k}(:,imode,2) = (pred(k,8,:)*out_param(imode,2,8))  + out_param(imode,1,8);
+    velx_imag{k}(:,imode,3) = (pred(k,9,:)*out_param(imode,2,9))  + out_param(imode,1,9);
+    vely_imag{k}(:,imode,1) = (pred(k,10,:)*out_param(imode,2,10))  + out_param(imode,1,10);
+    vely_imag{k}(:,imode,2) = (pred(k,11,:)*out_param(imode,2,11))  + out_param(imode,1,11);
+    vely_imag{k}(:,imode,3) = (pred(k,12,:)*out_param(imode,2,12))  + out_param(imode,1,12);
+  end
+end
+
+% outputs
+% velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx
+
+xlayers = zeros(128,3,nv);
+ylayers = zeros(128,3,nv);
+for k = 1 : nv
+  for il = 1 : 3
+     Xl = o.destandardize(tracersX(:,il,k),trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
+     xlayers(:,il,k) = Xl(1:end/2);
+     ylayers(:,il,k) = Xl(end/2+1:end);
+  end
+end
+
+
+end % predictNearLayersOnce
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function farField = computeStokesInteractions(o,vesicle, tracJump, op, oc)
 
@@ -588,9 +747,15 @@ for k = 1 : nv
 end
 
 % find the outermost layers of all vesicles, then perform Laplace kernel
+
 Xlarge = zeros(2*vesicle.N,nv);
 for k = 1 : nv
-Xlarge(:,k) = [xvesicle(:,k)+nx(:,k)*maxLayerDist; yvesicle(:,k)+ny(:,k)*maxLayerDist];  
+[Xstand,scaling,rotate,rotCent,trans,sortIdx] = o.standardizationStep(vesicle.X(:,k),128);
+[~,tang] = oc.diffProp(Xstand);
+nx = tang(end/2+1:end);
+ny = -tang(1:end/2);
+Xl = [Xstand(1:end/2)+nx*maxLayerDist; Xstand(end/2+1:end)+ny*maxLayerDist];
+Xlarge(:,k) = o.destandardize(Xl,trans,rotate,rotCent,scaling,sortIdx);
 end
 
 
@@ -678,40 +843,118 @@ end % for k = 1 : nv
 
 end % computeStokesInteractionsNet_FindNear
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function farField = ignoreNearInteractions(o,vesicle, tracJump, op, oc)
+function farField = computeStokesInteractionsNet_Alternative(o,vesicle, tracJump, op, oc, ...
+        velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans,...
+        rotate,rotCent, scaling, sortIdx)
 
-disp('Near-singular interaction IGNORED')
+disp('Alternative Near-singular interaction through interpolation and network')
+
 N = vesicle.N;
 nv = vesicle.nv;
-% maxLayerDist = sqrt(vesicle.length/vesicle.N);
-% 
-% % Predictions on three layers
-% nlayers = 3;
-% 
-% % Tangent
-% [~,tang] = oc.diffProp(vesicle.X);
-% % Normal
-% nx = tang(N+1:2*N,:);
-% ny = -tang(1:N,:);
-% 
-% xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
+
+xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
 
 % Compute near/far hydro interactions
 % with upsampling by 2
-% Nup = 2*N;
-% 
-% Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
-% fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
-% 
-% vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
+Nup = o.Nfmm;
+
+Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
+fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
+
+vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
+NearV2V = vesicleUp.getZone([],1);    
+zone = NearV2V.zone;
+
 
 % First calculate the far-field
 farField = zeros(2*N,nv);
 for k = 1 : nv
   K = [(1:k-1) (k+1:nv)];
-  [~,farField(:,k)] = op.exactStokesSL(vesicle, tracJump, [], vesicle.X(:,k), K);
+  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, fup, [], vesicle.X(:,k), K);
 end
 
+% Predict velocity on layers
+% Get velocity on layers once predicted
+[velx, vely] = o.buildVelocityInNear(tracJump, velx_real, vely_real, velx_imag, vely_imag, trans, rotate, rotCent, scaling, sortIdx);
+
+opX = []; opY = [];
+for k = 1 : nv
+ % layers around the vesicle j 
+ Xin = [reshape(xlayers(:,:,k),1,3*N); reshape(ylayers(:,:,k),1,3*N)];
+ velXInput = reshape(velx(:,:,k), 1, 3*N); 
+ velYInput = reshape(vely(:,:,k), 1, 3*N);  
+  
+ opX{k} = rbfcreate(Xin,velXInput,'RBFFunction','linear');
+ opY{k} = rbfcreate(Xin,velYInput,'RBFFunction','linear');
+end
+
+nearField = zeros(size(farField));
+
+for k1 = 1 : nv
+  K = [(1:k1-1) (k1+1:nv)];
+  for k2 = K
+    % points on vesicle k2 close to k1  
+    J = find(zone{k1}(:,k2) == 1);  
+    if numel(J) ~= 0
+      % need tp subtract off contribution due to vesicle k1 since its layer
+      % potential will be evaulated through interpolation
+      [~,potTar] = op.exactStokesSL(vesicleUp, fup, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
+      nearField(J,k2) = nearField(J,k2) - potTar(1:numel(J));
+      nearField(J+N,k2) = nearField(J+N,k2) - potTar(numel(J)+1:end);
+         
+      % now interpolate
+      for i = 1 : numel(J)
+        pointsIn = [xvesicle(J(i),k2);yvesicle(J(i),k2)];
+        % interpolate for the k2th vesicle's points near to the k1th vesicle
+        rbfVelX = rbfinterp(pointsIn, opX{k1});
+        rbfVelY = rbfinterp(pointsIn, opY{k1});
+        nearField(J(i),k2) = nearField(J(i),k2) + rbfVelX;
+        nearField(J(i)+N,k2) = nearField(J(i)+N,k2) + rbfVelY; 
+      end
+    end % if numel(J)
+
+  end % for k2
+end % for k1
+
+
+
+% finally add the corrected nearfield to the farfield
+farField = farField + nearField;
+
+
+end % computeStokesInteractionsNet_Alternative
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function farField = ignoreNearInteractions(o,vesicle, tracJump, op, oc)
+
+disp('Near-singular interaction IGNORED')
+N = vesicle.N;
+nv = vesicle.nv;
+maxLayerDist = sqrt(vesicle.length/vesicle.N);
+% 
+% % Predictions on three layers
+nlayers = 3;
+
+% % Tangent
+[~,tang] = oc.diffProp(vesicle.X);
+% % Normal
+nx = tang(N+1:2*N,:);
+ny = -tang(1:N,:);
+% 
+xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
+
+Nup = o.Nfmm;
+
+Xup = [interpft(xvesicle,Nup); interpft(yvesicle,Nup)];
+fup = [interpft(tracJump(1:end/2,:),Nup); interpft(tracJump(end/2+1:end,:),Nup)];
+
+vesicleUp = capsules(Xup, [], [], vesicle.kappa, vesicle.viscCont, 0);
+
+% First calculate the far-field
+farField = zeros(2*N,nv);
+for k = 1 : nv
+  K = [(1:k-1) (k+1:nv)];
+  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, fup, [], vesicle.X(:,k), K);
+end
 
 % % Then correct the near-field
 % % find the outermost layers of all vesicles, then perform Laplace kernel
@@ -1369,8 +1612,8 @@ if strcmp(bgFlow,'relax')
 elseif strcmp(bgFlow,'shear') 
   vinf = @(X) speed*[X(end/2+1:end,:);zeros(size(X(1:end/2,:)))]; 
 elseif strcmp(bgFlow,'tayGreen')
-  vinf = @(X) speed*[sin(X(1:end/2,:)).*cos(X(end/2+1:end,:));-...
-    cos(X(1:end/2,:)).*sin(X(end/2+1:end,:))]; % Taylor-Green
+  vinf = @(X) speed*[sin(X(1:end/2,:)/chanWidth * pi).*cos(X(end/2+1:end,:)/chanWidth * pi);-...
+    cos(X(1:end/2,:)/chanWidth * pi).*sin(X(end/2+1:end,:)/chanWidth * pi)]; % Taylor-Green
 elseif strcmp(bgFlow,'parabolic')
   % in our earlier simulations curvature was 1.3, now 0.65  
   vinf = @(X) [speed*(1-(X(end/2+1:end,:)/chanWidth).^2);...

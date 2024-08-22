@@ -8,6 +8,7 @@ nv = val(2);
 Xinit = val(3:3+2*N*nv-1);
 xinit = zeros(N,nv); yinit = zeros(N,nv);
 istart = 1;
+
 for iv = 1 : nv
   iend = istart + N - 1;
   xinit(:,iv) = Xinit(istart:iend);

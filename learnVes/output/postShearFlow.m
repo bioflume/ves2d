@@ -6,14 +6,17 @@ set(groot, 'defaultLegendInterpreter','latex')
 set(groot, 'DefaultTextInterpreter','latex')
 
 
-% fileNameNN = 'smoothing_rayCasting_shear_interpNetNear_relaxNet_diff625kNetJune8_dt1e-05_speed1000.bin';
+% fileNameNN = 'moreModes32_test_shear_interpNear_diff625kNetJune8_dt1e-05_speed2000.bin';
+% fileNameNN = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
+fileNameNN = 'N32_shearTrueRuns_dt1e-05_speed2000.bin';
 % fileNameTR = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
-fileNameTR = 'shearTrueRuns_dt1e-05_speed2000.bin';
 
-% [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameNN);
+fileNameTR = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
+
+[vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameNN);
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameTR);
 
-load testShearNearInterpSpeed2000 
+% load testShearNearInterpSpeed2000 
 
 nsteps = min([numel(timeN); numel(timeT)]);
 

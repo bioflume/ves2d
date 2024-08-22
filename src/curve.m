@@ -446,7 +446,7 @@ t = (0:N-1)'*2*pi/N;
 
 if any(strcmp(options,'curly'))
   a = 1; b = 3*a; c = 0.85; 
-  r = 0.5*sqrt( (a*cos(t-theta)).^2 + (b*sin(t-theta)).^2) + ...
+  r = 0.55*sqrt( (a*cos(t-theta)).^2 + (b*sin(t-theta)).^2) + ...
       .07*cos(12*(t-theta));
   x = scale*c*r.*cos(t);
   y = scale*r.*sin(t);
@@ -783,7 +783,7 @@ elseif any(strcmp(options,'createVesforDLD'))
         'Dy',Dy,'epsilon',epsilon,'ncol',ncol,'xfreeze',xfreeze);
     
   else
-    scale = 2*scale/sqrt(area/pi);
+    % scale = 2*scale/sqrt(area/pi);
     X0 = scale*X0;    
   end
   % end of building reference vesicles.  Only need to rotate
@@ -809,10 +809,6 @@ else
   end
   oc = curve;
   
-  [ra,area,length] = oc.geomProp(X0);
-  
-  scale = scale/sqrt(area/pi);
-  X0 = scale*X0;
 %   build reference elliptical vesicle
 
   if any(strcmp(options,'volFrac'))
@@ -823,7 +819,6 @@ else
     X = oc.fillDomain(X0,'domain','couette','volFrac',volFrac,'walls',Xwalls,'tstepObj',ttObj);
     nv = size(X,2);
   else
-    scale = 2*scale/sqrt(area/pi);
     X0 = scale*X0;
   end
 

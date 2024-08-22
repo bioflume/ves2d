@@ -115,7 +115,7 @@ axis equal
 xticks(([0:numel(chanWidths)-1]*0.5))
 xticklabels({'0.2','0.4','0.6','0.75'})
 yticks(([0;0.5;1;1.5;2]))
-yticklabels({'5','10','15','20','25'})
+yticklabels({'10','20','30','40','50'})
 xlim([-0.25 1.75])
 ylim([-0.25 2.25])
 box on
@@ -125,7 +125,7 @@ axis equal
 xticks(([0:numel(chanWidths)-1]*0.5))
 xticklabels({'0.2','0.4','0.6','0.75'})
 yticks(([0;0.5;1;1.5;2]))
-yticklabels({'5','10','15','20','25'})
+yticklabels({'10','20','30','40','50'})
 xlim([-0.25 1.75])
 ylim([-0.25 2.25])
 box on

@@ -10,8 +10,8 @@ cy = [0.040; 0];
 IA = [0; pi/2];
 
 iExactTension = 1;
-iExactNear = 0;
-iExact = 0; % exact relaxation
+iExactNear = 1;
+iExact = 1; % exact relaxation
 iIgnoreNear = 0;
 
 addpath ../src/
@@ -48,7 +48,7 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
+prams.N = 64; % num. points for true solve in DNN scheme
 prams.Nfmm = 64;
 prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
@@ -86,8 +86,8 @@ X(N+1:2*N,k) = sin(IA(k)) * X0(1:N)  + ...
 end
 [~,area0,len0] = oc.geomProp(X);
 
-load finalShearXclose.mat
-X = Xf;
+% load finalShearXclose.mat
+% X = Xf;
 % 
 % Xnew = zeros(size(X));
 % 
@@ -115,7 +115,8 @@ X = Xf;
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-fileName = ['./output/res_test_shear_interpNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
