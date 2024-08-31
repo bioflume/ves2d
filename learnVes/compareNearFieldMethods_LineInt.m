@@ -7,7 +7,7 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 
 iCalcGT = ~false;
-idIC = 5;
+idIC = 2;
 
 fname = ['compareNearMeths_VesID' num2str(idIC) '.mat'];
 addpath ../src/
@@ -34,9 +34,9 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 %%
 oc = curve;
 N = 128;
-Nup = 512;
+Nup = 128;
 op = poten(N,4,0);
-opUp = poten(Nup,4,0);
+% opUp = poten(Nup,4,0);
 
 if idIC == 1
 % Parabolic
@@ -77,17 +77,38 @@ X = Xic(:,4);
 end
 
 X = oc.upsThenFilterShape(X,512,16);
+vesicle = capsules(X,[],[],1,1,0);
+h = vesicle.length/vesicle.N;
 
-Xup = [interpft(X(1:end/2),Nup);interpft(X(end/2+1:end),Nup)];
+% Xup = [interpft(X(1:end/2),Nup);interpft(X(end/2+1:end),Nup)];
+[jac,tan,~] = oc.diffProp(X);
+normx = tan(end/2+1:end);
+normy = -tan(1:end/2);
 
-[xgrid, ygrid] = meshgrid(linspace(-0.25,0.25,500)',linspace(-0.25,0.25,500)');
+idP = 12;
+x0 = X(idP); y0 = X(idP+N);
+Ngrid = 1000; Ninit = 2*Ngrid;
+% cgrid = (-cos(pi*(2*(0:Ninit-1)+1)/(2*Ninit))')+1;
+cgrid = (-cos((0:Ninit-1)/(Ninit-1)*pi)'+1);
+d2ves = h*(cgrid(1:Ngrid));
+xgrid = x0 + normx(idP)*d2ves;
+ygrid = y0 + normy(idP)*d2ves;
+
+% figure(2);clf;
+% plot(X(1:end/2),X(end/2+1:end),'r','linewidth',2)
+% axis equal
+% hold on
+% plot(xgrid, ygrid, 'k.','markersize',6,'markerfacecolor','k')
+% pause
+
+% [xgrid, ygrid] = meshgrid(linspace(-0.25,0.25,500)',linspace(-0.25,0.25,500)');
 Xtra = [xgrid(:);ygrid(:)];
 tracers.N = numel(Xtra)/2;
 tracers.nv = 1;
 tracers.X = Xtra;
 Ntra = tracers.N;
 
-vesicle = capsules(X,[],[],1,1,0);
+
 % bendF = vesicle.tracJump(X,zeros(N,1));
 bendF = zeros(2*N,1);
 theta = (0:N-1)'/N * 2 * pi;
@@ -96,53 +117,7 @@ bendF(1:end/2) = sin(theta); bendF(end/2+1:end) = cos(theta);
 G = op.stokesSLmatrix(vesicle);
 [~,NearV2T] = vesicle.getZone(tracers,2);
 
-if iCalcGT
-vesicleUp = capsules(Xup,[],[],1,1,0);
-% bendFup = vesicleUp.tracJump(Xup,zeros(Nup,1));
-bendFup = zeros(2*Nup,1);
-theta = (0:Nup-1)'/Nup * 2 * pi;
-bendFup(1:end/2) = sin(theta); bendFup(end/2+1:end) = cos(theta);
 
-Gup = opUp.stokesSLmatrix(vesicleUp);
-% Form the ground truth
-[~,NearVup2T] = vesicleUp.getZone(tracers,2);
-kernel = @opUp.exactStokesSL;
-kernelDirect = @opUp.exactStokesSL;
-SLP = @(X) opUp.exactStokesSLdiag(vesicleUp,Gup,X);
-velTraUp = opUp.nearSingInt(vesicleUp,bendFup,SLP,[],NearVup2T,kernel,kernelDirect,tracers,false,false); 
-% [~,velTraUp] = op.exactStokesSL(vesicleUp,bendFup,[],tracers.X,1);
-% check which points are inside
-f = [ones(Nup,1);zeros(Nup,1)];
-kernel = @opUp.exactLaplaceDL;
-DLP = @(X) zeros(2*Nup,1);
-
-Fdlp = opUp.nearSingInt(vesicleUp,f,DLP,[],NearVup2T,kernel,kernel,tracers,false,false);
-idcs = abs(Fdlp) > 1e-1;
-
-velxTraUp = velTraUp(1:end/2);
-velyTraUp = velTraUp(end/2+1:end);
-velxTraUp(idcs) = NaN;
-velyTraUp(idcs) = NaN;
-
-velxTraUp = reshape(velxTraUp,size(xgrid));
-velyTraUp = reshape(velyTraUp,size(xgrid));
-lapVal = Fdlp(1:end/2);
-lapVal = reshape(lapVal,size(xgrid));
-% figure(1);clf;
-% plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-% hold on
-% pcolor(xgrid, ygrid, sqrt(velxTraUp.^2 + velyTraUp.^2))
-% colorbar
-% shading interp
-% axis equal
-
-save(fname,'Xup','velxTraUp','velyTraUp','idcs')
-else
-
-load(fname);
-% loading Xup velxTraUp velyTraUp idcs (which ones inside)
-
-end
 
 %% now calculate with near-singular
 kernel = @op.exactStokesSL;
@@ -152,22 +127,12 @@ velTraNear = op.nearSingInt(vesicle,bendF,SLP,[],NearV2T,kernel,kernelDirect,tra
 
 velxTraNear = velTraNear(1:end/2);
 velyTraNear = velTraNear(end/2+1:end);
-velxTraNear(idcs) = NaN;
-velyTraNear(idcs) = NaN;
-
-velxTraNear = reshape(velxTraNear,size(xgrid));
-velyTraNear = reshape(velyTraNear,size(xgrid));
 
 %% now calculate without near-singular
 [~,velTraNoNear] = op.exactStokesSL(vesicle,bendF,[],tracers.X,1);
 
 velxTraNoNear = velTraNoNear(1:end/2);
 velyTraNoNear = velTraNoNear(end/2+1:end);
-velxTraNoNear(idcs) = NaN;
-velyTraNoNear(idcs) = NaN;
-
-velxTraNoNear = reshape(velxTraNoNear,size(xgrid));
-velyTraNoNear = reshape(velyTraNoNear,size(xgrid));
 
 %% now calculate with neural network
 % Xlow = [interpft(X(1:end/2),16);interpft(X(end/2+1:end),16)];
@@ -399,167 +364,92 @@ end
 velTraMLARM = farField + nearField;
 velxTraMLARM = velTraMLARM(1:end/2);
 velyTraMLARM = velTraMLARM(end/2+1:end);
-velxTraMLARM(idcs) = NaN;
-velyTraMLARM(idcs) = NaN;
-
-velxTraMLARM = reshape(velxTraMLARM,size(xgrid));
-velyTraMLARM = reshape(velyTraMLARM,size(xgrid));
 
 
 %%
-figure(1);clf;
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-hold on
-pcolor(xgrid, ygrid, sqrt(velxTraUp.^2 + velyTraUp.^2)/max(sqrt(velxTraUp(:).^2 + velyTraUp(:).^2)))
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-c = colorbar;
-c.TickLabelInterpreter = 'latex';
-shading interp
-axis equal
-xlim([-0.25 0.25])
-ylim([-0.25 0.25])
-clim([0 1])
-box on
-set(gca,'xtick',[]);
-set(gca,'ytick',[]);
-set(gca,'ztick',[]);
-        
-set(gca,'xcolor','w');
-set(gca,'ycolor','w');
-set(gca,'zcolor','w');
-box on
-set(gca,'visible','off')
-
-figName = ['~/Desktop/IC' num2str(idIC) '_groundTruth.png'];
-ax = gca;
-exportgraphics(ax,figName,'Resolution',300)
-title('Ground Truth')
-
 if 1
-velxTraUp = velxTraNear;
-velyTraUp = velyTraNear;
+figure(1);clf;
+velTraNear = sqrt(velxTraNear.^2 + velyTraNear.^2);
+velTraMLARM = sqrt(velxTraMLARM.^2 + velyTraMLARM.^2);
+velTraNoNear = sqrt(velxTraNoNear.^2 + velyTraNoNear.^2);
 
-dvel = [velxTraUp(:)-velxTraNear(:) velyTraUp(:)-velyTraNear(:)]/max(sqrt(velxTraUp(:).^2 + velyTraUp(:).^2));
-errNear = max(abs(dvel),[],2);
-errNear = reshape(errNear,size(xgrid));
-errNearDiff = errNear;
-errNear = log10(errNear);
-% errNear =  log(sqrt((velxTraUp-velxTraNear).^2 + (velyTraUp-velyTraNear).^2) ./ (1e-6+sqrt(velxTraUp.^2 + velyTraUp.^2)));
-figure(2);clf;
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
+errMag = max(abs(velTraNear-velTraMLARM))/max(abs(velTraNear))
+errMag2 = max(abs(velTraNear-velTraNoNear))/max(abs(velTraNear))
+
+plot(d2ves/h,velTraNear/max(abs(velTraNear)),'k','linewidth',2)
 hold on
-pcolor(xgrid, ygrid,errNear)
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-c = colorbar;
-c.TickLabelInterpreter = 'latex';
-shading interp
-axis equal
+plot(d2ves/h,velTraNoNear/max(abs(velTraNear)),'b','linewidth',2)
+plot(d2ves/h,velTraMLARM/max(abs(velTraNear)),'r','linewidth',2)
+axis square
+xlim([0 0.5])
+ylim([0.9 1.2])
+% xlabel('Distance to vesicle (h)')
+% ylabel('Velocity magnitude')
+grid on
 box on
-xlim([-0.25 0.25])
-ylim([-0.25 0.25])
-clim([-6 -2])
-figName = ['~/Desktop/IC' num2str(idIC) '_nearSing2014.png'];
-set(gcf, 'renderer', 'zbuffer')
+% legend('Near-singular int.','Direct evalaution','Proposed scheme')
+% legend boxoff
+figName = ['~/Desktop/IC' num2str(idIC) '_AlongLine.png'];
 ax = gca;
 exportgraphics(ax,figName,'Resolution',300)
-title('Near-singular Integration')
-
-dvel = [velxTraUp(:)-velxTraNoNear(:) velyTraUp(:)-velyTraNoNear(:)]/max(sqrt(velxTraUp(:).^2 + velyTraUp(:).^2));
-errNoNear = max(abs(dvel),[],2);
-errNoNear = reshape(errNoNear,size(xgrid));
-errNoNearDiff = errNoNear;
-errNoNear = log10(errNoNear);
-errNoNear(errNoNear==-Inf) = -6;
-% errNoNear =  log(sqrt((velxTraUp-velxTraNoNear).^2 + (velyTraUp-velyTraNoNear).^2) ./ (1e-6+sqrt(velxTraUp.^2 + velyTraUp.^2)));
-figure(3);clf;
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-hold on
-pcolor(xgrid, ygrid, errNoNear)
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-c = colorbar;
-c.TickLabelInterpreter = 'latex';
-shading interp
-axis equal
-box on
-xlim([-0.25 0.25])
-ylim([-0.25 0.25])
-clim([-6 -2])
-set(gcf, 'renderer', 'zbuffer')
-figName = ['~/Desktop/IC' num2str(idIC) '_noNearSing.png'];
-ax = gca;
-exportgraphics(ax,figName,'Resolution',300)
-title('No Near-singular Integration')
 
 
-dvel = [velxTraUp(:)-velxTraMLARM(:) velyTraUp(:)-velyTraMLARM(:)]/max(sqrt(velxTraUp(:).^2 + velyTraUp(:).^2));
-errMLARM = max(abs(dvel),[],2);
-errMLARM = reshape(errMLARM,size(xgrid));
-errMLARMDiff = errMLARM;
-errMLARM = log10(errMLARM);
-errMLARM(errMLARM==-Inf) = -6;
-% errMLARM =  log(sqrt((velxTraUp-velxTraMLARM).^2 + (velyTraUp-velyTraMLARM).^2) ./ (1e-6+sqrt(velxTraUp.^2 + velyTraUp.^2)));
-figure(4);clf;
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-hold on
-% plot(xlayers,ylayers,'r','linewidth',3)
-pcolor(xgrid, ygrid, errMLARM)
-plot([Xup(1:end/2);Xup(1)], [Xup(end/2+1:end);Xup(end/2+1)],'r','linewidth',2)
-box on
-c = colorbar;
-c.TickLabelInterpreter = 'latex';
-shading interp
-axis equal
-xlim([-0.25 0.25])
-ylim([-0.25 0.25])
-clim([-6 -2])
-set(gcf, 'renderer', 'zbuffer')
-figName = ['~/Desktop/IC' num2str(idIC) '_nearSingMLARM.png'];
-ax = gca;
-exportgraphics(ax,figName,'Resolution',300)
-title('MLARM')
-end
-% 
-% vSelf = G * bendF;
-% figure(5); clf;
-% plot(X(1:end/2),X(end/2+1:end),'r','linewidth',2)
-% hold on
-% quiver(X(1:end/2),X(end/2+1:end),vSelf(1:end/2),vSelf(end/2+1:end),'r')
-% quiver(XequalDist(1:end/2),XequalDist(end/2+1:end),velx(:,1),vely(:,1),'b')
-% % quiver(xlayers(:,2),ylayers(:,2),velx(:,2),vely(:,2),'k')
-% % quiver(xlayers(:,3),ylayers(:,3),velx(:,3),vely(:,3),'k')
-% axis equal
-% legend('Vesicle','True Vel.','Predicted')
-% box on
-% figName = ['~/Desktop/IC' num2str(idIC) '_vSelf.png'];
+% xlim([0 0.01])
+% ylim([0.95 1.05])
+% figName = ['~/Desktop/IC' num2str(idIC) '_ZoomInAlongLine.png'];
 % ax = gca;
 % exportgraphics(ax,figName,'Resolution',300)
-
-% 
-% max(errNear(~isnan(errNearDiff(:))))
-% min(errNear(~isnan(errNearDiff(:))))
-% mean(errNear(~isnan(errNearDiff(:))))
-% std(errNear(~isnan(errNearDiff(:))))
+end
 
 
-max(errNoNearDiff(~isnan(errNoNearDiff(:))))
-min(errNoNearDiff(~isnan(errNoNearDiff(:))))
-mean(errNoNearDiff(~isnan(errNoNearDiff(:))))
-std(errNoNearDiff(~isnan(errNoNearDiff(:))))
+
+if 1 
+figure(1);clf;
 
 
-max(errMLARMDiff(~isnan(errMLARMDiff(:))))
-min(errMLARMDiff(~isnan(errMLARMDiff(:))))
-mean(errMLARMDiff(~isnan(errMLARMDiff(:))))
-std(errMLARMDiff(~isnan(errMLARMDiff(:))))
-% 
-% 
-% errVself = sqrt((vSelf(1:end/2)-velx(:,1)).^2 + (vSelf(end/2+1:end)-vely(:,1)).^2)./(1E-4+sqrt(vSelf(1:end/2).^2 + vSelf(end/2+1:end).^2));
-% max(errVself)
-% min(errVself)
-% mean(errVself)
-% std(errVself)
+errX = max(abs(velxTraNear-velxTraMLARM))/max(abs(velxTraNear))
+errX2 = max(abs(velxTraNear-velxTraNoNear))/max(abs(velxTraNear))
+
+plot(d2ves/h,velxTraNear/max(abs(velxTraNear)),'k','linewidth',2)
+hold on
+plot(d2ves/h,velxTraNoNear/max(abs(velxTraNear)),'b','linewidth',2)
+plot(d2ves/h,velxTraMLARM/max(abs(velxTraNear)),'r','linewidth',2)
+axis square
+xlim([0 0.5])
+ylim([0.9 1.2])
+% xlabel('Distance to vesicle (h)')
+% ylabel('Velocity magnitude')
+grid on
+box on
+% legend('Near-singular int.','Direct evalaution','Proposed scheme')
+% legend boxoff
+figName = ['~/Desktop/IC' num2str(idIC) '_velx_AlongLine.png'];
+ax = gca;
+exportgraphics(ax,figName,'Resolution',300)
+
+figure(2); clf;
+errY = max(abs(velyTraNear-velyTraMLARM))/max(abs(velyTraNear))
+errY2 = max(abs(velyTraNear-velyTraNoNear))/max(abs(velyTraNear))
+
+plot(d2ves/h,velyTraNear/max(abs(velyTraNear)),'k','linewidth',2)
+hold on
+plot(d2ves/h,velyTraNoNear/max(abs(velyTraNear)),'b','linewidth',2)
+plot(d2ves/h,velyTraMLARM/max(abs(velyTraNear)),'r','linewidth',2)
+axis square
+xlim([0 0.5])
+ylim([0.9 1.2])
+% xlabel('Distance to vesicle (h)')
+% ylabel('Velocity magnitude')
+grid on
+box on
+% legend('Near-singular int.','Direct evalaution','Proposed scheme')
+% legend boxoff
+figName = ['~/Desktop/IC' num2str(idIC) '_vely_AlongLine.png'];
+ax = gca;
+exportgraphics(ax,figName,'Resolution',300)
 
 
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [X,scaling,rotate,rotCent,trans,sortIdx] = standardizationStep(Xin,Nnet)
 oc = curve;

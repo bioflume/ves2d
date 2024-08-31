@@ -2357,7 +2357,7 @@ D2py = Dpy(1:end-1).*(interpOrder-2:-1:1)';
 
 theta = 1/2;
 % midpoint is a good initial guess
-for newton = 1:1
+for newton = 1:3
   zx = filter(1,[1 -theta],px);
   zx = zx(end);
   zy = filter(1,[1 -theta],py);

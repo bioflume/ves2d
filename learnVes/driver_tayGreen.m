@@ -3,7 +3,7 @@ dt = 1E-5;
 Th = 0.03;
 
 iExactTension = 1;
-iExactNear = 1;
+iExactNear = 0;
 iExact = 1; % exact relaxation
 iIgnoreNear = 0;
 
@@ -70,8 +70,8 @@ X0 = oc.initConfig(N,'ellipse');
 [~,area0,len0] = oc.geomProp(X0);
 scale = 1/len0;
 
-sx = [.02 -.01 -.014 .12 .04 -.08 .08 .02 -.06]*scale*2; 
-sy = [-.02 -.03 -.011 .04 .02 .02 .03 .06 -.02]*scale*2; 
+sx = [.17 -.00 -.07 .12 .04 -.12 .15 .02 -.17]*scale*2; 
+sy = [.15 -.010 +.08 .04 .02 -.01 -.01 .06 -.12]*scale*2; 
 cenx = kron(ones(1,3),[pi/4 pi/2 3*pi/4]*scale*1.85);
 ceny = kron([pi/4 pi/2 3*pi/4]*scale*1.85,ones(1,3));
 % scale = 0.225;
@@ -85,12 +85,18 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
   'angle',angle,...
   'center',[cenx;ceny], 'scale',scale);
 
+XOrig = X;
+for it = 1 : 5
+  X = oc.redistributeArcLength(X);
+end
+X = oc.alignCenterAngle(XOrig,X);
+
 % load tayGreenStep140ic
 % X = Xic;
 % load ./output/taylorGreenFinalIC3_nearNet
 % load ./output/taylorGreenFinalIC3_trueFiner
-load taylorGreenFinalIC3_trueLowRes
-X = Xic;
+% load taylorGreenFinalIC3_trueLowRes
+% X = Xic;
 
 prams.chanWidth = pi*scale*2;
 [~,area0,len0] = oc.geomProp(X);
@@ -105,10 +111,11 @@ prams.chanWidth = pi*scale*2;
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-% fileName = ['./output/taylorGreen_IC3_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/taylorGreen_IC3_true_resume_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/taylorGreen_IC3_nearNet_resume2_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/taylorGreen_IC3_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_true_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_nearNet_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;nv];
@@ -182,7 +189,7 @@ while time(end) < prams.Th
   if rem(it,1) == 0
     writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
   end
-
+  toc(tStart)
 
   if iplot
   figure(1);clf;
