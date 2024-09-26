@@ -34,6 +34,7 @@ end
 % destand ves (so equilidistributed points)
 Xback = zeros(size(X));
 outerLayer = zeros(size(X));
+interLayer = zeros(size(X));
 for k = 1 : nv
    [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = standardizationStep(X(:,k),128);
    Xback(:,k) = destandardize(Xstand(:,k),trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
@@ -41,6 +42,7 @@ for k = 1 : nv
    nx = tang(end/2+1:end);
    ny = -tang(1:end/2);
    outerLayer(:,k) = [Xback(1:end/2,k)+h*nx; Xback(end/2+1:end,k) + h*ny];
+   interLayer(:,k) = [Xback(1:end/2,k)+h/2*nx; Xback(end/2+1:end,k) + h/2*ny];
 end
 
 vesicle = capsules(Xback,[],[],1,1,0);
@@ -66,17 +68,17 @@ XLag(2,:) = nearest{1}(J(i)+128,2) + beta*hves*ny*(1:6);
 %%
 
 figure(1); clf;
-plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[.5 .5 .5],'linewidth',2)
+plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[99,99,99]/255,'linewidth',2)
 hold on
-hFill = fill([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)], [.5 .5 .5]);
+hFill = fill([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)], [99,99,99]/255);
 hFill.FaceAlpha = 0.2;
-set(hFill,'EdgeColor', [.5 .5 .5]);
+set(hFill,'EdgeColor', [99,99,99]/255);
 
-plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[202,0,32]/255,'linewidth',1.5)
+plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[165,15,21]/255,'linewidth',1.5)
 hold on
-hFill = fill([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], [202,0,32]/255);
+hFill = fill([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], [165,15,21]/255);
 hFill.FaceAlpha = 1;
-set(hFill,'EdgeColor', [202,0,32]/255);
+set(hFill,'EdgeColor', [165,15,21]/255);
 
 % plot([Xback(1:end/2,2);Xback(1,2)],[Xback(end/2+1:end,2);Xback(end/2+1,2)], 'Color',[5,113,176]/255,'linewidth',1.5)
 hFill = fill([Xback(1:end/2,2);Xback(1,2)],[Xback(end/2+1:end,2);Xback(end/2+1,2)], [5,113,176]/255);
@@ -116,9 +118,9 @@ set(gca,'visible','off')
 
 
 figure(2); clf;
-plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[.5 .5 .5],'linewidth',4)
+plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[99,99,99]/255,'linewidth',4)
 hold on
-plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[202,0,32]/255,'linewidth',4)
+plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[165,15,21]/255,'linewidth',4)
 plot([Xback(1:end/2,2);Xback(1,2)],[Xback(end/2+1:end,2);Xback(end/2+1,2)], 'Color',[5,113,176]/255,'linewidth',4)
 p4 = scatter(Xback(1:end/2,2),Xback(end/2+1:end,2),130,'o');
 p4.MarkerFaceColor = 'w';
@@ -142,13 +144,13 @@ p4.MarkerEdgeAlpha = 1;
 
 p1 = scatter(Xback(1:end/2,1),Xback(end/2+1:end,1),130,'^');
 p1.MarkerFaceColor = 'w';
-p1.MarkerEdgeColor = [202,0,32]/255;
+p1.MarkerEdgeColor = [165,15,21]/255;
 p1.MarkerFaceAlpha = 1;
 p1.MarkerEdgeAlpha = 1;
 
 p2 = scatter(Xback(1,1),Xback(end/2+1,1),150,'^');
-p2.MarkerFaceColor = [202,0,32]/255;
-p2.MarkerEdgeColor = [202,0,32]/255;
+p2.MarkerFaceColor = [165,15,21]/255;
+p2.MarkerEdgeColor = [165,15,21]/255;
 p2.MarkerFaceAlpha = 1;
 p2.MarkerEdgeAlpha = 1;
 
@@ -169,8 +171,8 @@ p3.MarkerEdgeAlpha = 1;
 
 axis equal
 
-xlim([-0.1 -0.002])
-ylim([0.02 0.09])
+xlim([-0.1 0])
+ylim([0 0.09])
 
 
 
@@ -186,6 +188,67 @@ set(gca,'visible','off')
 
 % 
 
+figure(3);clf;
+plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[99,99,99]/255,'linewidth',4)
+hold on
+plot([interLayer(1:end/2,1);interLayer(1,1)],[interLayer(end/2+1:end,1);interLayer(end/2+1,1)],'Color',[204,204,204]/255,'linewidth',4)
+plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[165,15,21]/255,'linewidth',4)
+
+p1 = scatter(Xback(1:end/2,1),Xback(end/2+1:end,1),100,'^');
+p1.MarkerFaceColor = [165,15,21]/255;
+p1.MarkerEdgeColor = [165,15,21]/255;
+p1.MarkerFaceAlpha = 1;
+p1.MarkerEdgeAlpha = 1;
+
+p1 = scatter(outerLayer(1:end/2,1),outerLayer(end/2+1:end,1),100,'^');
+p1.MarkerFaceColor = [99,99,99]/255;
+p1.MarkerEdgeColor = [99,99,99]/255;
+p1.MarkerFaceAlpha = 1;
+p1.MarkerEdgeAlpha = 1;
+
+p1 = scatter(interLayer(1:end/2,1),interLayer(end/2+1:end,1),100,'^');
+p1.MarkerFaceColor = [204,204,204]/255;
+p1.MarkerEdgeColor = [204,204,204]/255;
+p1.MarkerFaceAlpha = 1;
+p1.MarkerEdgeAlpha = 1;
+
+
+plot([Xback(1:end/2,2);Xback(1,2)],[Xback(end/2+1:end,2);Xback(end/2+1,2)], 'Color',[5,113,176]/255,'linewidth',4)
+p4 = scatter(Xback(1:end/2,2),Xback(end/2+1:end,2),100,'o');
+p4.MarkerFaceColor = 'w';
+p4.MarkerEdgeColor = [5,113,176]/255;
+p4.MarkerFaceAlpha = 1;
+p4.MarkerEdgeAlpha = 1;
+
+p4 = scatter(Xback(J,2),Xback(J+128,2),100,'o');
+p4.MarkerFaceColor = [5,113,176]/255;
+p4.MarkerEdgeColor = [5,113,176]/255;
+p4.MarkerFaceAlpha = 0.5;
+p4.MarkerEdgeAlpha = 1;
+
+p4 = scatter(Xback(29,2),Xback(29+128,2),100,'o');
+p4.MarkerFaceColor = [5,113,176]/255;
+p4.LineWidth = 1;
+p4.MarkerEdgeColor = [5,113,176]/255;
+p4.MarkerFaceAlpha = 1;
+p4.MarkerEdgeAlpha = 1;
+
+axis equal
+
+xlim([-0.1 0])
+ylim([0 0.09])
+
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+set(gca,'ztick',[]);
+
+set(gca,'xcolor','w');
+set(gca,'ycolor','w');
+set(gca,'zcolor','w');
+box on
+set(gca,'visible','off')
+
+
 figure(1); 
 ax = gca;
 exportgraphics(ax,'~/Desktop/nearSchematic1.png','Resolution',300)
@@ -194,6 +257,11 @@ exportgraphics(ax,'~/Desktop/nearSchematic1.png','Resolution',300)
 figure(2); 
 ax = gca;
 exportgraphics(ax,'~/Desktop/nearSchematic2.png','Resolution',300)
+
+
+figure(3); 
+ax = gca;
+exportgraphics(ax,'~/Desktop/nearSchematic3.png','Resolution',300)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

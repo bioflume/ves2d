@@ -72,9 +72,6 @@ vback = o.vinf(Xold);
 advType = 1; % 1: exact, 2: with old net, 3: with Torch net
 % 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
 if advType == 1
-  [XoldC,~] = oc.reparametrize(Xold,[],6,20);
-  Xold = oc.alignCenterAngle(Xold,XoldC);
-
   vback = o.vinf(Xold);
 
   tt = o.tt;
@@ -93,7 +90,6 @@ elseif advType == 3
   Xadv = o.translateVinfwTorch(Xold,vback);
 end
 Xadv = oc.upsThenFilterShape(Xadv,512,16);
-dyAdv = mean(Xadv(end/2+1:end))-mean(Xold(end/2+1:end));
 
 % AREA-LENGTH CORRECTION
 % disp('Area-Length correction after advection step')
@@ -117,11 +113,13 @@ else
 Xnew = o.relaxWTorchNet(Xadv);    
 end
 
-dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
+% When there are N = 128 points, just equally distribute
+XnewO = Xnew;
+for it = 1 : 5
+  Xnew = oc.redistributeArcLength(Xnew);
+end
+Xnew = oc.alignCenterAngle(XnewO,Xnew);
 
-% First reparameterize
-[XnewC,~] = oc.reparametrize(Xnew,[],6,20);
-Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
 % AREA-LENGTH CORRECTION
 disp('Area-Length correction after relaxation step')
@@ -156,7 +154,7 @@ fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
 tracJump = fBend+fTen;
 
 % Filter traction jump
-tracJump = oc.upsThenFilterShape(tracJump,512,16);
+tracJump = oc.upsThenFilterShape(tracJump,4*N,16);
 % -----------------------------------------------------------
 % 1) Explicit Tension at the Current Step
 
@@ -215,7 +213,7 @@ fTen = vesicle.tracJump(zeros(2*N,nv), tenNew);
 tracJump = fBend + fTen;
 
 % Filter traction jump
-tracJump = oc.upsThenFilterShape(tracJump,512,16);
+tracJump = oc.upsThenFilterShape(tracJump,4*N,16);
 % -----------------------------------------------------------
 
 % Calculate far-field again and correct near field before advection
@@ -272,7 +270,7 @@ elseif advType == 3
 end
 
 % filter shape
-Xadv = oc.upsThenFilterShape(Xadv,512,16);
+Xadv = oc.upsThenFilterShape(Xadv,4*N,16);
 
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
 if iExact
@@ -309,11 +307,11 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
 
 % filter shape
-Xnew = oc.upsThenFilterShape(Xnew,512,16);
+Xnew = oc.upsThenFilterShape(Xnew,4*N,16);
 end % DNNsolveTorchMany
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xlayers, ylayers, velx, vely] = predictNearLayersWTorchNet(o, X, tracJump)
-Nnet = 128;
+Nnet = numel(X(:,1))/2;
 oc = o.oc;
 
 disp('PREDICTING NEAR FIELD')
@@ -337,7 +335,7 @@ sortIdx = zeros(Nnet,nv);
 
 tracersX = zeros(2*Nnet,3,nv);
 for k = 1 : nv
-  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(X(:,k),128);
+  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(X(:,k),Nnet);
   [~,tang] = oc.diffProp(Xstand(:,k));
   nx = tang(Nnet+1:2*Nnet);
   ny = -tang(1:Nnet);
@@ -349,7 +347,7 @@ for k = 1 : nv
 end
 
 % Normalize input
-input_net = zeros(nv,2,128);
+input_net = zeros(nv,2,Nnet);
 
 for k = 1 : nv
   input_net(k,1,:) = (Xstand(1:end/2,k)-in_param(1,1))/in_param(1,2);
@@ -362,8 +360,8 @@ modesInUse = 16;
 modeList = find(abs(modes)<=modesInUse);
 
 % standardize tracJump
-fstandRe = zeros(128, nv);
-fstandIm = zeros(128, nv);
+fstandRe = zeros(Nnet, nv);
+fstandIm = zeros(Nnet, nv);
 for k = 1 : nv
   fstand = o.standardize(tracJump(:,k),[0;0], rotate(k), [0;0], 1, sortIdx(:,k));
   z = fstand(1:end/2) + 1i*fstand(end/2+1:end);
@@ -373,13 +371,17 @@ for k = 1 : nv
 end
 
 input_conv = py.numpy.array(input_net);
+if Nnet == 128
 [Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+elseif Nnet == 32
+[Xpredict] = pyrunfile("32modes_near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+end
 
 for k = 1 : nv
-velx_real{k} = zeros(128,128,3);
-vely_real{k} = zeros(128,128,3);
-velx_imag{k} = zeros(128,128,3);
-vely_imag{k} = zeros(128,128,3);
+velx_real{k} = zeros(Nnet,Nnet,3);
+vely_real{k} = zeros(Nnet,Nnet,3);
+velx_imag{k} = zeros(Nnet,Nnet,3);
+vely_imag{k} = zeros(Nnet,Nnet,3);
 end
 
 % denormalize output
@@ -411,19 +413,19 @@ for ij = 1 : numel(modeList)
 end
 
 
-velx = zeros(128,3,nv); 
-vely = zeros(128,3,nv);
-xlayers = zeros(128,3,nv);
-ylayers = zeros(128,3,nv);
+velx = zeros(Nnet,3,nv); 
+vely = zeros(Nnet,3,nv);
+xlayers = zeros(Nnet,3,nv);
+ylayers = zeros(Nnet,3,nv);
 for k = 1 : nv
-  velx_stand = zeros(128,3);
-  vely_stand = zeros(128,3);
+  velx_stand = zeros(Nnet,3);
+  vely_stand = zeros(Nnet,3);
   for il = 1 : 3
      velx_stand(:,il) = velx_real{k}(:,:,il) * fstandRe(:,k) + velx_imag{k}(:,:,il)*fstandIm(:,k);
      vely_stand(:,il) = vely_real{k}(:,:,il) * fstandRe(:,k) + vely_imag{k}(:,:,il)*fstandIm(:,k);
      
-     vx = zeros(128,1);
-     vy = zeros(128,1);
+     vx = zeros(Nnet,1);
+     vy = zeros(Nnet,1);
      
      vx(sortIdx(:,k)) = velx_stand(:,il);
      vy(sortIdx(:,k)) = vely_stand(:,il);
@@ -453,10 +455,11 @@ end % predictNearLayersWTorchNet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [velx, vely] = buildVelocityInNear(o,tracJump, velx_real, vely_real, velx_imag, vely_imag, trans, rotate, rotCent, scaling, sortIdx)
 nv = numel(rotate);
+Nnet = numel(sortIdx(:,1));
 
 % standardize tracJump
-fstandRe = zeros(128, nv);
-fstandIm = zeros(128, nv);
+fstandRe = zeros(Nnet, nv);
+fstandIm = zeros(Nnet, nv);
 for k = 1 : nv
   fstand = o.standardize(tracJump(:,k),[0;0], rotate(k), [0;0], 1, sortIdx(:,k));
   z = fstand(1:end/2) + 1i*fstand(end/2+1:end);
@@ -466,17 +469,17 @@ for k = 1 : nv
 end
 
 
-velx = zeros(128,3,nv); 
-vely = zeros(128,3,nv);
+velx = zeros(Nnet,3,nv); 
+vely = zeros(Nnet,3,nv);
 for k = 1 : nv
-  velx_stand = zeros(128,3);
-  vely_stand = zeros(128,3);
+  velx_stand = zeros(Nnet,3);
+  vely_stand = zeros(Nnet,3);
   for il = 1 : 3
      velx_stand(:,il) = velx_real{k}(:,:,il) * fstandRe(:,k) + velx_imag{k}(:,:,il)*fstandIm(:,k);
      vely_stand(:,il) = vely_real{k}(:,:,il) * fstandRe(:,k) + vely_imag{k}(:,:,il)*fstandIm(:,k);
      
-     vx = zeros(128,1);
-     vy = zeros(128,1);
+     vx = zeros(Nnet,1);
+     vy = zeros(Nnet,1);
      
      vx(sortIdx(:,k)) = velx_stand(:,il);
      vy(sortIdx(:,k)) = vely_stand(:,il);
@@ -492,7 +495,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx] = predictNearLayersOnce(o, X)
-Nnet = 128;
+Nnet = numel(X(:,1))/2;
 oc = o.oc;
 
 disp('PREDICTING NEAR FIELD')
@@ -500,7 +503,7 @@ disp('PREDICTING NEAR FIELD')
 in_param = o.torchNearInNorm;
 out_param = o.torchNearOutNorm;
 
-maxLayerDist = sqrt(1/Nnet); % length = 1, h = 1/Nnet;
+maxLayerDist = 1/Nnet; %sqrt(1/Nnet); % length = 1, h = 1/Nnet;
 % Predictions on three layers
 nlayers = 3;
 dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist;
@@ -516,7 +519,7 @@ sortIdx = zeros(Nnet,nv);
 
 tracersX = zeros(2*Nnet,3,nv);
 for k = 1 : nv
-  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(X(:,k),128);
+  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(X(:,k),Nnet);
   [~,tang] = oc.diffProp(Xstand(:,k));
   nx = tang(Nnet+1:2*Nnet);
   ny = -tang(1:Nnet);
@@ -528,7 +531,7 @@ for k = 1 : nv
 end
 
 % Normalize input
-input_net = zeros(nv,2,128);
+input_net = zeros(nv,2,Nnet);
 
 for k = 1 : nv
   input_net(k,1,:) = (Xstand(1:end/2,k)-in_param(1,1))/in_param(1,2);
@@ -543,13 +546,17 @@ modeList = find(abs(modes)<=modesInUse);
 
 
 input_conv = py.numpy.array(input_net);
+if Nnet == 128
 [Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+elseif Nnet == 32
+[Xpredict] = pyrunfile("32modes_near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+end
 
 for k = 1 : nv
-velx_real{k} = zeros(128,128,3);
-vely_real{k} = zeros(128,128,3);
-velx_imag{k} = zeros(128,128,3);
-vely_imag{k} = zeros(128,128,3);
+velx_real{k} = zeros(Nnet,Nnet,3);
+vely_real{k} = zeros(Nnet,Nnet,3);
+velx_imag{k} = zeros(Nnet,Nnet,3);
+vely_imag{k} = zeros(Nnet,Nnet,3);
 end
 
 % denormalize output
@@ -583,8 +590,8 @@ end
 % outputs
 % velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx
 
-xlayers = zeros(128,3,nv);
-ylayers = zeros(128,3,nv);
+xlayers = zeros(Nnet,3,nv);
+ylayers = zeros(Nnet,3,nv);
 for k = 1 : nv
   for il = 1 : 3
      Xl = o.destandardize(tracersX(:,il,k),trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
@@ -770,7 +777,7 @@ for k1 = 1 : nv
     if numel(J) ~= 0
       % need tp subtract off contribution due to vesicle k1 since its layer
       % potential will be evaulated through interpolation
-      [~,potTar] = op.exactStokesSL(vesicleUp, fup, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
+      [~,potTar] = op.exactStokesSL(vesicle, tracJump, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
       nearField(J,k2) = nearField(J,k2) - potTar(1:numel(J));
       nearField(J+N,k2) = nearField(J+N,k2) - potTar(numel(J)+1:end);
          
@@ -809,7 +816,7 @@ nvTar = nv; nvSou = nv;
 
 XequalDist = vesicle.X;
 for k = 1 : nv
-  [Xstand,scal,rot,rotC,tran,sortId] = o.standardizationStep(vesicle.X(:,k),128);
+  [Xstand,scal,rot,rotC,tran,sortId] = o.standardizationStep(vesicle.X(:,k),N);
   XequalDist(:,k) = o.destandardize(Xstand,tran,rot,rotC,scal,sortId);
 end
 
@@ -1057,7 +1064,7 @@ function Xnew = translateVinfwTorch(o,Xold,vinf)
 % Xold as well. So, we add up coordinates of the same points.
 N = numel(Xold(:,1))/2;
 nv = numel(Xold(1,:));
-Nnet = 128;
+Nnet = N;
 oc = o.oc;
 
 
@@ -1077,7 +1084,7 @@ input_list = [];
 cnt = 1;
 for imode = modeList
   if imode ~= 1
-  input_net = zeros(1,2,128);  
+  input_net = zeros(1,2,Nnet);  
   x_mean = in_param(imode-1,1);
   x_std = in_param(imode-1,2);
   y_mean = in_param(imode-1,3);
@@ -1227,34 +1234,23 @@ sortIdx = zeros(N,nv);
 
 for k = 1 : nv
   [Xin(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = ...
-    o.standardizationStep(Xmid(:,k),128);
+    o.standardizationStep(Xmid(:,k),N);
 end
 
 % INPUT NORMALIZATION INFO
 
-% For the 625k (IT3) data
-% x_mean = -3.775884049872502e-09; 
-% x_std = 0.06278640776872635;
-% y_mean = -5.037749133407488e-07; 
-% y_std = 0.1333947628736496;
-
+if N == 128
 % For the 625k - June8 - Dt = 1E-5 data
 x_mean = -8.430413700466488e-09; 
 x_std = 0.06278684735298157;
 y_mean = 6.290720477863943e-08; 
 y_std = 0.13339413702487946;
-
-% For the 625k - June8 - Dt = 5E-5 data
-% x_mean = 2.4658157826706883e-07; 
-% x_std = 0.06278616935014725;
-% y_mean = -4.5408405924263207e-08; 
-% y_std = 0.13339488208293915;
-
-% For the 625k - June8 - Dt = 1E-4 data
-% x_mean = 7.684710645605719e-09; 
-% x_std = 0.06278636306524277;
-% y_mean = 7.071167829053593e-08; 
-% y_std = 0.13339479267597198;
+elseif N == 32
+x_mean = -1.5200416214611323e-07; 
+x_std = 0.06278670579195023;
+y_mean = -2.5547041104800883e-07; 
+y_std = 0.13339416682720184;
+end
 
 
 
@@ -1264,7 +1260,7 @@ y_std = 0.13339413702487946;
 Xstand = Xin; % before normalization
 Xin(1:end/2,:) = (Xin(1:end/2,:)-x_mean)/x_std;
 Xin(end/2+1:end,:) = (Xin(end/2+1:end,:)-y_mean)/y_std;
-XinitShape = zeros(nv,2,128);
+XinitShape = zeros(nv,2,N);
 for k = 1 : nv
 XinitShape(k,1,:) = Xin(1:end/2,k)'; 
 XinitShape(k,2,:) = Xin(end/2+1:end,k)';
@@ -1277,7 +1273,11 @@ XinitConv = py.numpy.array(XinitShape);
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_IT3_dt1E5.py", "predicted_shape", input_shape=XinitConv);
 
 % June8 - Dt1E5
+if N == 128
 [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+elseif N == 32
+[DXpredictStand] = pyrunfile("32modes_relax_predict_DIFF_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+end
 
 % June8 - Dt5E5
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt5E5.py", "predicted_shape", input_shape=XinitConv);
@@ -1292,11 +1292,18 @@ XinitConv = py.numpy.array(XinitShape);
 % y_mean = 1.3305034157751194e-11; 
 % y_std = 0.00017724868666846305;
 
+if N == 128
 % For the 625k - June8 - Dt = 1E-5 data
 x_mean = -2.884585348361668e-10; 
 x_std = 0.00020574081281665713;
 y_mean = -5.137390512999218e-10; 
 y_std = 0.0001763451291481033;
+elseif N == 32
+x_mean = -2.329148207635967e-09; 
+x_std = 0.00020403489179443568;
+y_mean = -1.5361016902915026e-09; 
+y_std = 0.00017457373905926943;
+end
 
 % For the 625k - June8 - Dt = 5E-5 data
 % x_mean = 2.9649513400009653e-10; 

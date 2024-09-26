@@ -37,7 +37,7 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
+prams.N = 32; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -78,6 +78,14 @@ X(1:N) = cos(IA) * X0(1:N) - ...
       sin(IA) * X0(N+1:2*N) + cent(1);
 X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
       cos(IA) * X0(N+1:2*N) + cent(2);
+
+XOrig = X;
+for it = 1 : 5
+  X = oc.redistributeArcLength(X);
+end
+X = oc.alignCenterAngle(XOrig,X);
+
+
 [~,area0,len0] = oc.geomProp(X);
 % 
 % load testDiffNetIC
@@ -96,7 +104,7 @@ X(N+1:2*N) = sin(IA) * X0(1:N) +  ...
 
 solveType = 'DNN';
 %fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
-fileName = ['./output/test_netAdv16modes_diff625kNetJune8_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
+fileName = ['./output/32modes_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');

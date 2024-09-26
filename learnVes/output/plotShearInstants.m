@@ -3,7 +3,8 @@ set(groot, 'defaultAxesTickLabelInterpreter','latex')
 set(groot, 'defaultLegendInterpreter','latex')
 set(groot, 'DefaultTextInterpreter','latex')
 
-fileName = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
+% fileName = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
+fileName = '128modes_shear_nearNet_relaxNet_dt1e-05_speed2000.bin';
 % fileName = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 % load testShearNearInterpSpeed2000 
 
@@ -12,8 +13,8 @@ fileName = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
 % tsteps = [4; 20; 40; 60; 80]; % for true
 tsteps = [2; 4; 10; 20; 40];
 
-fnames = 'trueSim_step';
-if 0
+fnames = 'mlarmSim_step';
+if 1
 for ik = 1 : numel(tsteps)
   k = tsteps(ik);  
   figure(1); clf;

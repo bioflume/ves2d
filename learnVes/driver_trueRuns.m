@@ -9,7 +9,7 @@ kappa = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 
-N =  128; % num. points
+N =  32; % num. points
 dt = dtGiven;
 Th = timeHorizon;
 oc = curve;
@@ -52,7 +52,7 @@ vinf = @(X) [speed*(1-(X(end/2+1:end,:)/chanWidth).^2);...
 % INITIALIZE MATRICES AND COUNTERS
 % ------------------------------------------------------------------------
 % folderName = '/work2/03353/gokberk/frontera/truePoisRuns/';
-fileName = ['./output/poisTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+fileName = ['./output/32modes_poisTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;1];

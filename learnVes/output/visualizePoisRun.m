@@ -1,7 +1,7 @@
 clear all;
 clc;
 
-[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('test_netAdv16modes_diff625kNetJune8_dt1e-05poisRuns_speed750_width0.32275.bin');
+[vesxN, vesyN, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile('32modes_dt2e-06poisRuns_speed3000_width0.32275.bin');
 
 
 imovie = 1;
@@ -89,8 +89,7 @@ for frameNumber = 1 : numberOfFrames
 end
 close(writerObj);
 % Display the current folder panel so they can see their newly created file.
-cd(folder);
-filebrowser;
+
 message = sprintf('Finished creating movie file\n      %s.\n\nDone with demo!', fullFileName);
 uiwait(helpdlg(message));
 

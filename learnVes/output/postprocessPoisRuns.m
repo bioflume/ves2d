@@ -37,7 +37,9 @@ for iw = 1 : numel(chanWidths)
     chanWidth = chanWidths(iw);
 
     % runNew = ['./phaseDiagJune9/test_exAdv_diff625kNet_poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
-    runNew = ['./truePoisRuns/poisTrueRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    % runNew = ['./truePoisRuns/poisTrueRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    % runNew = ['./32modes_dt1e-05poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    runNew = ['./32modes_poisTrueRuns_dt1e-05_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
     [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
     
     vesxN = vesxN(:,1:end-100);
@@ -72,16 +74,16 @@ box on
 pause
 
 end
-if 0
+if 1
 for iw = 1 : numel(chanWidths)
-  for is = 1 : 5
+  for is = 1 : 3
       speed = speeds(iw,is);
       chanWidth = chanWidths(iw);
 
       disp(['speed = ' num2str(speed), ' width = ' num2str(chanWidth)])
 
-      runNew = ['./phaseDiagJune9/test_exAdv_diff625kNet_poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
-
+      % runNew = ['./phaseDiagJune9/test_exAdv_diff625kNet_poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+      runNew = ['./32modes_dt1e-05poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
       
       [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
     

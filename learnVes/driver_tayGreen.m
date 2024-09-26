@@ -1,10 +1,10 @@
 clear; clc;
-dt = 1E-5;
-Th = 0.03;
+dt = 5E-6;
+Th = 0.07;
 
 iExactTension = 1;
 iExactNear = 0;
-iExact = 1; % exact relaxation
+iExact = 0; % exact relaxation
 iIgnoreNear = 0;
 
 addpath ../src/
@@ -41,8 +41,8 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
-prams.Nfmm = 128;
+prams.N = 32; % num. points for true solve in DNN scheme
+prams.Nfmm = 32;
 prams.nv = 9; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -71,7 +71,8 @@ X0 = oc.initConfig(N,'ellipse');
 scale = 1/len0;
 
 sx = [.17 -.00 -.07 .12 .04 -.12 .15 .02 -.17]*scale*2; 
-sy = [.15 -.010 +.08 .04 .02 -.01 -.01 .06 -.12]*scale*2; 
+sy = [.15 -.010 +.08 .04 .02 -.01 -.01 .06 -.12]*scale*2;
+
 cenx = kron(ones(1,3),[pi/4 pi/2 3*pi/4]*scale*1.85);
 ceny = kron([pi/4 pi/2 3*pi/4]*scale*1.85,ones(1,3));
 % scale = 0.225;
@@ -84,19 +85,25 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
   'reducedArea',0.65,...
   'angle',angle,...
   'center',[cenx;ceny], 'scale',scale);
+% 
 
-XOrig = X;
-for it = 1 : 5
-  X = oc.redistributeArcLength(X);
-end
-X = oc.alignCenterAngle(XOrig,X);
+
+% load IC4TG_MLARM2
+% X = Xic;
+% 
+% XOrig = X;
+% for it = 1 : 5
+%   X = oc.redistributeArcLength(X);
+% end
+% X = oc.alignCenterAngle(XOrig,X);
 
 % load tayGreenStep140ic
 % X = Xic;
 % load ./output/taylorGreenFinalIC3_nearNet
 % load ./output/taylorGreenFinalIC3_trueFiner
 % load taylorGreenFinalIC3_trueLowRes
-% X = Xic;
+
+
 
 prams.chanWidth = pi*scale*2;
 [~,area0,len0] = oc.geomProp(X);
@@ -112,10 +119,10 @@ prams.chanWidth = pi*scale*2;
 
 solveType = 'DNN';
 % fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/taylorGreen_IC4_true_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/taylorGreen_IC4_nearNet_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/32modes_taylorGreen_IC4_biem_wrongNear_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/32modes_taylorGreen_IC4_nearNet_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 
 fid = fopen(fileName,'w');
 output = [N;nv];

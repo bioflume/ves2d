@@ -68,12 +68,9 @@ end
 function [Xnew,dyNet,dyAdv] = DNNsolveTorchNoSplit(o,Xold,area0,len0,iExact)
 oc = o.oc;
 vback = o.vinf(Xold);
-advType = 3; % 1: exact, 2: with old net, 3: with Torch net
+advType = 1; % 1: exact, 2: with old net, 3: with Torch net
 % 1) COMPUTE THE ACTION OF dt*(1-M) ON Xold  
 if advType == 1
-  [XoldC,~] = oc.reparametrize(Xold,[],6,20);
-  Xold = oc.alignCenterAngle(Xold,XoldC);
-
   vback = o.vinf(Xold);
 
   tt = o.tt;
@@ -121,8 +118,11 @@ end
 dyNet = mean(Xnew(end/2+1:end))-mean(Xadv(end/2+1:end));
 
 % First reparameterize
-[XnewC,~] = oc.reparametrize(Xnew,[],6,20);
-Xnew = oc.alignCenterAngle(Xnew,XnewC);
+XnewO = Xnew;
+for it = 1 : 5
+  Xnew = oc.redistributeArcLength(Xnew);
+end
+Xnew = oc.alignCenterAngle(XnewO,Xnew);
 
 % AREA-LENGTH CORRECTION
 disp('Area-Length correction after relaxation step')
@@ -309,7 +309,7 @@ function Xnew = translateVinfwTorch(o,Xold,vinf)
 % Xold as well. So, we add up coordinates of the same points.
 N = numel(Xold(:,1))/2;
 nv = numel(Xold(1,:));
-Nnet = 128;
+Nnet = N;
 oc = o.oc;
 disp('taking advection step with nets')
 modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
@@ -327,7 +327,7 @@ input_list = [];
 cnt = 1;
 for imode = modeList
   if imode ~= 1
-  input_net = zeros(nv,2,128);  
+  input_net = zeros(nv,2,Nnet);  
   x_mean = in_param(imode-1,1);
   x_std = in_param(imode-1,2);
   y_mean = in_param(imode-1,3);
@@ -467,34 +467,33 @@ function Xnew = relaxWTorchNet(o,Xmid)
 
 % 1) RELAXATION w/ NETWORK
 % Standardize vesicle Xmid
-[Xin,scaling,rotate,rotCent,trans,sortIdx] = ...
-  o.standardizationStep(Xmid,128);
+Xin = zeros(size(Xmid));
+nv = numel(Xmid(1,:));
+N = numel(Xmid(:,1))/2;
+
+scaling = zeros(nv,1); rotate = zeros(nv,1); 
+rotCent = zeros(2,nv); trans = zeros(2,nv);
+sortIdx = zeros(N,nv);
+
+for k = 1 : nv
+  [Xin(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = ...
+    o.standardizationStep(Xmid(:,k),N);
+end
 
 % INPUT NORMALIZATION INFO
 
-% For the 625k (IT3) data
-% x_mean = -3.775884049872502e-09; 
-% x_std = 0.06278640776872635;
-% y_mean = -5.037749133407488e-07; 
-% y_std = 0.1333947628736496;
-
+if N == 128
 % For the 625k - June8 - Dt = 1E-5 data
 x_mean = -8.430413700466488e-09; 
 x_std = 0.06278684735298157;
 y_mean = 6.290720477863943e-08; 
 y_std = 0.13339413702487946;
-
-% For the 625k - June8 - Dt = 5E-5 data
-% x_mean = 2.4658157826706883e-07; 
-% x_std = 0.06278616935014725;
-% y_mean = -4.5408405924263207e-08; 
-% y_std = 0.13339488208293915;
-
-% For the 625k - June8 - Dt = 1E-4 data
-% x_mean = 7.684710645605719e-09; 
-% x_std = 0.06278636306524277;
-% y_mean = 7.071167829053593e-08; 
-% y_std = 0.13339479267597198;
+elseif N == 32
+x_mean = -1.5200416214611323e-07; 
+x_std = 0.06278670579195023;
+y_mean = -2.5547041104800883e-07; 
+y_std = 0.13339416682720184;
+end
 
 
 
@@ -502,11 +501,13 @@ y_std = 0.13339413702487946;
 
 % REAL SPACE
 Xstand = Xin; % before normalization
-Xin(1:end/2) = (Xin(1:end/2)-x_mean)/x_std;
-Xin(end/2+1:end) = (Xin(end/2+1:end)-y_mean)/y_std;
-XinitShape = zeros(1,2,128);
-XinitShape(1,1,:) = Xin(1:end/2)'; 
-XinitShape(1,2,:) = Xin(end/2+1:end)';
+Xin(1:end/2,:) = (Xin(1:end/2,:)-x_mean)/x_std;
+Xin(end/2+1:end,:) = (Xin(end/2+1:end,:)-y_mean)/y_std;
+XinitShape = zeros(nv,2,N);
+for k = 1 : nv
+XinitShape(k,1,:) = Xin(1:end/2,k)'; 
+XinitShape(k,2,:) = Xin(end/2+1:end,k)';
+end
 XinitConv = py.numpy.array(XinitShape);
 
 
@@ -515,7 +516,11 @@ XinitConv = py.numpy.array(XinitShape);
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_IT3_dt1E5.py", "predicted_shape", input_shape=XinitConv);
 
 % June8 - Dt1E5
+if N == 128
 [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+elseif N == 32
+[DXpredictStand] = pyrunfile("32modes_relax_predict_DIFF_dt1E5.py", "predicted_shape", input_shape=XinitConv);
+end
 
 % June8 - Dt5E5
 % [DXpredictStand] = pyrunfile("relax_predict_DIFF_June8_dt5E5.py", "predicted_shape", input_shape=XinitConv);
@@ -530,11 +535,18 @@ XinitConv = py.numpy.array(XinitShape);
 % y_mean = 1.3305034157751194e-11; 
 % y_std = 0.00017724868666846305;
 
+if N == 128
 % For the 625k - June8 - Dt = 1E-5 data
 x_mean = -2.884585348361668e-10; 
 x_std = 0.00020574081281665713;
 y_mean = -5.137390512999218e-10; 
 y_std = 0.0001763451291481033;
+elseif N == 32
+x_mean = -2.329148207635967e-09; 
+x_std = 0.00020403489179443568;
+y_mean = -1.5361016902915026e-09; 
+y_std = 0.00017457373905926943;
+end
 
 % For the 625k - June8 - Dt = 5E-5 data
 % x_mean = 2.9649513400009653e-10; 
@@ -552,14 +564,20 @@ y_std = 0.0001763451291481033;
 
 DXpred = zeros(size(Xin));
 DXpredictStand = double(DXpredictStand);
+Xnew = zeros(size(Xmid));
 
+for k = 1 : nv
 % normalize output
-DXpred(1:end/2) = DXpredictStand(1,1,:)*x_std + x_mean;
-DXpred(end/2+1:end) = DXpredictStand(1,2,:)*y_std + y_mean;
+DXpred(1:end/2,k) = DXpredictStand(k,1,:)*x_std + x_mean;
+DXpred(end/2+1:end,k) = DXpredictStand(k,2,:)*y_std + y_mean;
 
-DXpredScaled = DXpred/1E-5 * o.dt;
-Xpred = Xstand + DXpredScaled;
-Xnew = o.destandardize(Xpred,trans,rotate,rotCent,scaling,sortIdx);
+
+DXpred(:,k) = DXpred(:,k)/1E-5 * o.dt;
+Xpred = Xstand(:,k) + DXpred(:,k);
+
+Xnew(:,k) = o.destandardize(Xpred,trans(:,k),rotate(k),rotCent(:,k),...
+    scaling(k),sortIdx(:,k));
+end
 
 
 

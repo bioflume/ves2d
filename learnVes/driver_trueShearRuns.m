@@ -38,6 +38,13 @@ end
 [~,area0,len0] = oc.geomProp(X);
 nv = 2;
 
+XOrig = X;
+for it = 1 : 5
+  X = oc.redistributeArcLength(X);
+end
+X = oc.alignCenterAngle(XOrig,X);
+
+
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = speed; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic
 prams.Th = Th;
@@ -98,8 +105,12 @@ while timeTrue(end) < Th
     Xnew = oc.alignCenterAngle(Xnew, Xnew2);
   end
   
-  [Xiter,~] = oc.reparametrize(Xnew,[],6,20);
-  XhistTrue = oc.alignCenterAngle(Xnew,Xiter);
+  XOrig = Xnew;
+  for it = 1 : 5
+    Xnew = oc.redistributeArcLength(Xnew);
+  end
+  XhistTrue = oc.alignCenterAngle(XOrig,Xnew);
+
 
   it = it + 1;
   timeTrue(it) = timeTrue(it-1) + dt;  

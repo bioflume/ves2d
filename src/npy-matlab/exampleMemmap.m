@@ -57,3 +57,39 @@ for k = 1 : 128
 in_param(k,:) = tmp(:,k)';
 
 end
+
+
+%%
+clear;
+out_param = zeros(32,2,12);
+
+filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_32modesfft_models/out_param_downsample32_allmode.npy';
+[arrayShape, dataType, fortranOrder, littleEndian, totalHeaderLength, npyVersion] = readNPYheader(filename);
+
+f = memmapfile(filename, 'Format', {dataType, arrayShape(end:-1:1), 'd'}, 'Offset', totalHeaderLength);
+tmp = f.Data.d;
+
+for k = 1 : 32
+
+out_param(k,:,:) = tmp(:,:,k)';
+
+end
+
+
+
+
+%%
+% clear;
+in_param = zeros(32,4);
+
+filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_32modesfft_models/in_param_downsample32_allmode.npy';
+[arrayShape, dataType, fortranOrder, littleEndian, totalHeaderLength, npyVersion] = readNPYheader(filename);
+
+f = memmapfile(filename, 'Format', {dataType, arrayShape(end:-1:1), 'd'}, 'Offset', totalHeaderLength);
+tmp = f.Data.d;
+
+for k = 1 : 32
+
+in_param(k,:) = tmp(:,k)';
+
+end

@@ -8,7 +8,7 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 % fileNameNN = 'moreModes32_test_shear_interpNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 % fileNameNN = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
-fileNameNN = 'N32_shearTrueRuns_dt1e-05_speed2000.bin';
+fileNameNN = '32modes_shear_biem_ignoreNear_dt1e-05_speed2000.bin';
 % fileNameTR = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 
 fileNameTR = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
@@ -161,8 +161,6 @@ for frameNumber = 1 : numberOfFrames
 end
 close(writerObj);
 % Display the current folder panel so they can see their newly created file.
-cd(folder);
-filebrowser;
 message = sprintf('Finished creating movie file\n      %s.\n\nDone with demo!', fullFileName);
 uiwait(helpdlg(message));
 

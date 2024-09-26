@@ -22,7 +22,7 @@ for iw = 1 : numel(chanWidths)
     end
 end
 
-N = 128;
+N = 32;
 oc = curve;
 op = poten(N);
 
@@ -30,8 +30,9 @@ for iw = 1 : numel(chanWidths)
     for is = 1 : 5
     speed = speeds(iw,is);
     chanWidth = chanWidths(iw);
-
-    runNew = ['./output/truePoisRuns/poisTrueRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    
+    runNew = ['./output/32modes_dt1e-05poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    
     [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
     vesxN = vesxN(:,end-150:end-50);
     vesyN = vesyN(:,end-150:end-50);
@@ -74,7 +75,7 @@ for iw = 1 : numel(chanWidths)
       magVel(:,k) = sqrt(selfVel(1:end/2,k).^2 + selfVel(end/2+1:end,k).^2);
     end
 
-    ppDataFile = ['./VelocityData/ppTrueData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
+    ppDataFile = ['./VelocityData32modes/ppData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
     save(ppDataFile, 'Xs', 'selfVel')
 
     cxV = abs(movmean(mean(selfVel(1:end/2,:),1),1));

@@ -2,14 +2,23 @@ clear; clc;
 imovie = 1;
 
 
-load taylorGreen_IC3_true_long_dt5E6_speed500
-vesxL = vesxT; vesyL = vesyT; timeL = timeT;
+% load taylorGreen_IC3_true_long_dt5E6_speed500
 
-load taylorGreen_IC3_nearNetLonger_diff625kNetJune8_long_dt1E5_speed500
+% vesxL = vesxT; vesyL = vesyT; timeL = timeT;
 
-load taylorGreen_IC3_trueFiner_long_dt5E6_speed500
+% load taylorGreen_IC3_nearNetLonger_diff625kNetJune8_long_dt1E5_speed500
 
-nsteps = 4000; %min(numel(timeL),numel(timeN));
+% load taylorGreen_IC3_trueFiner_long_dt5E6_speed500
+
+fileName = 'taylorGreen_IC4_true_diff625kNetJune8_dt1e-05_speed500.bin';
+[vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
+
+fileName = '32modes32_taylorGreen_IC4_nearNet_diff625kNetJune8_dt1e-05_speed500.bin';
+[vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
+
+% load taylorGreen_IC4_nearNetLongest_dt1E5_speed500
+
+nsteps = min(numel(timeT),numel(timeN));
 
 
 if imovie
@@ -41,15 +50,16 @@ end
 for k = 1 : 1 : numberOfFrames
  if imovie; cla reset; end;
 
- kT = 2*k-1;
+ % kT = 2*k-1;
+ kT = k;
  xvecT = [vesxT(:,:,kT);vesxT(1,:,kT)] ;
  yvecT = [vesyT(:,:,kT);vesyT(1,:,kT)];
   
  xvecN = [vesxN(:,:,k);vesxN(1,:,k)];
  yvecN = [vesyN(:,:,k);vesyN(1,:,k)];
 
- xvecL = [vesxL(:,:,k);vesxL(1,:,k)];
- yvecL = [vesyL(:,:,k);vesyL(1,:,k)];
+ % xvecL = [vesxL(:,:,k);vesxL(1,:,k)];
+ % yvecL = [vesyL(:,:,k);vesyL(1,:,k)];
 
  figure(1); clf; 
  h = plot(xvecT, yvecT, 'Color',[0 0 0 0.75],'linewidth',2);
@@ -58,14 +68,15 @@ for k = 1 : 1 : numberOfFrames
  end
  hold on
 
- % h2 = plot(xvecN, yvecN, 'Color',[215/255 25/255 28/255 1],'linewidth',2);
- % for j = 1 : 9
- % set(h2(j),'Color',[h2(j).Color, 1],'linewidth',2)
- % end
-  h2 = plot(xvecL, yvecL, 'Color',[26/255 150/255 65/255 1],'linewidth',2);
-  for j = 1 : 9
-  set(h2(j),'Color',[h2(j).Color, 1],'linewidth',2)
-  end
+ h2 = plot(xvecN, yvecN, 'Color',[215/255 25/255 28/255 1],'linewidth',2);
+ for j = 1 : 9
+ set(h2(j),'Color',[h2(j).Color, 1],'linewidth',2)
+ end
+ hold on
+  % h2 = plot(xvecL, yvecL, 'Color',[26/255 150/255 65/255 1],'linewidth',2);
+  % for j = 1 : 9
+  % set(h2(j),'Color',[h2(j).Color, 1],'linewidth',2)
+  % end
 
  
  plot(-0.15, -0.15, 'k.','markersize',0.001)
@@ -135,8 +146,8 @@ for frameNumber = 1 : numberOfFrames
 end
 close(writerObj);
 % Display the current folder panel so they can see their newly created file.
-cd(folder);
-filebrowser;
+% cd(folder);
+% filebrowser;
 message = sprintf('Finished creating movie file\n      %s.\n\nDone with demo!', fullFileName);
 uiwait(helpdlg(message));
 

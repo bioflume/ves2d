@@ -5,16 +5,16 @@ Th = 0.01; %0.01;
 % cy = [0.05; 0];
 
 % First test IC
-% cx = [-0.3; 0];
-% cy = [0.040; 0];
-% 
-% IA = [0; pi/2];
+cx = [-0.3; 0];
+cy = [0.040; 0];
+
+IA = [0; pi/2];
 
 
 % Second test IC
-cx = [0; 0];
-cy = [-0.1;0.1];
-IA = [pi/3; pi/3];
+% cx = [-0.28; 0];
+% cy = [0.05;0];
+% IA = [0; pi/2];
 
 iExactTension = 1;
 iExactNear = 0;
@@ -47,7 +47,7 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 %-------------------------------------------------------------------------
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 2000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 1;
+iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -122,7 +122,7 @@ X = oc.alignCenterAngle(XOrig,X);
 % X = Xnew;
 
 % figure(1); clf;
-% plot(X(1:end/2,:),X(end/2+1:end,:),'k')
+% plot(X(1:end/2,:),X(end/2+1:end,:),'k-o')
 % hold on
 % % plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r')
 % axis equal
@@ -131,7 +131,8 @@ X = oc.alignCenterAngle(XOrig,X);
 
 solveType = 'DNN';
 % fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/entangled_shear_nearNet_relaxNet_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/128modes_shear_nearNet_relaxNet_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/entangled_shear_biem_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
@@ -152,8 +153,13 @@ dnn.torchAdvInNorm = in_param;
 dnn.torchAdvOutNorm = out_param;
 
 % % LOAD NEAR-SINGULAR NORMALIZATION PARAMS
+if prams.N == 128
 load ./shannets/nearInterp_fft_in_param.mat
 load ./shannets/nearInterp_fft_out_param.mat
+elseif prams.N == 32
+load ./shannets/nearInterp_32modes_in_param.mat
+load ./shannets/nearInterp_32modes_out_param.mat
+end
 dnn.torchNearInNorm = in_param;
 dnn.torchNearOutNorm = out_param;
 

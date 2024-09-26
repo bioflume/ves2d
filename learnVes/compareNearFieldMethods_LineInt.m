@@ -7,7 +7,7 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 
 iCalcGT = ~false;
-idIC = 2;
+idIC = 5;
 
 fname = ['compareNearMeths_VesID' num2str(idIC) '.mat'];
 addpath ../src/
@@ -365,6 +365,127 @@ velTraMLARM = farField + nearField;
 velxTraMLARM = velTraMLARM(1:end/2);
 velyTraMLARM = velTraMLARM(end/2+1:end);
 
+%% now calculate with neural network
+
+%maxLayerDist = sqrt(1/Nnet); % length = 1, h = 1/Nnet;
+maxLayerDist = 1/Nnet; % h
+% Predictions on three layers
+nlayers = 3;
+dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist;
+
+% standardize input
+tracersX = zeros(2*Nnet,3);
+
+[Xstand,scaling,rotate,rotCent,trans,sortIdx] = standardizationStep(X,128);
+[~,tang] = oc.diffProp(Xstand);
+nx = tang(Nnet+1:2*Nnet);
+ny = -tang(1:Nnet);
+% 
+tracersX(:,1) = Xstand;
+for il = 2 : nlayers 
+tracersX(:,il) = [Xstand(1:end/2)+nx*dlayer(il); Xstand(end/2+1:end)+ny*dlayer(il)];
+end
+
+
+
+% outputs
+% velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx
+
+xlayers = zeros(128,3);
+ylayers = zeros(128,3);
+% 
+for il = 1 : 3
+ Xl = destandardize(tracersX(:,il),trans,rotate,rotCent,scaling,sortIdx);
+ xlayers(:,il) = Xl(1:end/2);
+ ylayers(:,il) = Xl(end/2+1:end);
+end
+
+
+kernel = @op.exactStokesSL;
+kernelDirect = @op.exactStokesSL;
+SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
+
+Xlayers = [xlayers(:,2);xlayers(:,3);ylayers(:,2);ylayers(:,3)];
+traLayers.N = numel(Xlayers)/2;
+traLayers.nv = 1;
+traLayers.X = Xlayers;
+[~,NearV2Tlayers] = vesicle.getZone(traLayers,2);
+
+velNearLayer = op.nearSingInt(vesicle,bendF,SLP,[],NearV2Tlayers,kernel,kernelDirect,traLayers,false,false); 
+velx(:,2:3) = reshape(velNearLayer(1:end/2),Nnet,2);
+vely(:,2:3) = reshape(velNearLayer(end/2+1:end),Nnet,2);
+
+%% Interpolate
+iRBF = 1;
+iMat = 0;
+
+if iRBF % rbf
+tRBF = tic;
+Xin = [reshape(xlayers,1,3*numel(xlayers(:,1))); reshape(ylayers,1,3*numel(xlayers(:,1)))];
+velXInput = reshape(velx, 1, 3*numel(xlayers(:,1))); 
+velYInput = reshape(vely, 1, 3*numel(xlayers(:,1)));  
+
+opX = rbfcreate(Xin,velXInput,'RBFFunction','linear');
+opY = rbfcreate(Xin,velYInput,'RBFFunction','linear');
+tRBF = toc(tRBF);
+disp(['RBF build takes ' num2str(tRBF)])
+end
+
+
+
+if iMat % matlabs own functions
+tMat = tic;
+opX = scatteredInterpolant(xlayers(:),ylayers(:),velx(:),'linear');
+opY = scatteredInterpolant(xlayers(:),ylayers(:),vely(:),'linear');
+tMat = toc(tMat);
+disp(['MATLAB build takes ' num2str(tMat)])
+end
+
+
+% Now predict
+[~,velTraDirect] = op.exactStokesSL(vesicle,bendF,[],tracers.X,1);
+farField = velTraDirect;
+nearField = zeros(size(farField));
+
+zone = NearV2T.zone;
+
+J = find(zone{1}(:,1) == 1);
+if numel(J) ~= 0
+  [~,potTar] = op.exactStokesSL(vesicle, bendF, [], [Xtra(J,1);Xtra(J+Ntra,1)],1);
+  nearField(J) = nearField(J) - potTar(1:numel(J));
+  nearField(J+Ntra) = nearField(J+Ntra) - potTar(numel(J)+1:end);
+  
+  if iMat
+  tMat = tic;    
+  rbfVelX = opX(Xtra(J,1),Xtra(J+Ntra,1));
+  rbfVelY = opY(Xtra(J,1),Xtra(J+Ntra,1));
+  nearField(J) = nearField(J) + rbfVelX;
+  nearField(J+Ntra) = nearField(J+Ntra) + rbfVelY;
+  tMat = toc(tMat);
+  disp(['MATLAB prediction takes ' num2str(tMat)])
+  end
+  % now interpolate
+  if iRBF
+  tRBF = tic;          
+  for i = 1 : numel(J)
+    
+    pointsIn = [Xtra(J(i),1);Xtra(J(i)+Ntra,1)];
+    % interpolate for the k2th vesicle's points near to the k1th vesicle
+    rbfVelX = rbfinterp(pointsIn, opX);
+    rbfVelY = rbfinterp(pointsIn, opY);    
+
+    nearField(J(i)) = nearField(J(i)) + rbfVelX;
+    nearField(J(i)+Ntra) = nearField(J(i)+Ntra) + rbfVelY; 
+  end
+  tRBF = toc(tRBF);
+  disp(['RBF prediction takes ' num2str(tRBF)])
+  end
+end
+
+velTraMLARMRBF = farField + nearField;
+velxTraMLARMRBF = velTraMLARMRBF(1:end/2);
+velyTraMLARMRBF = velTraMLARMRBF(end/2+1:end);
+
 
 %%
 if 1
@@ -372,17 +493,21 @@ figure(1);clf;
 velTraNear = sqrt(velxTraNear.^2 + velyTraNear.^2);
 velTraMLARM = sqrt(velxTraMLARM.^2 + velyTraMLARM.^2);
 velTraNoNear = sqrt(velxTraNoNear.^2 + velyTraNoNear.^2);
+velTraMLARMRBF = sqrt(velxTraMLARMRBF.^2 + velyTraMLARMRBF.^2);
 
 errMag = max(abs(velTraNear-velTraMLARM))/max(abs(velTraNear))
 errMag2 = max(abs(velTraNear-velTraNoNear))/max(abs(velTraNear))
 
 plot(d2ves/h,velTraNear/max(abs(velTraNear)),'k','linewidth',2)
 hold on
-plot(d2ves/h,velTraNoNear/max(abs(velTraNear)),'b','linewidth',2)
-plot(d2ves/h,velTraMLARM/max(abs(velTraNear)),'r','linewidth',2)
+plot(d2ves/h,velTraNoNear/max(abs(velTraNear)),'Color',[27,120,55]/255','linewidth',2)
+plot(d2ves/h,velTraMLARM/max(abs(velTraNear)),'Color',[69,117,180]/255,'linewidth',2)
+plot(d2ves/h,velTraMLARMRBF/max(abs(velTraNear)),'--','Color',[215,48,39]/255,'linewidth',2)
 axis square
 xlim([0 0.5])
 ylim([0.9 1.2])
+xticks([0, 0.25, 0.5])
+yticks([0.9, 1, 1.1, 1.2])
 % xlabel('Distance to vesicle (h)')
 % ylabel('Velocity magnitude')
 grid on
@@ -403,7 +528,7 @@ end
 
 
 
-if 1 
+if 0 
 figure(1);clf;
 
 

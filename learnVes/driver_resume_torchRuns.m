@@ -37,7 +37,7 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
+prams.N = 32; % num. points for true solve in DNN scheme
 prams.nv = 1; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -52,7 +52,7 @@ Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt;
 bgFlow = prams.bgFlow; speed = prams.speed;
 
 % net parameters
-Nnet = 128; % num. points
+Nnet = 32; % num. points
 %-------------------------------------------------------------------------
 disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
     ', Th = ' num2str(Th)])
