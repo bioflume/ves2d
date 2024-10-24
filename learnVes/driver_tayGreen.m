@@ -3,8 +3,8 @@ dt = 5E-6;
 Th = 0.07;
 
 iExactTension = 1;
-iExactNear = 0;
-iExact = 0; % exact relaxation
+iExactNear = 1;
+iExact = 1; % exact relaxation
 iIgnoreNear = 0;
 
 addpath ../src/

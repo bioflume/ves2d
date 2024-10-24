@@ -1,25 +1,10 @@
 clear; clc;
-dt = 1E-5;
-Th = 0.01; %0.01;
-% cx = [-0.4; 0];
-% cy = [0.05; 0];
+dt = 1E-4;
+Th = 0.75;
 
-% First test IC
-cx = [-0.3; 0]; % true
-% cx = [-0.32; 0]; % true
-cy = [0.040; 0];
-
-IA = [0; pi/2];
-
-
-% Second test IC
-% cx = [-0.28; 0];
-% cy = [0.05;0];
-% IA = [0; pi/2];
-
-iExactTension = 0;
-iExactNear = 0;
-iExact = 0; % exact relaxation
+iExactTension = 1;
+iExactNear = 1;
+iExact = 1; % exact relaxation
 iIgnoreNear = 0;
 
 addpath ../src/
@@ -46,9 +31,9 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 % FLAGS
 %-------------------------------------------------------------------------
-prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 2000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 1;
+prams.bgFlow = 'tayGreen'; % 'shear','tayGreen','relax','parabolic'
+prams.speed = 200; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -56,9 +41,8 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
-prams.Nfmm = 128;
-prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
+prams.N = 32; % num. points for true solve in DNN scheme
+prams.Nfmm = 32;
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
@@ -67,78 +51,83 @@ prams.dtRelax = prams.dt;
 prams.Nbd = 0;
 prams.nvbd = 0;
 prams.interpOrder = 1;
-prams.chanWidth = 0;
+
 oc = curve;
-Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt; 
-bgFlow = prams.bgFlow; speed = prams.speed;
 
 % net parameters
-Nnet = 128; % num. points
+Nnet = 32; % num. points
+
+% VESICLES and WALLS:
+% -------------------------------------------------------------------------
+X0 = oc.initConfig(prams.N,'ellipse');
+[~,area0,len0] = oc.geomProp(X0);
+scale = 1/len0;
+
+sx = [0.075:0.2:2.425]';
+sy = [0.225:0.5:2]';
+[cenx, ceny] = meshgrid(sx,sy);
+cenx = cenx(:)';
+ceny = ceny(:)';
+prams.nv = numel(cenx); 
+angle = -ones(prams.nv,1)*pi/2;
+
+X = oc.initConfig(prams.N,'nv',prams.nv,...
+  'reducedArea',0.65,...
+  'angle',angle,...
+  'center',[cenx;ceny], 'scale',scale);
+% 
+
+load 48vesiclesInTG_N128
+X = [interpft(Xic(1:end/2,:),prams.N); interpft(Xic(end/2+1:end,:),prams.N)];
+
+% load 32modes_TGVESNET_T0p50_IC.mat
+% load 32modes_TGBIEM_T0p25_IC.mat
+% X = Xic;
+
+% load IC4TG_MLARM2
+% X = Xic;
+% 
+% XOrig = X;
+% for it = 1 : 5
+%   X = oc.redistributeArcLength(X);
+% end
+% X = oc.alignCenterAngle(XOrig,X);
+
+% load tayGreenStep140ic
+% X = Xic;
+% load ./output/taylorGreenFinalIC3_nearNet
+% load ./output/taylorGreenFinalIC3_trueFiner
+% load taylorGreenFinalIC3_trueLowRes
+
+
+
+prams.chanWidth = 2.5;
+[~,area0,len0] = oc.geomProp(X);
+% 
+
+% figure(1); clf;
+% plot(X(1:end/2,:),X(end/2+1:end,:),'k')
+% hold on
+% % plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r')
+% axis equal
+% pause
+% -------------------------------------------------------------------------
+
+Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt; 
+bgFlow = prams.bgFlow; speed = prams.speed;
 %-------------------------------------------------------------------------
 disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
     ', Th = ' num2str(Th)])
 %-------------------------------------------------------------------------
 
-% VESICLES and WALLS:
-% -------------------------------------------------------------------------
-X0 = oc.initConfig(N,'ellipse');
-
-[~,~,len] = oc.geomProp(X0);
-X0 = X0./len;
-X = zeros(2*N,2);
-for k = 1 : 2
-X(1:N,k) = cos(IA(k)) * X0(1:N) - ...
-      sin(IA(k)) * X0(N+1:2*N) + cx(k);
-X(N+1:2*N,k) = sin(IA(k)) * X0(1:N)  + ...
-      cos(IA(k)) * X0(N+1:2*N) + cy(k);
-end
-
-XOrig = X;
-for it = 1 : 5
-  X = oc.redistributeArcLength(X);
-end
-X = oc.alignCenterAngle(XOrig,X);
-
-
-[~,area0,len0] = oc.geomProp(X);
-
-% load finalShearXclose.mat
-% X = Xf;
-
-% load nearShearIC.mat
-% X = Xic;
-
-% 
-% Xnew = zeros(size(X));
-% 
-% Xup = [interpft(X(1:end/2,:),1024);interpft(X(end/2+1:end,:),1024)];
-% Nup = size(Xup,1)/2;
-% nv = size(Xup,2);
-% modes = [(0:Nup/2-1) (-Nup/2:-1)];
-% 
-% for k = 1 : nv
-%   z = Xup(1:end/2,k) + 1i*Xup(end/2+1:end,k);
-%   z = fft(z);
-%   z(abs(modes) > 32) = 0;
-%   z = ifft(z);
-%   Xnew(:,k) = [interpft(real(z),128);interpft(imag(z),128)];
-% end
-% 
-% X = Xnew;
-
-figure(1); clf;
-plot(X(1:end/2,:),X(end/2+1:end,:),'k-o')
-hold on
-% plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r')
-axis equal
-pause(0.1)
-% -------------------------------------------------------------------------
-
 solveType = 'DNN';
-% fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/resume_128modes_shear_nearNetrelaxNetTenNetAdvNet_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/entangled_shear_biem_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-% fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/32modes_taylorGreen_IC4_biem_wrongNear_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/resume2_32modes_taylorGreen_IC5_BIEM_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/resume_32modes_taylorGreen_IC5_GT50Ves_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -152,29 +141,16 @@ fclose(fid);
 dnn = dnnToolsManyVesFree(X,prams);
 
 % LOAD NORMALIZATION PARAMETERS
-% load ./shannets/ves_fft_in_param.mat
-% load ./shannets/ves_fft_out_param.mat
-load ./shannets/mergedAdv_NormParams.mat
+load ./shannets/ves_fft_in_param.mat
+load ./shannets/ves_fft_out_param.mat
 dnn.torchAdvInNorm = in_param;
 dnn.torchAdvOutNorm = out_param;
 
 % % LOAD NEAR-SINGULAR NORMALIZATION PARAMS
-if prams.N == 128
-% load ./shannets/nearInterp_fft_in_param.mat
-% load ./shannets/nearInterp_fft_out_param.mat
-load ./shannets/near_vel_allModes_normParams/nearInterp_allModes_in_param.mat
-load ./shannets/near_vel_allModes_normParams/nearInterp_allModes_out_param.mat
-elseif prams.N == 32
-load ./shannets/nearInterp_32modes_in_param.mat
-load ./shannets/nearInterp_32modes_out_param.mat
-end
+load ./shannets/nearInterp_fft_in_param.mat
+load ./shannets/nearInterp_fft_out_param.mat
 dnn.torchNearInNorm = in_param;
 dnn.torchNearOutNorm = out_param;
-
-
-load ./shannets/tensionAdv_NormParams.mat
-dnn.torchTenAdvInNorm = in_param;
-dnn.torchTenAdvOutNorm = out_param;
 
 tt = dnn.tt; dnn.oc = oc; 
 % -------------------------------------------------------------------------
@@ -204,7 +180,7 @@ while time(end) < prams.Th
   disp([num2str(it) 'th time step, time: ' num2str(time(it))])
   
   
-  tStart = tic;    
+  disp('Taking a step with DNNs...');  tStart = tic;    
   [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear);
 
 
@@ -224,7 +200,7 @@ while time(end) < prams.Th
   if rem(it,1) == 0
     writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
   end
-
+  toc(tStart)
 
   if iplot
   figure(1);clf;
@@ -234,8 +210,8 @@ while time(end) < prams.Th
   plot(x,y,'r','linewidth',2)
   hold on
   plot(Xhist(1,:), Xhist(end/2+1,:),'o','markerfacecolor','r','markersize',8)
-  xlim([-0.5 0.5])
-  ylim([-0.5 0.5])
+  xlim([-2.5 5])
+  ylim([-2.5 5])
   axis equal
   pause(0.1)
   end

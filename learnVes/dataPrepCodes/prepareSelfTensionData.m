@@ -56,7 +56,7 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   % standardize
   [Xstand,scaling,rotate,trans,sortIdx] = dnn.standardizationStep(Xinit,oc);
 
-  XstandStore(:,idx) = Xinit;
+  XstandStore(:,idx) = Xinit; % supposed to be Xstand
 
   selfTenStore(:,idx) = scaling*tension(sortIdx);
   

@@ -48,3 +48,19 @@ for it = 2 : numel(timeT2)
 end
 
 save taylorGreen_IC3_true_long_dt5E6_speed500 vesxT vesyT timeT
+
+%%
+
+load 128modes_TaylorGreen_50Ves_BIEM.mat
+
+fileNameTR = '~/Desktop/resume2_128modes_taylorGreen_IC5_GT50ves_dt1e-05_speed200.bin'; % BIEM with Near but resolution is low
+[vesxT2, vesyT2, ten, timeT2, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileNameTR);
+tLast = timeT(end);
+for it = 2 : numel(timeT2)
+
+  vesxT(:,:,end+1) = vesxT2(:,:,it);
+  vesyT(:,:,end+1) = vesyT2(:,:,it);
+  timeT(end+1) = tLast + timeT(it);
+end
+
+save('128modes_TaylorGreen_50Ves_BIEM_longer.mat', 'vesxT', 'vesyT' , 'timeT', '-v7.3')

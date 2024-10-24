@@ -25,17 +25,19 @@ end
 
 %%
 clear;
-out_param = zeros(128,2,12);
+% out_param = zeros(128,2,12);
+out_param = zeros(127,4);
 
-filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_allModes_normParams/out_param_allmode.npy';
+% filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_allModes_normParams/out_param_allmode.npy';
+filename = './advten_merged_out_para.npy';
 [arrayShape, dataType, fortranOrder, littleEndian, totalHeaderLength, npyVersion] = readNPYheader(filename);
 
 f = memmapfile(filename, 'Format', {dataType, arrayShape(end:-1:1), 'd'}, 'Offset', totalHeaderLength);
 tmp = f.Data.d;
 
-for k = 1 : 128
+for k = 1 : 127
 
-out_param(k,:,:) = tmp(:,:,k)';
+out_param(k,:) = tmp(:,k)';
 
 end
 
@@ -44,15 +46,17 @@ end
 
 %%
 % clear;
-in_param = zeros(128,4);
+% in_param = zeros(128,4);
+in_param = zeros(127,4);
 
-filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_allModes_normParams/in_param_allmode.npy';
+% filename = '/Users/gokberk/Documents/GitHub/ves2d/learnVes/shannets/near_vel_allModes_normParams/in_param_allmode.npy';
+filename = './advten_merged_in_para.npy';
 [arrayShape, dataType, fortranOrder, littleEndian, totalHeaderLength, npyVersion] = readNPYheader(filename);
 
 f = memmapfile(filename, 'Format', {dataType, arrayShape(end:-1:1), 'd'}, 'Offset', totalHeaderLength);
 tmp = f.Data.d;
 
-for k = 1 : 128
+for k = 1 : 127
 
 in_param(k,:) = tmp(:,k)';
 
