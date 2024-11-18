@@ -8,7 +8,7 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 % fileNameNN = 'moreModes32_test_shear_interpNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 % fileNameNN = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
-fileNameNN = '128modes_shear_nearNet_relaxNet_dt1e-05_speed2000.bin';
+fileNameNN = '128modes_shear_nearNetrelaxNetTenNetAdvNet_noFiltering_dt1e-05_speed2000.bin';
 % fileNameTR = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 
 fileNameTR = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
@@ -19,6 +19,7 @@ fileNameTR = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';
 % load testShearNearInterpSpeed2000 
 
 nsteps = min([numel(timeN); numel(timeT)]);
+nsteps = numel(timeN);
 
 cxTrue = mean(vesxT,1); cyTrue = mean(vesyT,1);
 cxNN = mean(vesxN,1); cyNN = mean(vesyN,1);
@@ -70,22 +71,22 @@ for k = 1 :  numberOfFrames
 cla reset;
 
 figure(1); clf;
-xvec = [vesxT(:,1,k);vesxT(1,1,k)];
-yvec = [vesyT(:,1,k);vesyT(1,1,k)];
-plot(xvec, yvec, 'Color',[244,165,130]/255,'linewidth',2)
-hold on
-hFill = fill(xvec, yvec, [244,165,130]/255);
-set(hFill,'EdgeColor', [244,165,130]/255);
-plot(vesxT(1,1,k),vesyT(1,1,k),'ko','markersize',8,'markerfacecolor','k')
-
-xvec = [vesxT(:,2,k);vesxT(1,2,k)];
-yvec = [vesyT(:,2,k);vesyT(1,2,k)];
-plot(xvec, yvec, 'Color',[146,197,222]/255,'linewidth',2)
-hold on
-hFill = fill(xvec, yvec, [146,197,222]/255);
-hFill.FaceAlpha = 0.5;
-set(hFill,'EdgeColor', [146,197,222]/255);
-plot(vesxT(1,2,k),vesyT(1,2,k),'ko','markersize',8,'markerfacecolor','k')
+% xvec = [vesxT(:,1,k);vesxT(1,1,k)];
+% yvec = [vesyT(:,1,k);vesyT(1,1,k)];
+% plot(xvec, yvec, 'Color',[244,165,130]/255,'linewidth',2)
+% hold on
+% hFill = fill(xvec, yvec, [244,165,130]/255);
+% set(hFill,'EdgeColor', [244,165,130]/255);
+% plot(vesxT(1,1,k),vesyT(1,1,k),'ko','markersize',8,'markerfacecolor','k')
+% 
+% xvec = [vesxT(:,2,k);vesxT(1,2,k)];
+% yvec = [vesyT(:,2,k);vesyT(1,2,k)];
+% plot(xvec, yvec, 'Color',[146,197,222]/255,'linewidth',2)
+% hold on
+% hFill = fill(xvec, yvec, [146,197,222]/255);
+% hFill.FaceAlpha = 0.5;
+% set(hFill,'EdgeColor', [146,197,222]/255);
+% plot(vesxT(1,2,k),vesyT(1,2,k),'ko','markersize',8,'markerfacecolor','k')
 
 
 
@@ -96,7 +97,7 @@ plot(xvec, yvec, 'Color',[202,0,32]/255,'linewidth',2)
 hold on
 hFill = fill(xvec, yvec, [202,0,32]/255);
 set(hFill,'EdgeColor', [202,0,32]/255);
-plot(vesxN(1,1,k),vesyN(1,1,k),'ko','markersize',8,'markerfacecolor','k')
+% plot(vesxN(1,1,k),vesyN(1,1,k),'ko','markersize',8,'markerfacecolor','k')
 
 xvec = [vesxN(:,2,k);vesxN(1,2,k)];
 yvec = [vesyN(:,2,k);vesyN(1,2,k)];
@@ -105,7 +106,7 @@ hold on
 hFill = fill(xvec, yvec, [5,113,176]/255);
 hFill.FaceAlpha = 0.5;
 set(hFill,'EdgeColor', [5,113,176]/255);
-plot(vesxN(1,2,k),vesyN(1,2,k),'ko','markersize',8,'markerfacecolor','k')
+% plot(vesxN(1,2,k),vesyN(1,2,k),'ko','markersize',8,'markerfacecolor','k')
 
 
 set(gca,'xtick',[]);
@@ -122,8 +123,8 @@ axis equal
 xlim([-0.75 1])
 ylim([-0.35 0.35])
 
-titleStr = ['t = ' num2str(timeT(k),'%.2f')];
-title(titleStr,'FontSize',28)
+% titleStr = ['t = ' num2str(timeT(k),'%.2f')];
+% title(titleStr,'FontSize',28)
 
 drawnow;
 myMovie(k) = getframe(gca);

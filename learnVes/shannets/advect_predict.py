@@ -34,13 +34,14 @@ for ij in np.arange(0,nmodes-1):
   basis = rr_ii_Mat[imode-1,:].reshape(1,1,256).float()
     
   # tile the fourier mode array for num_ves
-  fourX_tile = torch.tile(basis,(num_ves,1,1))
+  #fourX_tile = torch.tile(basis,(num_ves,1,1))
   input_vec = torch.from_numpy(input_shape[ij]).float()
   input_net = torch.zeros(num_ves,2,256)
-  input_net[:,0,:128] = input_vec[:,0,:] #input_shape[:,0,:]
-  input_net[:,0,128:] = input_vec[:,1,:] #input_shape[:,1,:]
-  input_net[:,1,:] = fourX_tile
-  
+  for k in np.arange(0,num_ves):
+      input_net[k,0,:128] = input_vec[k,0,:]
+      input_net[k,0,128:] = input_vec[k,1,:]
+      input_net[k,1,:] = basis
+
   with torch.no_grad():
     output_net = model(input_net)
   output_list.append(output_net.detach().numpy())

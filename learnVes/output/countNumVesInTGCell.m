@@ -7,11 +7,11 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 addpath ../../src/
 
-% fileName = '32modes_taylorGreen_IC5_GT50ves_dt1e-05_speed200.bin';
-% [vesx, vesy, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
+fileName = '32modes_taylorGreen_IC5_GT50ves_dt0.0001_speed200.bin';
+[vesx, vesy, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
 
-load 32modes_TaylorGreen_50Ves_BIEM % Low-Res BIEM
-vesx = vesxT; vesy = vesyT; time = timeT;
+% load 32modes_TaylorGreen_50Ves_BIEM % Low-Res BIEM
+% vesx = vesxT; vesy = vesyT; time = timeT;
 
 nsteps = numel(time);
 cx = mean(vesx,1); cy = mean(vesy,1);
@@ -85,16 +85,21 @@ figure(1);clf;
 times = [0; 0.05; 0.1; 0.15; 0.20; 0.25; 0.30; 0.35; 0.40; 0.45; 0.50; 0.55; 0.60; 0.65];
 ids = [1:5000:65001];
 
-% yaxis = [nvesInCell_BIEM128(ids) nvesInCell_BIEM32(ids) nvesInCell_VESNET32(ids)]/48*100;
-yaxis = [nvesInCell_BIEM128(ids) nvesInCell_VESNET32(ids)]/48*100;
+idsB32 = (ids-1)/10 + 1;
+
+yaxis = [nvesInCell_BIEM128(ids) nvesInCell_BIEM32(idsB32) nvesInCell_VESNET32(ids)]/48*100;
+% yaxis = [nvesInCell_BIEM128(ids) nvesInCell_VESNET32(ids)]/48*100;
 b = bar(times/1E-5, yaxis);
 b(1).FaceColor = 'k';
-% b(2).FaceColor = [26/255 150/255 65/255];
-b(2).FaceColor = [202/255 0 32/255];
+b(2).FaceColor = [26/255 150/255 65/255];
+b(3).FaceColor = [202/255 0 32/255];
 axis square
 
 xlabel('Time steps')
 ylabel('\% of vesicles in the cell')
+
+legend('BIEM (N = 128)','BIEM (N = 32)','VES-NET (N = 32)')
+legend boxoff
 
 % plot(time_BIEM128, nvesInCell_BIEM128, 'k','linewidth',2)
 % hold on

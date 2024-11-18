@@ -1,6 +1,7 @@
 classdef dnnToolsManyVesFree
 
 properties
+runName
 KbDts    
 variableKbDt
 tt
@@ -131,10 +132,10 @@ disp('Area-Length correction after relaxation step')
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 % Xnew = oc.alignCenterAngle(Xnew,XnewC);
 
-% filter shape
 Xnew = oc.upsThenFilterShape(Xnew,512,16);
   
 end % DNNsolveTorchSingle
+% filter shape
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [Xnew,tenNew] = DNNsolveTorchMany(o,Xold,tenOld,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear)
@@ -157,8 +158,10 @@ fBend = vesicle.tracJump(Xold,zeros(N,nv));
 fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
 tracJump = fBend+fTen;
 
+tracJump1 = tracJump;
+
 % Filter traction jump
-% tracJump = oc.upsThenFilterShape(tracJump,4*N,16);
+% tracJump = oc.upsThenFilterShape(tracJump,4*N,64);
 % -----------------------------------------------------------
 % 1) Explicit Tension at the Current Step
 
@@ -174,9 +177,10 @@ disp('Network near')
 [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnceAllModes(vesicle.X);    
 % farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-farFieldtracJump = o.computeStokesInteractionsNet_Alternative2(vesicle, tracJump, opNfmm, oc, ...
+farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear);
+farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
 disp('Exact Near')
 % single layer matrix without correction
@@ -195,6 +199,18 @@ farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
 
 end
 end
+
+farFieldtracJump1 = farFieldtracJump;
+
+% for k = 1 : nv
+% figure(k); clf;
+% plot(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),'k','linewidth',2)
+% hold on
+% quiver(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),farFieldtracJump(1:end/2,k),farFieldtracJump(end/2+1:end,k),'r')
+% axis equal
+% title('With initial tension')
+% end
+% pause
 
 
 if iExactTension % Tension exact solve
@@ -225,13 +241,14 @@ else % Tension network solve
   tenNew = -(vBackSolve + selfBendSolve);
 end
 
-
 % update the traction jump calculation
 fTen = vesicle.tracJump(zeros(2*N,nv), tenNew); 
 tracJump = fBend + fTen;
 
+tracJump2 = tracJump;
+
 % Filter traction jump
-% tracJump = oc.upsThenFilterShape(tracJump,4*N,16);
+% tracJump = oc.upsThenFilterShape(tracJump,4*N,64);
 % -----------------------------------------------------------
 
 % Calculate far-field again and correct near field before advection
@@ -242,9 +259,10 @@ farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
 if ~iExactNear
 % farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-farFieldtracJump = o.computeStokesInteractionsNet_Alternative2(vesicle, tracJump, opNfmm, oc, ...
+farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear);
+farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
 
 
@@ -257,6 +275,19 @@ farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
 
 end
 end
+
+farFieldtracJump2 = farFieldtracJump;
+
+% for k = 1 : nv
+% figure(k); clf;
+% plot(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),'k','linewidth',2)
+% hold on
+% quiver(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),farFieldtracJump(1:end/2,k),farFieldtracJump(end/2+1:end,k),'r')
+% axis equal
+% title('With new tension')
+% end
+% pause
+% 
 
 % Total background velocity
 vbackTotal = vback + farFieldtracJump;
@@ -286,7 +317,7 @@ elseif advType == 2
   Xadv = o.translateVinfwNN(Xold,vbackTotal);
 elseif advType == 3
   disp('Network advection')  
-  Xadv = o.translateVinfwMergedTorch(Xold,vbackTotal);
+  [Xadv,MVinf] = o.translateVinfwMergedTorch(Xold,vbackTotal);
 end
 
 % filter shape
@@ -330,7 +361,11 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
 
 % filter shape
-Xnew = oc.upsThenFilterShape(Xnew,4*N,16);
+Xnew = oc.upsThenFilterShape(Xnew,4*N,64);
+
+
+save([o.runName '.mat'],'Xnew','tenNew','tracJump1','tracJump2','farFieldtracJump1','farFieldtracJump2','MVinf');
+
 end % DNNsolveTorchMany
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xlayers, ylayers, velx, vely] = predictNearLayersWTorchNet(o, X, tracJump)
@@ -635,7 +670,7 @@ disp('PREDICTING NEAR FIELD')
 in_param = o.torchNearInNorm;
 out_param = o.torchNearOutNorm;
 
-maxLayerDist = sqrt(1/Nnet); % length = 1, h = 1/Nnet;
+maxLayerDist = 1/Nnet; % length = 1, h = 1/Nnet;
 % Predictions on three layers
 nlayers = 3;
 dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist;
@@ -679,7 +714,7 @@ modeList = find(abs(modes)<=modesInUse);
 
 
 input_conv = py.numpy.array(input_net);
-[Xpredict] = pyrunfile("near_vel_allModes_predict.py","output_list",input_shape=input_conv);
+[Xpredict] = pyrunfile("near_vel_allModesAth_predict.py","output_list",input_shape=input_conv);
 
 Xpredict = double(Xpredict);
 
@@ -1190,7 +1225,7 @@ end
 Xnew = Xold + o.dt*vinf-o.dt*MVinfMat;
 end % translateVinfwNN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function Xnew = translateVinfwMergedTorch(o,Xold,vinf)
+function [Xnew,MVinfStore] = translateVinfwMergedTorch(o,Xold,vinf)
 % Xinput is equally distributed in arc-length
 % Xold as well. So, we add up coordinates of the same points.
 N = numel(Xold(:,1))/2;
@@ -1265,15 +1300,17 @@ for ij = 1 : 127
   imag_mean = out_param(ij,3);
   imag_std = out_param(ij,4);
   
-  % first channel is real
-  pred(:,1,:) = (pred(:,1,:)*real_std) + real_mean;
-  % second channel is imaginary
-  pred(:,2,:) = (pred(:,2,:)*imag_std) + imag_mean;
+  for k = 1 : nv
+    % first channel is real
+    pred(k,1,:) = (pred(k,1,:)*real_std) + real_mean;
+    % second channel is imaginary
+    pred(k,2,:) = (pred(k,2,:)*imag_std) + imag_mean;
 
-  Z11r(:,imode,:) = reshape(pred(:,1,1:end/2),[Nnet,1,nv]);
-  Z21r(:,imode,:) = reshape(pred(:,1,end/2+1:end),[Nnet,1,nv]);
-  Z12r(:,imode,:) = reshape(pred(:,2,1:end/2),[Nnet,1,nv]);
-  Z22r(:,imode,:) = reshape(pred(:,2,end/2+1:end),[Nnet,1,nv]);
+    Z11r(:,imode,k) = pred(k,1,1:end/2);
+    Z21r(:,imode,k) = pred(k,1,end/2+1:end);
+    Z12r(:,imode,k) = pred(k,2,1:end/2);
+    Z22r(:,imode,k) = pred(k,2,end/2+1:end);
+  end
 end
 tOrganize = toc(tS);
 disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
@@ -1281,6 +1318,7 @@ disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
 % Take fft of the velocity (should be standardized velocity)
 % only sort points and rotate to pi/2 (no translation, no scaling)
 Xnew = zeros(size(Xold));
+MVinfStore = Xnew;
 for k = 1 : nv
   vinfStand = o.standardize(vinf(:,k),[0;0],rotate(k),[0;0],1,sortIdx(:,k));
   z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
@@ -1289,12 +1327,16 @@ for k = 1 : nv
   V1 = real(zh); V2 = imag(zh);
   % Compute the approximate value of the term M*vinf
   MVinfStand = [Z11r(:,:,k)*V1+Z12r(:,:,k)*V2; Z21r(:,:,k)*V1+Z22r(:,:,k)*V2];
+  
+  % XnewStand = Xstand(:,k) + o.dt*vinfStand - o.dt*MVinfStand;
+  % Xnew(:,k) = o.destandardize(XnewStand,trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
+  
   % Need to destandardize MVinf (take sorting and rotation back)
   MVinf = zeros(size(MVinfStand));
   MVinf([sortIdx(:,k);sortIdx(:,k)+Nnet]) = MVinfStand;
   MVinf = o.rotationOperator(MVinf,-rotate(k),[0;0]);
-
-  Xnew(:,k) = Xold(:,k) + o.dt * vinf(:,k) - o.dt*MVinf;
+  MVinfStore(:,k) = MVinf;  
+  Xnew(:,k) = Xold(:,k) + o.dt * vinf(:,k) - o.dt*MVinf;   
 end
 % XnewStand = Xstand + o.dt*vinfStand - o.dt*MVinf;
 % Update the position
@@ -1311,7 +1353,7 @@ oc = o.oc;
 
 
 modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
-modesInUse = 128;
+modesInUse = 16;
 modeList = find(abs(modes)<=modesInUse);
 
 % Standardize input
@@ -1334,13 +1376,15 @@ input_list = [];
 cnt = 1;
 for imode = modeList
   if imode ~= 1
-  input_net = zeros(1,2,Nnet);  
+  input_net = zeros(nv,2,Nnet);  
   x_mean = in_param(imode-1,1);
   x_std = in_param(imode-1,2);
   y_mean = in_param(imode-1,3);
   y_std = in_param(imode-1,4);
-  input_net(:,1,:) = (Xstand(1:end/2)-x_mean)/x_std;
-  input_net(:,2,:) = (Xstand(end/2+1:end)-y_mean)/y_std;
+  for k = 1 : nv
+  input_net(k,1,:) = (Xstand(1:end/2,k)-x_mean)/x_std;
+  input_net(k,2,:) = (Xstand(end/2+1:end,k)-y_mean)/y_std;
+  end
   input_list{cnt} = py.numpy.array(input_net);
   cnt = cnt + 1;
   end
@@ -1370,33 +1414,38 @@ for ij = 1 : numel(modeList)-1
   imag_std = out_param(imode-1,4);
   
   % first channel is real
-  pred(1,1,:) = (pred(1,1,:)*real_std) + real_mean;
+  pred(:,1,:) = (pred(1,1,:)*real_std) + real_mean;
   % second channel is imaginary
-  pred(1,2,:) = (pred(1,2,:)*imag_std) + imag_mean;
-
-  Z11r(:,imode,1) = pred(1,1,1:end/2);
-  Z21r(:,imode,1) = pred(1,1,end/2+1:end);
-  Z12r(:,imode,1) = pred(1,2,1:end/2);
-  Z22r(:,imode,1) = pred(1,2,end/2+1:end);
+  pred(:,2,:) = (pred(1,2,:)*imag_std) + imag_mean;
+  
+  for k = 1 : nv
+  Z11r(:,imode,k) = pred(k,1,1:end/2);
+  Z21r(:,imode,k) = pred(k,1,end/2+1:end);
+  Z12r(:,imode,k) = pred(k,2,1:end/2);
+  Z22r(:,imode,k) = pred(k,2,end/2+1:end);
+  end
 end
 tOrganize = toc(tS);
 disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
 
 % Take fft of the velocity (should be standardized velocity)
 % only sort points and rotate to pi/2 (no translation, no scaling)
-vinfStand = o.standardize(vinf,[0;0],rotate,[0;0],1,sortIdx);
+Xnew = zeros(size(Xold));
+for k = 1 : nv
+vinfStand = o.standardize(vinf(:,k),[0;0],rotate(k),[0;0],1,sortIdx(:,k));
 z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
 
 zh = fft(z);
 V1 = real(zh); V2 = imag(zh);
 % Compute the approximate value of the term M*vinf
-MVinfStand = [Z11r*V1+Z12r*V2; Z21r*V1+Z22r*V2];
+MVinfStand = [Z11r(:,:,k)*V1+Z12r(:,:,k)*V2; Z21r(:,:,k)*V1+Z22r(:,:,k)*V2];
 % Need to destandardize MVinf (take sorting and rotation back)
 MVinf = zeros(size(MVinfStand));
-MVinf([sortIdx;sortIdx+Nnet]) = MVinfStand;
-MVinf = o.rotationOperator(MVinf,-rotate,[0;0]);
+MVinf([sortIdx(:,k);sortIdx(:,k)+Nnet]) = MVinfStand;
+MVinf = o.rotationOperator(MVinf,-rotate(k),[0;0]);
 
-Xnew = Xold + o.dt * vinf - o.dt*MVinf;
+Xnew(:,k) = Xold(:,k) + o.dt * vinf(:,k) - o.dt*MVinf;
+end
 
 % XnewStand = Xstand + o.dt*vinfStand - o.dt*MVinf;
 % Update the position
@@ -1449,7 +1498,7 @@ end
 input_conv = py.numpy.array(input_net);
 
 tS = tic;
-[Xpredict] = pyrunfile("tension_advect_allModes_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
+[Xpredict] = pyrunfile("tension_advect_allModes_predict2024Oct.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
 tPyCall = toc(tS);
 
 disp(['Calling python to predict MV Tension takes ' num2str(tPyCall) ' seconds'])
@@ -1519,14 +1568,25 @@ for k = 1 : nv
 end
 
 % Input normalizing parameters
-x_mean = 2.980232033378272e-11; 
-x_std = 0.06010082736611366;
-y_mean = -1.0086939616904544e-10; 
-y_std = 0.13698545098304749;
+% x_mean = 2.980232033378272e-11; 
+% x_std = 0.06010082736611366;
+% y_mean = -1.0086939616904544e-10; 
+% y_std = 0.13698545098304749;
+
+% 2024Oct
+x_mean = 0.00017108717293012887;
+x_std = 0.06278623640537262;
+y_mean = 0.002038202714174986;
+y_std = 0.13337858021259308;
 
 % Output normalizing parameters
-vx_mean = 327.26141357421875; 
-vx_std = 375.0673828125;
+% vx_mean = 327.26141357421875; 
+% vx_std = 375.0673828125;
+
+%2024Oct
+vx_mean = 337.7627868652344;
+vx_std = 466.6429138183594;
+
 
 Xin(1:end/2,:) = (Xin(1:end/2,:)-x_mean)/x_std;
 Xin(end/2+1:end,:) = (Xin(end/2+1:end,:)-y_mean)/y_std;
@@ -1537,10 +1597,13 @@ XinitShape(k,2,:) = Xin(end/2+1:end,k)';
 end
 XinitConv = py.numpy.array(XinitShape);
 
-[Xpredict] = pyrunfile("self_tension_solve.py","predicted_shape",input_shape=XinitConv);
+% [Xpredict] = pyrunfile("self_tension_solve.py","predicted_shape",input_shape=XinitConv);
 
+[Xpredict] = pyrunfile("self_tension_solve_2024Oct.py","predicted_shape",input_shape=XinitConv);
 
 tenStand = double(Xpredict);
+
+
 tension = zeros(N,nv);
 
 for k = 1 : nv

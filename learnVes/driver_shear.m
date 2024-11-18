@@ -1,6 +1,6 @@
 clear; clc;
 dt = 1E-5;
-Th = 0.01; %0.01;
+Th = dt; %0.01;
 % cx = [-0.4; 0];
 % cy = [0.05; 0];
 
@@ -48,7 +48,7 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 %-------------------------------------------------------------------------
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 2000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 1;
+iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -101,12 +101,21 @@ X = oc.alignCenterAngle(XOrig,X);
 
 
 [~,area0,len0] = oc.geomProp(X);
+X0 = X;
 
 % load finalShearXclose.mat
 % X = Xf;
 
 % load nearShearIC.mat
 % X = Xic;
+
+
+load ./output/shanSim_matlab_version.mat
+tsteps = [1;2;105;106;150;151];
+istep = 6;
+X = reshape(X(tsteps(istep),:,:),256,2);
+sigStore = reshape(ten(tsteps(istep),:,:),128,2);
+
 
 % 
 % Xnew = zeros(size(X));
@@ -136,7 +145,8 @@ pause(0.1)
 
 solveType = 'DNN';
 % fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/resume_128modes_shear_nearNetrelaxNetTenNetAdvNet_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/128modes_shear_nearNetrelaxNetTenNetAdvNet_noFiltering_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/CheckingShansNet_istep' num2str(istep) '.bin'];
 % fileName = ['./output/entangled_shear_biem_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 fid = fopen(fileName,'w');
@@ -150,6 +160,7 @@ fclose(fid);
 % BUILD DNN CLASS
 % -------------------------------------------------------------------------
 dnn = dnnToolsManyVesFree(X,prams);
+dnn.runName = ['CheckingShansNet_istep' num2str(istep)];
 
 % LOAD NORMALIZATION PARAMETERS
 % load ./shannets/ves_fft_in_param.mat
@@ -162,8 +173,7 @@ dnn.torchAdvOutNorm = out_param;
 if prams.N == 128
 % load ./shannets/nearInterp_fft_in_param.mat
 % load ./shannets/nearInterp_fft_out_param.mat
-load ./shannets/near_vel_allModes_normParams/nearInterp_allModes_in_param.mat
-load ./shannets/near_vel_allModes_normParams/nearInterp_allModes_out_param.mat
+load ./shannets/nearInterp_128modes_disth_params.mat
 elseif prams.N == 32
 load ./shannets/nearInterp_32modes_in_param.mat
 load ./shannets/nearInterp_32modes_out_param.mat
@@ -188,7 +198,7 @@ tt.dt = maxDt; sig = zeros(N,nv); eta = []; RS = [];
 % INITIALIZE MATRICES AND COUNTERS
 % ------------------------------------------------------------------------
 time = [0];
-Xhist = X; sigStore = sig; 
+Xhist = X; %sigStore = sig; 
 errALPred = 0;
 ncountCNN = 0;
 ncountExct = 0;
