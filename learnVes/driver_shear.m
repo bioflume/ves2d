@@ -1,6 +1,6 @@
 clear; clc;
 dt = 1E-5;
-Th = dt; %0.01;
+Th = 0.01;
 % cx = [-0.4; 0];
 % cy = [0.05; 0];
 
@@ -21,6 +21,7 @@ iExactTension = 0;
 iExactNear = 0;
 iExact = 0; % exact relaxation
 iIgnoreNear = 0;
+iAdv = 3; % 1: exact, 3: network
 
 addpath ../src/
 addpath ../examples/
@@ -42,13 +43,24 @@ if count(py.sys.path,pathofDocument) == 0
     insert(py.sys.path,int32(0),pathofDocument);
 end
 
+pathofDocument = fileparts(which('2024Nov_downsample32_ves_advten_mode1.pth'));
+if count(py.sys.path,pathofDocument) == 0
+    insert(py.sys.path,int32(0),pathofDocument);
+end
+
+pathofDocument = fileparts(which('ves_adv_downsample_fft_2024Oct_mode2.pth'));
+if count(py.sys.path,pathofDocument) == 0
+    insert(py.sys.path,int32(0),pathofDocument);
+end
+
+
 pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'shear'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 2000; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 0;
+iplot = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -56,8 +68,8 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
-prams.Nfmm = 128;
+prams.N = 32; % num. points for true solve in DNN scheme
+prams.Nfmm = 32;
 prams.nv = 2; %(24 for VF = 0.1, 47 for VF = 0.2) num. of vesicles
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
@@ -73,7 +85,7 @@ Th = prams.Th; N = prams.N; nv = prams.nv; dt = prams.dt;
 bgFlow = prams.bgFlow; speed = prams.speed;
 
 % net parameters
-Nnet = 128; % num. points
+Nnet = 32; % num. points
 %-------------------------------------------------------------------------
 disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
     ', Th = ' num2str(Th)])
@@ -103,38 +115,6 @@ X = oc.alignCenterAngle(XOrig,X);
 [~,area0,len0] = oc.geomProp(X);
 X0 = X;
 
-% load finalShearXclose.mat
-% X = Xf;
-
-% load nearShearIC.mat
-% X = Xic;
-
-
-load ./output/shanSim_matlab_version.mat
-tsteps = [1;2;105;106;150;151];
-istep = 6;
-X = reshape(X(tsteps(istep),:,:),256,2);
-sigStore = reshape(ten(tsteps(istep),:,:),128,2);
-
-
-% 
-% Xnew = zeros(size(X));
-% 
-% Xup = [interpft(X(1:end/2,:),1024);interpft(X(end/2+1:end,:),1024)];
-% Nup = size(Xup,1)/2;
-% nv = size(Xup,2);
-% modes = [(0:Nup/2-1) (-Nup/2:-1)];
-% 
-% for k = 1 : nv
-%   z = Xup(1:end/2,k) + 1i*Xup(end/2+1:end,k);
-%   z = fft(z);
-%   z(abs(modes) > 32) = 0;
-%   z = ifft(z);
-%   Xnew(:,k) = [interpft(real(z),128);interpft(imag(z),128)];
-% end
-% 
-% X = Xnew;
-
 figure(1); clf;
 plot(X(1:end/2,:),X(end/2+1:end,:),'k-o')
 hold on
@@ -146,7 +126,7 @@ pause(0.1)
 solveType = 'DNN';
 % fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/128modes_shear_nearNetrelaxNetTenNetAdvNet_noFiltering_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/CheckingShansNet_istep' num2str(istep) '.bin'];
+fileName = ['./output/CheckingShansNetN32_istep' num2str(0) '.bin'];
 % fileName = ['./output/entangled_shear_biem_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 fid = fopen(fileName,'w');
@@ -160,14 +140,18 @@ fclose(fid);
 % BUILD DNN CLASS
 % -------------------------------------------------------------------------
 dnn = dnnToolsManyVesFree(X,prams);
-dnn.runName = ['CheckingShansNet_istep' num2str(istep)];
 
 % LOAD NORMALIZATION PARAMETERS
-% load ./shannets/ves_fft_in_param.mat
-% load ./shannets/ves_fft_out_param.mat
+
+if prams.N == 128
 load ./shannets/mergedAdv_NormParams.mat
 dnn.torchAdvInNorm = in_param;
 dnn.torchAdvOutNorm = out_param;
+elseif prams.N == 32
+load ./shannets/32modes_Adv_NormParams_2024Nov.mat
+dnn.torchAdvInNorm = in_param;
+dnn.torchAdvOutNorm = out_param;    
+end
 
 % % LOAD NEAR-SINGULAR NORMALIZATION PARAMS
 if prams.N == 128
@@ -181,10 +165,15 @@ end
 dnn.torchNearInNorm = in_param;
 dnn.torchNearOutNorm = out_param;
 
-
-load ./shannets/tensionAdv_NormParams.mat
+if prams.N == 128
+load ./shannets/tensionAdv_NormParams_2024Oct.mat
 dnn.torchTenAdvInNorm = in_param;
 dnn.torchTenAdvOutNorm = out_param;
+elseif prams.N == 32
+load ./shannets/32modes_tensionAdv_NormParams_2024Nov.mat
+dnn.torchTenAdvInNorm = in_param;
+dnn.torchTenAdvOutNorm = out_param;
+end
 
 tt = dnn.tt; dnn.oc = oc; 
 % -------------------------------------------------------------------------
@@ -198,7 +187,7 @@ tt.dt = maxDt; sig = zeros(N,nv); eta = []; RS = [];
 % INITIALIZE MATRICES AND COUNTERS
 % ------------------------------------------------------------------------
 time = [0];
-Xhist = X; %sigStore = sig; 
+Xhist = X; sigStore = sig; 
 errALPred = 0;
 ncountCNN = 0;
 ncountExct = 0;
@@ -215,7 +204,7 @@ while time(end) < prams.Th
   
   
   tStart = tic;    
-  [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear);
+  [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear,iAdv);
 
 
   [xIntersect,~,~] = oc.selfintersect(Xhist);

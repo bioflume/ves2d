@@ -1,6 +1,6 @@
 clear; clc;
 
-set(0,'defaultAxesFontSize',40)
+set(0,'defaultAxesFontSize',25)
 set(groot, 'defaultAxesTickLabelInterpreter','latex')
 set(groot, 'defaultLegendInterpreter','latex')
 set(groot, 'DefaultTextInterpreter','latex')
@@ -17,7 +17,7 @@ Cks = zeros(numel(chanWidths)*3,1);
 Cns = Cks;
 count = 1;
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 3
+    for is = 1 : 5
       w = chanWidths(iw);
       vmax = speeds(iw,is);
       Cks(count,1) = 2*vmax*R^3/w;
@@ -33,20 +33,30 @@ XfTrue = zeros(64,numel(chanWidths)*3);
 XfDNN = XfTrue;
 count = 1;
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 3
+    for is = 1 : 5
        speed = speeds(iw,is);
        chanWidth = chanWidths(iw);
        cxNew = (iw-1)*0.5;
        cyNew = (is-1)*0.5;
-
+       
+       
        ppDataFile = ['./VelocityData32modes/ppData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
        load(ppDataFile)
+       whichStep = numel(Xs(1,:))-10;
+       if iw == 3
+         if is == 4
+             whichStep = 135;
+         elseif is == 5
+             whichStep = 66;
+         end
+       end
+      
        cxV = abs(mean(selfVel(1:end/2,:),1));
        cyV = abs(mean(selfVel(end/2+1:end,:),1));
        mV = sqrt(cxV.^2 + cyV.^2);
        errorDNN(count) = mean(cyV./mV);
-       finalLatPosDNN(count) = mean(Xs(end/2+1:end,end));
-       XfDNN(:,count) = [Xs(1:end/2,end)-mean(Xs(1:end/2,end))+cxNew;Xs(end/2+1:end,end)-mean(Xs(end/2+1:end,end))+cyNew];
+       finalLatPosDNN(count) = mean(Xs(end/2+1:end,whichStep));
+       XfDNN(:,count) = [Xs(1:end/2,whichStep)-mean(Xs(1:end/2,whichStep))+cxNew;Xs(end/2+1:end,whichStep)-mean(Xs(end/2+1:end,whichStep))+cyNew];
 
        ppDataFile = ['./VelocityData32modes/ppTrueData_Speed' num2str(speed) '_width' num2str(chanWidth) '.mat'];
        load(ppDataFile)
@@ -88,7 +98,7 @@ figure(2);clf; hold on;%phase diagram dnn
 % figure(4);clf; %lat-pos plot Ca2
 % figure(5);clf; %lat-pos plot Ca3
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 3
+    for is = 1 : 5
       figure(1);
       x = [XfTrue(1:end/2,count);XfTrue(1,count)];
       y = [XfTrue(end/2+1:end,count);XfTrue(end/2+1,count)];
@@ -114,26 +124,26 @@ figure(1);
 axis equal
 xticks(([0:numel(chanWidths)-1]*0.5))
 xticklabels({'0.2','0.4','0.6','0.75'})
-% yticks(([0;0.5;1;1.5;2]))
-yticks(([0;0.5;1]))
-% yticklabels({'10','20','30','40','50'})
-yticklabels({'10','20','30'})
+yticks(([0;0.5;1;1.5;2]))
+% yticks(([0;0.5;1]))
+yticklabels({'10','20','30','40','50'})
+% yticklabels({'10','20','30'})
 xlim([-0.25 1.75])
-% ylim([-0.25 2.25])
-ylim([-0.25 1.25])
+ylim([-0.25 2.25])
+% ylim([-0.25 1.25])
 box on
 
 figure(2);
 axis equal
 xticks(([0:numel(chanWidths)-1]*0.5))
 xticklabels({'0.2','0.4','0.6','0.75'})
-% yticks(([0;0.5;1;1.5;2]))
-yticks(([0;0.5;1]))
-% yticklabels({'10','20','30','40','50'})
-yticklabels({'10','20','30'})
+yticks(([0;0.5;1;1.5;2]))
+% yticks(([0;0.5;1]))
+yticklabels({'10','20','30','40','50'})
+% yticklabels({'10','20','30'})
 xlim([-0.25 1.75])
-% ylim([-0.25 2.25])
-ylim([-0.25 1.25])
+ylim([-0.25 2.25])
+% ylim([-0.25 1.25])
 box on
 
 figure(3);clf;

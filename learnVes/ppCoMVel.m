@@ -13,7 +13,7 @@ Cks = zeros(numel(chanWidths)*3,1);
 Cns = Cks;
 count = 1;
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 5
+    for is = 4 : 5
       w = chanWidths(iw);
       vmax = speeds(iw,is);
       Cks(count,1) = 2*vmax*R^3/w;
@@ -27,20 +27,20 @@ oc = curve;
 op = poten(N);
 
 for iw = 1 : numel(chanWidths)
-    for is = 1 : 5
+    for is = 4 : 5
     speed = speeds(iw,is);
     chanWidth = chanWidths(iw);
     
-    runNew = ['./output/32modes_dt1e-05poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
+    runNew = ['./output/new32modes_dt5e-06poisRuns_speed' num2str(speed) '_width' num2str(chanWidth) '.bin'];
     
     [vesxN, vesyN, ten, timeN, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(runNew);
-    vesxN = vesxN(:,end-150:end-50);
-    vesyN = vesyN(:,end-150:end-50);
-    timeN = timeN(end-150:end-50);
+    vesxN = vesxN(:,end-200:end);
+    vesyN = vesyN(:,end-200:end);
+    timeN = timeN(end-200:end);
     
     Xs = [vesxN;vesyN];
     Xs1 = Xs;
-    Xs = filterShape(Xs);
+    % Xs = filterShape(Xs);
     % for k = 1 : nv
     %   figure(4);clf;
     %   plot(Xs1(1:end/2,k),Xs1(end/2+1:end,k),'k','linewidth',2)

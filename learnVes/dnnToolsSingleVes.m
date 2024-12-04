@@ -395,6 +395,124 @@ Xnew = Xold + o.dt * vinf - o.dt*MVinf;
 % Update the position
 % Xnew = o.destandardize(XnewStand,trans,rotate,scaling,sortIdx);
 end % translateVinfwTorch
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Xnew = translateVinfwMergedTorch(o,Xold,vinf)
+% Xinput is equally distributed in arc-length
+% Xold as well. So, we add up coordinates of the same points.
+N = numel(Xold(:,1))/2;
+nv = numel(Xold(1,:));
+Nnet = N;
+oc = o.oc;
+
+theta = (0:Nnet-1)'/Nnet*2*pi;
+ks = (0:Nnet-1)';
+basis = 1/N*exp(1i*theta*ks');
+
+modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
+modesInUse = 128;
+modeList = find(abs(modes)<=modesInUse);
+
+% Standardize input
+Xstand = zeros(size(Xold));
+scaling = zeros(nv,1);
+rotate = zeros(nv,1);
+rotCent = zeros(2,nv);
+trans = zeros(2,nv);
+sortIdx = zeros(Nnet,nv);
+
+for k = 1 : nv
+  [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = o.standardizationStep(Xold(:,k),Nnet);
+end
+
+in_param = o.torchAdvInNorm;
+out_param = o.torchAdvOutNorm;
+
+% Normalize input
+input_net = zeros(nv,2*127,2*Nnet);  
+for ij = 1 : 127
+for k = 1 : nv
+  x_mean = in_param(1,1);
+  x_std = in_param(1,2);
+  y_mean = in_param(1,3);
+  y_std = in_param(1,4);
+  input_net(k,2*(ij-1)+1,1:128) = (Xstand(1:end/2,k)-x_mean)/x_std;
+  input_net(k,2*(ij-1)+1,129:256) = (Xstand(end/2+1:end,k)-y_mean)/y_std;
+
+  rr = real(basis(:,ij+1));
+  ii = imag(basis(:,ij+1));
+
+  input_net(k,2*ij,1:128) = rr;
+  input_net(k,2*ij,129:256) = ii;
+end % imode
+end
+
+tS = tic;
+input_conv = py.numpy.array(input_net);
+[Xpredict] = pyrunfile("advect_predict_merged.py","output_list",input_shape=input_conv,num_ves=py.int(nv));
+tPyCall = toc(tS);
+
+allmodes_pred = double(Xpredict);
+disp(['Calling python to predict MV takes ' num2str(tPyCall) ' seconds'])
+% we have 128 modes
+% Approximate the multiplication M*(FFTBasis)     
+Z11r = zeros(Nnet,Nnet,nv); Z12r = Z11r;
+Z21r = Z11r; Z22r = Z11r;
+
+tS = tic;
+for ij = 1 : 127
+  
+  imode = modeList(ij+1); % mode index # skipping the first mode
+  pred = allmodes_pred(:,2*(ij-1)+1:2*ij,:); % size(pred) = [1 2 256]
+
+
+  % denormalize output
+  real_mean = out_param(ij,1);
+  real_std = out_param(ij,2);
+  imag_mean = out_param(ij,3);
+  imag_std = out_param(ij,4);
+  
+  for k = 1 : nv
+    % first channel is real
+    pred(k,1,:) = (pred(k,1,:)*real_std) + real_mean;
+    % second channel is imaginary
+    pred(k,2,:) = (pred(k,2,:)*imag_std) + imag_mean;
+
+    Z11r(:,imode,k) = pred(k,1,1:end/2);
+    Z21r(:,imode,k) = pred(k,1,end/2+1:end);
+    Z12r(:,imode,k) = pred(k,2,1:end/2);
+    Z22r(:,imode,k) = pred(k,2,end/2+1:end);
+  end
+end
+tOrganize = toc(tS);
+disp(['Organizing MV output takes ' num2str(tOrganize) ' seconds'])
+
+% Take fft of the velocity (should be standardized velocity)
+% only sort points and rotate to pi/2 (no translation, no scaling)
+Xnew = zeros(size(Xold));
+MVinfStore = Xnew;
+for k = 1 : nv
+  vinfStand = o.standardize(vinf(:,k),[0;0],rotate(k),[0;0],1,sortIdx(:,k));
+  z = vinfStand(1:end/2)+1i*vinfStand(end/2+1:end);
+
+  zh = fft(z);
+  V1 = real(zh); V2 = imag(zh);
+  % Compute the approximate value of the term M*vinf
+  MVinfStand = [Z11r(:,:,k)*V1+Z12r(:,:,k)*V2; Z21r(:,:,k)*V1+Z22r(:,:,k)*V2];
+  
+  % XnewStand = Xstand(:,k) + o.dt*vinfStand - o.dt*MVinfStand;
+  % Xnew(:,k) = o.destandardize(XnewStand,trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
+  
+  % Need to destandardize MVinf (take sorting and rotation back)
+  MVinf = zeros(size(MVinfStand));
+  MVinf([sortIdx(:,k);sortIdx(:,k)+Nnet]) = MVinfStand;
+  MVinf = o.rotationOperator(MVinf,-rotate(k),[0;0]);
+  MVinfStore(:,k) = MVinf;  
+  Xnew(:,k) = Xold(:,k) + o.dt * vinf(:,k) - o.dt*MVinf;   
+end
+% XnewStand = Xstand + o.dt*vinfStand - o.dt*MVinf;
+% Update the position
+% Xnew = o.destandardize(XnewStand,trans,rotate,scaling,sortIdx);
+end % translateVinfwMergedTorch
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = relaxWNNvariableKbDt(o,Xmid,N,Nnet)
 % load network

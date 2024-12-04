@@ -65,3 +65,4 @@ learnVes/shannets/near_vel_fft_models/Ves_nearFourier_mode109.pth
 learnVes/shannets/near_vel_fft_models/Ves_nearFourier_mode108.pth
 learnVes/shannets/near_vel_fft_models/Ves_nearFourier_mode107.pth
 learnVes/shannets/near_vel_fft_models/Ves_nearFourier_mode106.pth
+*.pth

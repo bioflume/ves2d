@@ -14,7 +14,7 @@ for iw = 1 : numel(chanWidths)
   for is = 1 : 3
       %driver_mixedRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
       % driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
-      driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
+      % driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
       %DNNsolve_oldNetSimple(chanWidths(iw), speeds(iw,is), timeHorizons(iw,is))
   end
 end
@@ -48,17 +48,17 @@ dt = 5e-6;
 for iw = 3:4
   for is = 2 : 3
       %driver_mixedRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is));
-      % driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
-      driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
+      driver_torchRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
+      % driver_trueRuns(chanWidths(iw),speeds(iw,is),timeHorizons(iw,is),dt);
       %DNNsolve_oldNetSimple(chanWidths(iw), speeds(iw,is), timeHorizons(iw,is))
   end
 end
-
+%%
 R = 0.1291;
-dtTorch = [5E-7 5E-7;
-           5E-7 5E-7;
-           5E-7 5E-7;
-           5E-7 5E-7];
+dtTorch = [2.5E-6 2.5E-6;
+           2.5E-6 2.5E-6;
+           2.5E-6 2.5E-6;
+           2.5E-6 2.5E-6];
 
 chanWidths = R./[0.2; 0.4; 0.6; 0.75];
 speeds = [6000 7500;

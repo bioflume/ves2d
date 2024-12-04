@@ -27,7 +27,7 @@ prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = speed; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 prams.chanWidth = chanWidth;
 iplot = 0;
-exactFreq = 10;
+exactFreq = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -104,7 +104,7 @@ X = oc.alignCenterAngle(XOrig,X);
 
 solveType = 'DNN';
 %fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
-fileName = ['./output/32modes_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
+fileName = ['./output/new32modes_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');
@@ -118,8 +118,7 @@ fclose(fid);
 dnn = dnnToolsSingleVes(X,prams);
 
 % LOAD NORMALIZATION PARAMETERS
-load ./shannets/ves_fft_in_param.mat
-load ./shannets/ves_fft_out_param.mat
+load ./shannets/mergedAdv_NormParams.mat
 dnn.torchAdvInNorm = in_param;
 dnn.torchAdvOutNorm = out_param;
 
