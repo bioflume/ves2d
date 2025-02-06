@@ -1,5 +1,5 @@
 function submitDataPrepNearField
-npar = 6;
+npar = 4;
 p = parcluster('local');
 p.NumWorkers = npar;
 

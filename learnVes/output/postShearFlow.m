@@ -8,7 +8,7 @@ set(groot, 'DefaultTextInterpreter','latex')
 
 % fileNameNN = 'moreModes32_test_shear_interpNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 % fileNameNN = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
-fileNameNN = '128modes_shear_nearNetrelaxNetTenNetAdvNet_noFiltering_dt1e-05_speed2000.bin';
+fileNameNN = 'all32modeNets_inShearFlow.bin';
 % fileNameTR = 'test_shear_ignoreNear_diff625kNetJune8_dt1e-05_speed2000.bin';
 
 fileNameTR = 'N128again_shearTrueRuns_dt1e-05_speed2000.bin';

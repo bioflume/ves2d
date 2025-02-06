@@ -26,7 +26,7 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 prams.bgFlow = 'parabolic'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = speed; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 prams.chanWidth = chanWidth;
-iplot = 0;
+iplot = 1;
 exactFreq = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
@@ -103,8 +103,8 @@ X = oc.alignCenterAngle(XOrig,X);
 % -------------------------------------------------------------------------
 
 solveType = 'DNN';
-%fileName = './output/testnoCouette_speed125.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
-fileName = ['./output/new32modes_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
+fileName = './output/testAL.bin'; %['./output/poisDNNnewSingVes_speed' num2str(prams.speed) '_newNet_exactAdv_mirrdNet.bin'];
+% fileName = ['./output/new32modes_dt' num2str(dt) 'poisRuns_speed' num2str(prams.speed) '_width' num2str(chanWidth) '.bin'];
 fid = fopen(fileName,'w');
 output = [N;nv];
 fwrite(fid,output,'double');

@@ -35,6 +35,8 @@ end
 Xback = zeros(size(X));
 outerLayer = zeros(size(X));
 interLayer = zeros(size(X));
+inInterLayer = zeros(size(X));
+innerLayer = zeros(size(X));
 for k = 1 : nv
    [Xstand(:,k),scaling(k),rotate(k),rotCent(:,k),trans(:,k),sortIdx(:,k)] = standardizationStep(X(:,k),128);
    Xback(:,k) = destandardize(Xstand(:,k),trans(:,k),rotate(k),rotCent(:,k),scaling(k),sortIdx(:,k));
@@ -43,6 +45,8 @@ for k = 1 : nv
    ny = -tang(1:end/2);
    outerLayer(:,k) = [Xback(1:end/2,k)+h*nx; Xback(end/2+1:end,k) + h*ny];
    interLayer(:,k) = [Xback(1:end/2,k)+h/2*nx; Xback(end/2+1:end,k) + h/2*ny];
+   inInterLayer(:,k) = [Xback(1:end/2,k)-h/2*nx; Xback(end/2+1:end,k) - h/2*ny];
+   innerLayer(:,k) = [Xback(1:end/2,k)-h*nx; Xback(end/2+1:end,k) - h*ny];
 end
 
 vesicle = capsules(Xback,[],[],1,1,0);
@@ -192,6 +196,8 @@ figure(3);clf;
 plot([outerLayer(1:end/2,1);outerLayer(1,1)],[outerLayer(end/2+1:end,1);outerLayer(end/2+1,1)],'Color',[99,99,99]/255,'linewidth',4)
 hold on
 plot([interLayer(1:end/2,1);interLayer(1,1)],[interLayer(end/2+1:end,1);interLayer(end/2+1,1)],'Color',[204,204,204]/255,'linewidth',4)
+plot([inInterLayer(1:end/2,1);inInterLayer(1,1)],[inInterLayer(end/2+1:end,1);inInterLayer(end/2+1,1)],'Color',[204,204,204]/255,'linewidth',4)
+plot([innerLayer(1:end/2,1);innerLayer(1,1)],[innerLayer(end/2+1:end,1);innerLayer(end/2+1,1)],'Color',[99,99,99]/255,'linewidth',4)
 plot([Xback(1:end/2,1);Xback(1,1)],[Xback(end/2+1:end,1);Xback(end/2+1,1)], 'Color',[165,15,21]/255,'linewidth',4)
 
 p1 = scatter(Xback(1:end/2,1),Xback(end/2+1:end,1),100,'^');
@@ -206,7 +212,20 @@ p1.MarkerEdgeColor = [99,99,99]/255;
 p1.MarkerFaceAlpha = 1;
 p1.MarkerEdgeAlpha = 1;
 
+p1 = scatter(innerLayer(1:end/2,1),innerLayer(end/2+1:end,1),100,'^');
+p1.MarkerFaceColor = [99,99,99]/255;
+p1.MarkerEdgeColor = [99,99,99]/255;
+p1.MarkerFaceAlpha = 1;
+p1.MarkerEdgeAlpha = 1;
+
+
 p1 = scatter(interLayer(1:end/2,1),interLayer(end/2+1:end,1),100,'^');
+p1.MarkerFaceColor = [204,204,204]/255;
+p1.MarkerEdgeColor = [204,204,204]/255;
+p1.MarkerFaceAlpha = 1;
+p1.MarkerEdgeAlpha = 1;
+
+p1 = scatter(inInterLayer(1:end/2,1),inInterLayer(end/2+1:end,1),100,'^');
 p1.MarkerFaceColor = [204,204,204]/255;
 p1.MarkerEdgeColor = [204,204,204]/255;
 p1.MarkerFaceAlpha = 1;

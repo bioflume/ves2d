@@ -217,8 +217,8 @@ areaDependentAngle = true;
 
 centX = o.getPhysicalCenterShan(X);
 for k = 1 : nv
-  X(:,k) = [X(1:end/2,k)-centX(1);...
-      X(end/2+1:end,k)-centX(2)];
+  X(:,k) = [X(1:end/2,k)-centX(1,k);...
+      X(end/2+1:end,k)-centX(2,k)];
 end
 
 for k = 1 : nv
@@ -257,18 +257,18 @@ for k = 1 : nv
     
     % 2) find areas (top, bottom)
     % need derivatives, so rotate the computed ones
-    Dx = Dx*cos(-IA(k)+pi/2) - Dy*sin(-IA(k)+pi/2);
-    Dy = Dx*sin(-IA(k)+pi/2) + Dy*cos(-IA(k)+pi/2);
+    Dx2 = Dx*cos(-IA(k)+pi/2) - Dy*sin(-IA(k)+pi/2);
+    Dy2 = Dx*sin(-IA(k)+pi/2) + Dy*cos(-IA(k)+pi/2);
     % Compute again, that is also fast
     %Dx = real(ifft(1i*modes.*fft(x0rot)));
     %Dy = real(ifft(1i*modes.*fft(y0rot)));
     
     idcsTop = find(y0rot>=0); idcsBot = find(y0rot<0);
-    areaTop = sum(x0rot(idcsTop).*Dy(idcsTop)-y0rot(idcsTop).*...
-        Dx(idcsTop))/N*pi;
+    areaTop = sum(x0rot(idcsTop).*Dy2(idcsTop)-y0rot(idcsTop).*...
+        Dx2(idcsTop))/N*pi;
     
-    areaBot = sum(x0rot(idcsBot).*Dy(idcsBot)-y0rot(idcsBot).*...
-        Dx(idcsBot))/N*pi;
+    areaBot = sum(x0rot(idcsBot).*Dy2(idcsBot)-y0rot(idcsBot).*...
+        Dx2(idcsBot))/N*pi;
     % DEBUG 
     idebug = false;
     if idebug
@@ -290,10 +290,10 @@ for k = 1 : nv
     elseif areaTop < 1.1*areaBot  
       % if areaTop ~ areaBot, then check areaRight, areaLeft  
       idcsLeft = find(x0rot<0); idcsRight = find(x0rot>=0);
-      areaRight = sum(x0rot(idcsRight).*Dy(idcsRight)-y0rot(idcsRight).*...
-        Dx(idcsRight))/N*pi;
-      areaLeft = sum(x0rot(idcsLeft).*Dy(idcsLeft)-y0rot(idcsLeft).*...
-        Dx(idcsLeft))/N*pi;
+      areaRight = sum(x0rot(idcsRight).*Dy2(idcsRight)-y0rot(idcsRight).*...
+        Dx2(idcsRight))/N*pi;
+      areaLeft = sum(x0rot(idcsLeft).*Dy2(idcsLeft)-y0rot(idcsLeft).*...
+        Dx2(idcsLeft))/N*pi;
       if areaLeft >= 1.1*areaRight
         IA(k) = IA(k) + pi;
       end
@@ -3392,7 +3392,7 @@ failedIdcs = [];
 iFailCorrection = false;
 for k = 1:size(Xnew,2)
   minFun = @(z) 1/N*min(sum((z - X(:,k)).^2));
-  [Xnew(:,k),~,iflag] = fmincon(minFun,X(:,k),[],[],[],[],[],[],...
+  [Xnew(:,k),~,iflag,output] = fmincon(minFun,X(:,k),[],[],[],[],[],[],...
       @(z) o.nonlcon(z,a0(k),l0(k)),options);
   if iflag~=1 && iflag~=2
     iFailCorrection = true;
@@ -3401,7 +3401,7 @@ for k = 1:size(Xnew,2)
   end
   % if fmincon fails, keep the current iterate for this time step.
   % Hopefully it'll be corrected at a later step.
-  
+  % disp(['Correction took ' num2str(output.iterations) ' iterations.'])
 end
 % Looping over vesicles, correct the area and length of each vesicle
 
@@ -3599,7 +3599,28 @@ end
 
 end % filterShape
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function tenNew = filterTension(o,tension,Nup,modeCut)
+% delete high frequencies from the vesicle shape
+N = size(tension,1);
+nv = size(tension,2);
 
+% modeCut = 32; works fine; Nup = 512;
+
+modes = [(0:Nup/2-1) (-Nup/2:-1)];
+tenup = interpft(tension,Nup);
+
+
+tenNew = zeros(size(tension));
+
+for k = 1:nv
+  z = fft(tenup(:,k));
+  z(abs(modes) > modeCut) = 0;
+  z = ifft(z);
+  tenNew(:,k) = interpft(real(z),N);
+end
+
+end % filterShape
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [X,filtered,ratio] = adapFilterShape(o,X)

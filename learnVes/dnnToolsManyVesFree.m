@@ -54,6 +54,8 @@ torchNearInNorm
 torchNearOutNorm
 Nfmm
 opNfmm
+repStrength
+repLenScale
 end
 
 methods
@@ -69,6 +71,8 @@ o.dtRelax = prams.dtRelax;
 o.oc = curve;
 o.Nfmm = prams.Nfmm;
 o.opNfmm = poten(o.Nfmm);
+o.repLenScale = 1/o.Nfmm;
+o.repStrength = prams.repStrength;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function Xnew = DNNsolveTorchSingle(o,Xold,area0,len0,iExact)
@@ -145,6 +149,7 @@ advType = iAdv; % 1: exact, 2: with old net, 3: with Torch net
 % background velocity on vesicles
 vback = o.vinf(Xold);
 
+
 % build vesicle class at the current step
 vesicle = capsules(Xold,[],[],o.kappa,1,0);
 nv = vesicle.nv;
@@ -155,8 +160,19 @@ fBend = vesicle.tracJump(Xold,zeros(N,nv));
 fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
 tracJump = fBend+fTen;
 
+
+% with repulsion
+% NearV2V = vesicle.getZone([],1); 
+% repulsion = vesicle.repulsionSchemeSimple(Xold, o.repStrength, o.repLenScale,[],[],[]);
+% tt.Galpert = op.stokesSLmatrix(vesicle);  
+% kernel = @op.exactStokesSL;
+% SLP = @(X) op.exactStokesSLdiag(vesicle,tt.Galpert,X);
+% Frepulsion = op.exactStokesSLdiag(vesicle,tt.Galpert,repulsion) + ...
+%           op.nearSingInt(vesicle,repulsion,SLP,[],...
+%           NearV2V,kernel,kernel,vesicle,true,false);
+
 % Filter traction jump
-tracJump = oc.upsThenFilterShape(tracJump,4*N,64);
+% tracJump = oc.upsThenFilterShape(tracJump,4*N,64);
 % -----------------------------------------------------------
 % 1) Explicit Tension at the Current Step
 
@@ -175,12 +191,14 @@ if N == 128
 elseif N == 32
 [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnce32modes(vesicle.X);
+
 end
 % farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
 farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear);
-farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
+
+% farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
 disp('Exact Near')
 % single layer matrix without correction
@@ -199,6 +217,9 @@ farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
 
 end
 end
+
+% with repulsion
+% farFieldtracJump = farFieldtracJump + Frepulsion;
 
 % for k = 1 : nv
 % figure(k); clf;
@@ -241,6 +262,7 @@ else % Tension network solve
   end
   selfBendSolve = o.invTenMatOnSelfBend(Xold);
   tenNew = -(vBackSolve + selfBendSolve);
+
 end
 
 % update the traction jump calculation
@@ -262,7 +284,7 @@ if ~iExactNear
 farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear);
-farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
+% farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
 
 
@@ -276,16 +298,9 @@ farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
 end
 end
 
-% for k = 1 : nv
-% figure(k); clf;
-% plot(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),'k','linewidth',2)
-% hold on
-% quiver(vesicle.X(1:end/2,k),vesicle.X(end/2+1:end,k),farFieldtracJump(1:end/2,k),farFieldtracJump(end/2+1:end,k),'r')
-% axis equal
-% title('With new tension')
-% end
-% pause
-% 
+
+% with repulsion
+% farFieldtracJump = farFieldtracJump + Frepulsion;
 
 % Total background velocity
 vbackTotal = vback + farFieldtracJump;
@@ -320,7 +335,7 @@ elseif advType == 3
 end
 
 % filter shape
-Xadv = oc.upsThenFilterShape(Xadv,4*N,16);
+% Xadv = oc.upsThenFilterShape(Xadv,4*N,16);
 
 % 2) COMPUTE THE ACTION OF RELAX OP. ON Xold + Xadv
 if iExact
@@ -352,15 +367,13 @@ for it = 1 : 5
 end
 Xnew = oc.alignCenterAngle(XnewO,Xnew);
 
-
 % AREA-LENGTH CORRECTION
 disp('Area-Length correction after relaxation step')
 [Xnew,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
 if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
-
 % filter shape
-Xnew = oc.upsThenFilterShape(Xnew,4*N,64);
+% Xnew = oc.upsThenFilterShape(Xnew,4*N,64);
 
 
 end % DNNsolveTorchMany
@@ -599,7 +612,6 @@ modesInUse = 16;
 modeList = find(abs(modes)<=modesInUse);
 
 
-
 input_conv = py.numpy.array(input_net);
 if Nnet == 128
 [Xpredict] = pyrunfile("near_vel_predict.py","output_list",input_shape=input_conv,num_ves=py.int(nv),modesInUse=py.int(modesInUse));
@@ -706,7 +718,6 @@ end
 modes = [(0:Nnet/2-1) (-Nnet/2:-1)];
 modesInUse = 32;
 modeList = find(abs(modes)<=modesInUse);
-
 
 
 input_conv = py.numpy.array(input_net);
@@ -878,6 +889,9 @@ function farField = computeStokesInteractionsNet_Alternative(o,vesicle, tracJump
 
 disp('Alternative Near-singular interaction through interpolation and network')
 
+Xup = [interpft(vesicle.X(1:end/2,:),128);interpft(vesicle.X(end/2+1:end,:),128)];
+vesicleUp = capsules(Xup,[],[],o.kappa,1,0);
+tracJumpUp = [interpft(tracJump(1:end/2,:),128);interpft(tracJump(end/2+1:end,:),128)];
 N = vesicle.N;
 nv = vesicle.nv;
 
@@ -893,7 +907,7 @@ zone = NearV2V.zone;
 farField = zeros(2*N,nv);
 for k = 1 : nv
   K = [(1:k-1) (k+1:nv)];
-  [~,farField(:,k)] = op.exactStokesSL(vesicle, tracJump, [], vesicle.X(:,k), K);
+  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, tracJumpUp, [], vesicle.X(:,k), K);
 end
 
 % Predict velocity on layers
@@ -921,7 +935,7 @@ for k1 = 1 : nv
     if numel(J) ~= 0
       % need tp subtract off contribution due to vesicle k1 since its layer
       % potential will be evaulated through interpolation
-      [~,potTar] = op.exactStokesSL(vesicle, tracJump, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
+      [~,potTar] = op.exactStokesSL(vesicleUp, tracJumpUp, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
       nearField(J,k2) = nearField(J,k2) - potTar(1:numel(J));
       nearField(J+N,k2) = nearField(J+N,k2) - potTar(numel(J)+1:end);
          
@@ -1759,6 +1773,7 @@ for k = 1 : nv
   tenOut = tenStand(k,1,:)*vx_std + vx_mean;
   tension(sortIdx(:,k),k) = tenOut/scaling(k)^2;
 end
+
 
 end % invTenMatOnSelfBend
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

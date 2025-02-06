@@ -1,6 +1,6 @@
 clear; clc;
 dt = 1E-4;
-Th = 0.75;
+Th = 2*dt;
 
 iExactTension = 1;
 iExactNear = 1;
@@ -77,8 +77,8 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
   'center',[cenx;ceny], 'scale',scale);
 % 
 
-load 48vesiclesInTG_N128
-X = [interpft(Xic(1:end/2,:),prams.N); interpft(Xic(end/2+1:end,:),prams.N)];
+% load 48vesiclesInTG_N128
+% X = [interpft(Xic(1:end/2,:),prams.N); interpft(Xic(end/2+1:end,:),prams.N)];
 
 % load 32modes_TGVESNET_T0p50_IC.mat
 % load 32modes_TGBIEM_T0p25_IC.mat
@@ -105,6 +105,7 @@ prams.chanWidth = 2.5;
 [~,area0,len0] = oc.geomProp(X);
 % 
 
+% 
 % figure(1); clf;
 % plot(X(1:end/2,:),X(end/2+1:end,:),'k')
 % hold on

@@ -1,6 +1,6 @@
 clear; clc;
 dt = 1E-5;
-Th = 0.01;
+Th = dt;
 % cx = [-0.4; 0];
 % cy = [0.05; 0];
 
@@ -11,6 +11,7 @@ cy = [0.040; 0];
 
 IA = [0; pi/2];
 
+prams.repStrength = 5E+4;
 
 % Second test IC
 % cx = [-0.28; 0];
@@ -93,28 +94,33 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 
 % VESICLES and WALLS:
 % -------------------------------------------------------------------------
-X0 = oc.initConfig(N,'ellipse');
+% X0 = oc.initConfig(N,'ellipse');
+% 
+% [~,~,len] = oc.geomProp(X0);
+% X0 = X0./len;
+% X = zeros(2*N,2);
+% for k = 1 : 2
+% X(1:N,k) = cos(IA(k)) * X0(1:N) - ...
+%       sin(IA(k)) * X0(N+1:2*N) + cx(k);
+% X(N+1:2*N,k) = sin(IA(k)) * X0(1:N)  + ...
+%       cos(IA(k)) * X0(N+1:2*N) + cy(k);
+% end
+% 
+% XOrig = X;
+% for it = 1 : 5
+%   X = oc.redistributeArcLength(X);
+% end
+% X = oc.alignCenterAngle(XOrig,X);
 
-[~,~,len] = oc.geomProp(X0);
-X0 = X0./len;
-X = zeros(2*N,2);
-for k = 1 : 2
-X(1:N,k) = cos(IA(k)) * X0(1:N) - ...
-      sin(IA(k)) * X0(N+1:2*N) + cx(k);
-X(N+1:2*N,k) = sin(IA(k)) * X0(1:N)  + ...
-      cos(IA(k)) * X0(N+1:2*N) + cy(k);
-end
-
-XOrig = X;
+load('finalShearXclose.mat')
+X = Xf; %[Xf(1:end/2,1)-mean(Xf(1:end/2,1)); Xf(end/2+1:end,1)-mean(Xf(end/2+1:end,1))];
 for it = 1 : 5
   X = oc.redistributeArcLength(X);
 end
-X = oc.alignCenterAngle(XOrig,X);
-
-
+X = [interpft(X(1:end/2,:),32);interpft(X(end/2+1:end,:),32)];
 [~,area0,len0] = oc.geomProp(X);
-X0 = X;
 
+ 
 figure(1); clf;
 plot(X(1:end/2,:),X(end/2+1:end,:),'k-o')
 hold on
@@ -126,7 +132,7 @@ pause(0.1)
 solveType = 'DNN';
 % fileName = ['./output/test_shear_ignoreNearN64_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/128modes_shear_nearNetrelaxNetTenNetAdvNet_noFiltering_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/CheckingShansNetN32_istep' num2str(0) '.bin'];
+fileName = ['./output/CheckingShansNetN32.bin'];
 % fileName = ['./output/entangled_shear_biem_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/N64_shearTrueRuns_dt' num2str(dt) '_speed' num2str(speed) '.bin'];
 fid = fopen(fileName,'w');
@@ -195,6 +201,8 @@ driftyNet = [];
 driftyAdv = [];
 % ------------------------------------------------------------------------
 writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);
+
+save('./nets32modeCheckData/input2sim.mat','Xhist');
 
 % TIME STEPPING
 it = 1;

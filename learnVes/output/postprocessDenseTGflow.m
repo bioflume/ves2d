@@ -1,5 +1,5 @@
 clear; clc;
-imovie = 1;
+imovie = 0;
 
 
 
@@ -7,13 +7,13 @@ imovie = 1;
 % [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
 
 
-% load 32modes_TaylorGreen_50Ves_NearNet % nearnet simulation
+load 32modes_TaylorGreen_50Ves_NearNet % nearnet simulation
 
 % load 128modes_TaylorGreen_50Ves_BIEM % Ground truth
 
-load 32modes_TaylorGreen_50Ves_BIEM % Low-Res BIEM
+% load 32modes_TaylorGreen_50Ves_BIEM % Low-Res BIEM
 
-nsteps = numel(timeT);
+nsteps = numel(time);
 
 
 if imovie
@@ -43,25 +43,25 @@ Vsize = 2.5;
 uu = sin(xx/Vsize*pi).*cos(yy/Vsize*pi); 
 vv = -cos(xx/Vsize*pi).*sin(yy/Vsize*pi);
 
-
+%%
 frameCount = 1;
-for k = 1 : 5 : nsteps
+for k = 450 : 5 : nsteps
  if imovie; cla reset; end;
 
  % kT = 2*k-1;
  kT = k;
- xvecT = [vesxT(:,:,kT);vesxT(1,:,kT)] ;
- yvecT = [vesyT(:,:,kT);vesyT(1,:,kT)];
+ xvecT = [vesx(:,:,kT);vesx(1,:,kT)] ;
+ yvecT = [vesy(:,:,kT);vesy(1,:,kT)];
   
 
  figure(1); clf; 
  h = plot(xvecT, yvecT, 'Color',[26/255 150/255 65/255 1],'linewidth',2);
+
+ 
+ 
  % h = plot(xvecT, yvecT, 'Color',[202/255 0 32/255 1],'linewidth',2);
  
  % h = plot(xvecT, yvecT, 'Color',[0 0 0 1],'linewidth',2);
- for j = 1 : 9
- set(h(j),'Color',[h(j).Color, 1],'linewidth',2)
- end
  hold on
  l = streamslice(xx,yy,uu,vv);
  set(l,'Color',[12/255,44/255,132/255, 0.75])
@@ -75,16 +75,26 @@ for k = 1 : 5 : nsteps
  xlim([-0.5 3])
  ylim([-0.5 3])
 
-
  set(gca,'xtick',[]);
  set(gca,'ytick',[]);
  set(gca,'ztick',[]);
-    
- set(gca,'xcolor','w');
- set(gca,'ycolor','w');
- set(gca,'zcolor','w');
- box on
- set(gca,'visible','off')
+
+ title(kT)
+ % set(gca,'xcolor','w');
+ % set(gca,'ycolor','w');
+ % set(gca,'zcolor','w');
+ % box on
+ % set(gca,'visible','off')
+
+ figure(2);clf;
+ plot(xvecT(:,[47;48]),yvecT(:,[47;48]),'r','linewidth',2)
+ axis equal
+ 
+ set(gca,'xtick',[]);
+ set(gca,'ytick',[]);
+ set(gca,'ztick',[]);
+
+ 
 
  
  

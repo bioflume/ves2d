@@ -1,18 +1,20 @@
 function prepareNearFieldStokesletData(iset,npar)
-load ./workingOnDataSet/output/advectionNetInputX.mat
+load ./advectionNetInputX.mat
 %clear XnewStandStore;
 
-addpath ../src/
+XstandStore = [interpft(XstandStore(1:end/2,:),32);interpft(XstandStore(end/2+1:end,:),32)];
+
+addpath ../../src/
 oc = curve;
 
 % Upsampling maybe necessary
-nlayers = 3; 
-maxLayerDist = @(h) sqrt(h);
+nlayers = 2; 
+maxLayerDist = @(h) h;
 
 % num. points
-N = 128;
+N = 32;
 op = poten(N);
-nmodes = 128;
+nmodes = 32;
 
 nves = size(XstandStore, 2);
 
@@ -43,19 +45,20 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   ny = -tang(1:N);
 
   % Points where velocity is calculated involve the points on vesicle
-  tracersX = zeros(2*N, nlayers-1);
-  tracersX(:,1) = XstandStore(:,ives);
+  tracersX = zeros(2*N, nlayers);
+  %tracersX(:,1) = XstandStore(:,ives);
 
   % Generate tracers
   h = vesicle.length/vesicle.N;  % arc-length spacing
-  dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist(h);
-  for il = 2 : nlayers
+  % dlayer = (0:nlayers-1)'/(nlayers-1) * maxLayerDist(h);
+  dlayer = [-h/2; -h];
+  for il = 1 : nlayers
     tracersX(:,il) = [vesicle.X(1:end/2)+nx*dlayer(il);vesicle.X(end/2+1:end)+ny*dlayer(il)];
   end
 
   tracers.N = N;
-  tracers.nv = nlayers-1;
-  tracers.X = tracersX(:,2:nlayers);
+  tracers.nv = nlayers;
+  tracers.X = tracersX(:,1:nlayers);
 
   G = op.stokesSLmatrix(vesicle);
   kernel = @op.exactStokesSL;
@@ -63,24 +66,24 @@ for ives = sum(nSamples(1:iset-1))+1:sum(nSamples(1:iset))
   SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
   [~,NearV2T] = vesicle.getZone(tracers,2);
   
-  VelOnGridModesReal = zeros(2*N,nlayers-1,nmodes);
-  VelOnGridModesImag = zeros(2*N,nlayers-1,nmodes);
-  selfVelModesReal = zeros(2*N,nmodes);
-  selfVelModesImag = zeros(2*N,nmodes);
+  VelOnGridModesReal = zeros(2*N,nlayers,nmodes);
+  VelOnGridModesImag = zeros(2*N,nlayers,nmodes);
+  % selfVelModesReal = zeros(2*N,nmodes);
+  % selfVelModesImag = zeros(2*N,nmodes);
 
   for imode = 1 : nmodes
     forRealVels = [Br(:,imode); Bi(:,imode)];
     forImagVels = [-Bi(:,imode); Br(:,imode)];
 
     VelOnGridModesReal(:,:,imode) = op.nearSingInt(vesicle,forRealVels,SLP,[],NearV2T,kernel,kernelDirect,tracers,false,false);
-    selfVelModesReal(:,imode) = G*forRealVels;
+    % selfVelModesReal(:,imode) = G*forRealVels;
     
 
     VelOnGridModesImag(:,:,imode) = op.nearSingInt(vesicle,forImagVels,SLP,[],NearV2T,kernel,kernelDirect,tracers,false,false);
-    selfVelModesImag(:,imode) = G*forImagVels;
+    % selfVelModesImag(:,imode) = G*forImagVels;
   end
-  fileName = ['E:\nearFieldData\vesicleByvesicle\vesicleID_' num2str(ives) '.mat']; 
-  save(fileName,'VelOnGridModesImag','VelOnGridModesReal','selfVelModesImag','selfVelModesReal','-v7.3')
+  fileName = ['./vesicleByvesicle/vesicleID_' num2str(ives) '.mat']; 
+  save(fileName,'VelOnGridModesImag','VelOnGridModesReal','-v7.3')
   
   idx = idx + 1;
   tend = toc(tstart);
