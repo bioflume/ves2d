@@ -1,6 +1,6 @@
 clear; clc;
 dt = 1E-4;
-Th = 1000*dt;
+Th = 20000*dt;
 
 iExactTension = 1;
 iExactNear = 1;
@@ -11,30 +11,30 @@ iAdv = 1; % exact advection
 addpath ../src/
 addpath ../examples/
 addpath ./shannets/
-addpath ./shannets/ves_fft_models/
+% addpath ./shannets/ves_fft_models/
 
-pathofDocument = fileparts(which('Net_ves_relax_midfat.py'));
-if count(py.sys.path,pathofDocument) == 0
-    insert(py.sys.path,int32(0),pathofDocument);
-end
-
-pathofDocument = fileparts(which('Net_ves_adv_fft.py'));
-if count(py.sys.path,pathofDocument) == 0
-    insert(py.sys.path,int32(0),pathofDocument);
-end
-
-pathofDocument = fileparts(which('ves_fft_mode2.pth'));
-if count(py.sys.path,pathofDocument) == 0
-    insert(py.sys.path,int32(0),pathofDocument);
-end
-
-pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
+% pathofDocument = fileparts(which('Net_ves_relax_midfat.py'));
+% if count(py.sys.path,pathofDocument) == 0
+%     insert(py.sys.path,int32(0),pathofDocument);
+% end
+% 
+% pathofDocument = fileparts(which('Net_ves_adv_fft.py'));
+% if count(py.sys.path,pathofDocument) == 0
+%     insert(py.sys.path,int32(0),pathofDocument);
+% end
+% 
+% pathofDocument = fileparts(which('ves_fft_mode2.pth'));
+% if count(py.sys.path,pathofDocument) == 0
+%     insert(py.sys.path,int32(0),pathofDocument);
+% end
+% 
+% pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'tayGreen'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 400; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 1;
+iplot = 0;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -135,7 +135,7 @@ solveType = 'DNN';
 % fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/32modes_taylorGreen_IC4_biem_wrongNear_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/resume2_32modes_taylorGreen_IC5_BIEM_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/test32Ves_TG.bin'];
+fileName = ['./output/N32_nv32_TGVF25.bin'];
 % fileName = ['./output/resume_32modes_taylorGreen_IC5_GT50Ves_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
@@ -153,16 +153,16 @@ fclose(fid);
 dnn = dnnToolsManyVesFree(X,prams);
 
 % LOAD NORMALIZATION PARAMETERS
-load ./shannets/ves_fft_in_param.mat
-load ./shannets/ves_fft_out_param.mat
-dnn.torchAdvInNorm = in_param;
-dnn.torchAdvOutNorm = out_param;
-
-% % LOAD NEAR-SINGULAR NORMALIZATION PARAMS
-load ./shannets/nearInterp_fft_in_param.mat
-load ./shannets/nearInterp_fft_out_param.mat
-dnn.torchNearInNorm = in_param;
-dnn.torchNearOutNorm = out_param;
+% load ./shannets/ves_fft_in_param.mat
+% load ./shannets/ves_fft_out_param.mat
+% dnn.torchAdvInNorm = in_param;
+% dnn.torchAdvOutNorm = out_param;
+% 
+% % % LOAD NEAR-SINGULAR NORMALIZATION PARAMS
+% load ./shannets/nearInterp_fft_in_param.mat
+% load ./shannets/nearInterp_fft_out_param.mat
+% dnn.torchNearInNorm = in_param;
+% dnn.torchNearOutNorm = out_param;
 
 tt = dnn.tt; dnn.oc = oc; 
 % -------------------------------------------------------------------------
