@@ -1,7 +1,7 @@
 addpath ../src/
 oc = curve;
 
-chanWidth = 30;
+chanWidth = 2.5;
 X0 = oc.initConfig(32,'ellipse');
 [~,area0,len0] = oc.geomProp(X0);
 scale = 1/len0;
@@ -11,10 +11,12 @@ scale = 1/len0;
 % sy = [0.225:0.5:chanWidth-0.225]';
 
 % Gives 30% area-fraction
-sx = [0.125:0.3:chanWidth-0.075]';
-sy = [0.225:0.6:chanWidth-0.225]';
+sx = [0.2:0.3:chanWidth-0.075]';
+sy = [0.35:0.6:chanWidth-0.225]';
 
 [cenx, ceny] = meshgrid(sx,sy);
+cenx = cenx + (-0.03+0.06*rand(size(cenx)));
+ceny = ceny + (-0.03+0.06*rand(size(cenx)));
 cenx = cenx(:)';
 ceny = ceny(:)';
 nv = numel(cenx); 
@@ -29,6 +31,8 @@ Vsize = chanWidth; speed = 200;
 [xx,yy] = meshgrid(linspace(-1,1.5+chanWidth,50)',linspace(-1,1.5+chanWidth,50)');
 uu = speed*sin(xx/Vsize*pi).*cos(yy/Vsize*pi); 
 vv = -speed*cos(xx/Vsize*pi).*sin(yy/Vsize*pi);
+
+save VF25_TG32Ves X chanWidth
 
 figure(1); clf;
 plot(X(1:end/2,:),X(end/2+1:end,:),'r','linewidth',2)

@@ -1,6 +1,7 @@
 clear; clc;
 
-load checkCollIC.mat
+% load checkCollIC.mat
+load ./ShanSims/crashingTGdata.mat
 
 addpath ../src/
 addpath ../examples/
@@ -29,9 +30,9 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 oc = curve;
 dt = 1E-4;
 Th = 250*dt;
-N = 32; nv = 2;
-prams.nv = 2;
-prams.repStrength = 5E+4;
+N = 32; nv = 48;
+prams.nv = 48;
+prams.repStrength = 0;
 prams.bgFlow = 'tayGreen'; % 'shear','tayGreen','relax','parabolic'
 prams.speed = 200; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
 prams.chanWidth = 2.5;
@@ -47,7 +48,7 @@ prams.Nbd = 0;
 prams.nvbd = 0;
 prams.interpOrder = 1;
 
-X = [vesx_coll(:,:,1);vesy_coll(:,:,1)];
+X = [vesx(:,:,1);vesy(:,:,1)];
 dnn = dnnToolsManyVesFree(X,prams);
 
 % LOAD NORMALIZATION PARAMETERS
@@ -69,11 +70,11 @@ tt = dnn.tt;
 op = tt.op;
 %% Now take time steps
 tenOld = zeros(N,nv);
-X = [vesx_coll(:,:,40);vesy_coll(:,:,40)];
+X = [vesx(:,:,1);vesy(:,:,1)];
 [~,area0,len0] = oc.geomProp(X);
-for it = 40 : 250
+for it = 1 : 50
   % X = [vesx_coll(:,:,it);vesy_coll(:,:,it)];  
-  vback = dnn.vinf(X) + vInfs(:,:,it);
+  vback = dnn.vinf(X); %+ vInfs(:,:,it);
 
   % build vesicle class at the current step
   vesicle = capsules(X,[],[],1,1,0);
@@ -86,6 +87,8 @@ for it = 40 : 250
   tracJump = fBend+fTen;
   
   % Near-field velocity
+  G = op.stokesSLmatrix(vesicle);
+  
   [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
     rotCentNear, scalingNear, sortIdxNear] = dnn.predictNearLayersOnce32modes(vesicle.X);
 

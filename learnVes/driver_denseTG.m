@@ -1,11 +1,12 @@
 clear; clc;
 dt = 1E-4;
-Th = 2*dt;
+Th = 1000*dt;
 
 iExactTension = 1;
 iExactNear = 1;
 iExact = 1; % exact relaxation
 iIgnoreNear = 0;
+iAdv = 1; % exact advection
 
 addpath ../src/
 addpath ../examples/
@@ -32,8 +33,8 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'tayGreen'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 200; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 0;
+prams.speed = 400; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+iplot = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -51,7 +52,7 @@ prams.dtRelax = prams.dt;
 prams.Nbd = 0;
 prams.nvbd = 0;
 prams.interpOrder = 1;
-
+prams.repStrength = 0;
 oc = curve;
 
 % net parameters
@@ -59,22 +60,29 @@ Nnet = 32; % num. points
 
 % VESICLES and WALLS:
 % -------------------------------------------------------------------------
-X0 = oc.initConfig(prams.N,'ellipse');
-[~,area0,len0] = oc.geomProp(X0);
-scale = 1/len0;
+% X0 = oc.initConfig(prams.N,'ellipse');
+% [~,area0,len0] = oc.geomProp(X0);
+% scale = 1/len0;
+% 
+% sx = [0.075:0.2:2.425]';
+% sy = [0.225:0.5:2]';
+% [cenx, ceny] = meshgrid(sx,sy);
+% cenx = cenx(:)';
+% ceny = ceny(:)';
+% prams.nv = numel(cenx); 
+% angle = -ones(prams.nv,1)*pi/2;
+% 
+% X = oc.initConfig(prams.N,'nv',prams.nv,...
+%   'reducedArea',0.65,...
+%   'angle',angle,...
+%   'center',[cenx;ceny], 'scale',scale);
 
-sx = [0.075:0.2:2.425]';
-sy = [0.225:0.5:2]';
-[cenx, ceny] = meshgrid(sx,sy);
-cenx = cenx(:)';
-ceny = ceny(:)';
-prams.nv = numel(cenx); 
-angle = -ones(prams.nv,1)*pi/2;
+% load ./ShanSims/crashingTGdata.mat
+% X = [vesx(:,:,1);vesy(:,:,1)];
 
-X = oc.initConfig(prams.N,'nv',prams.nv,...
-  'reducedArea',0.65,...
-  'angle',angle,...
-  'center',[cenx;ceny], 'scale',scale);
+load VF25_TG32Ves.mat
+
+prams.nv = numel(X(1,:));
 % 
 
 % load 48vesiclesInTG_N128
@@ -86,12 +94,18 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
 
 % load IC4TG_MLARM2
 % X = Xic;
+
+load VF25_TG32Ves.mat
+
+prams.chanWidth = chanWidth;
+[~,area0,len0] = oc.geomProp(X);
 % 
-% XOrig = X;
-% for it = 1 : 5
-%   X = oc.redistributeArcLength(X);
-% end
-% X = oc.alignCenterAngle(XOrig,X);
+
+XOrig = X;
+for it = 1 : 5
+  X = oc.redistributeArcLength(X);
+end
+X = oc.alignCenterAngle(XOrig,X);
 
 % load tayGreenStep140ic
 % X = Xic;
@@ -100,10 +114,6 @@ X = oc.initConfig(prams.N,'nv',prams.nv,...
 % load taylorGreenFinalIC3_trueLowRes
 
 
-
-prams.chanWidth = 2.5;
-[~,area0,len0] = oc.geomProp(X);
-% 
 
 % 
 % figure(1); clf;
@@ -124,7 +134,8 @@ disp(['Flow: ' prams.bgFlow ', N = ' num2str(N) ', nv = ' num2str(nv) ...
 solveType = 'DNN';
 % fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/32modes_taylorGreen_IC4_biem_wrongNear_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/resume2_32modes_taylorGreen_IC5_BIEM_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+% fileName = ['./output/resume2_32modes_taylorGreen_IC5_BIEM_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
+fileName = ['./output/test32Ves_TG.bin'];
 % fileName = ['./output/resume_32modes_taylorGreen_IC5_GT50Ves_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
@@ -174,6 +185,12 @@ driftyAdv = [];
 % ------------------------------------------------------------------------
 writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);
 
+Vsize = chanWidth; 
+[xx,yy] = meshgrid(linspace(-1,1.5+chanWidth,50)',linspace(-1,1.5+chanWidth,50)');
+uu = sin(xx/Vsize*pi).*cos(yy/Vsize*pi); 
+vv = -cos(xx/Vsize*pi).*sin(yy/Vsize*pi);
+
+
 % TIME STEPPING
 it = 1;
 while time(end) < prams.Th
@@ -182,7 +199,7 @@ while time(end) < prams.Th
   
   
   disp('Taking a step with DNNs...');  tStart = tic;    
-  [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear);
+  [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear,iAdv);
 
 
   [xIntersect,~,~] = oc.selfintersect(Xhist);
@@ -208,11 +225,16 @@ while time(end) < prams.Th
   hold on;
   x = [Xhist(1:end/2,:); Xhist(1,:)];
   y = [Xhist(1+end/2:end,:); Xhist(end/2+1,:)];
+
+  l = streamslice(xx,yy,uu,vv);
+  set(l,'Color',[12/255,44/255,132/255, 1])
+  set(l,'linewidth',3)
+
   plot(x,y,'r','linewidth',2)
   hold on
-  plot(Xhist(1,:), Xhist(end/2+1,:),'o','markerfacecolor','r','markersize',8)
-  xlim([-2.5 5])
-  ylim([-2.5 5])
+  % plot(Xhist(1,:), Xhist(end/2+1,:),'o','markerfacecolor','r','markersize',8)
+  xlim([0 3])
+  ylim([0 3])
   axis equal
   pause(0.1)
   end
