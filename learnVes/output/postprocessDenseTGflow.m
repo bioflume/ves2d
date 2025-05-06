@@ -1,24 +1,30 @@
 clear; clc;
-imovie = 0;
-
-
+addpath ../ShanSims/
+imovie = 1;
 
 % fileName = '128modes_taylorGreen_IC5_GT50ves_dt1e-05_speed200.bin';
-% [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
+% fileName = 'N32_nv32_TGVF25.bin';
 
+fileName = 'N128_nv32_TGVF25_dt1E5.bin';
+% fileName = 'N32_nv32_TGVF25_dt1E5.bin';
+[vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
+nstepsT = numel(timeT);
 
-load 32modes_TaylorGreen_50Ves_NearNet % nearnet simulation
+% fileName = 'N32_nv32_TGVF25_dt1E5.bin';
+% [vesx, vesy, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
 
-% load 128modes_TaylorGreen_50Ves_BIEM % Ground truth
-
-% load 32modes_TaylorGreen_50Ves_BIEM % Low-Res BIEM
-
+fileName = 'TG_dilute_auglag_25Feb.bin';
+[vesx, vesy, time, N, nv, xinit, yinit] = loadShanVesFile(fileName);
 nsteps = numel(time);
+
+nsteps = min([nstepsT-1,nsteps]);
+nskip = 5;
+
 
 
 if imovie
 
-numberOfFrames = numel(1:5:nsteps);
+numberOfFrames = numel(1:nskip:nsteps);
 hFigure = figure;
 allTheFrames = cell(numberOfFrames,1);
 vidHeight = 576;
@@ -28,7 +34,7 @@ allTheFrames(:) = {zeros(vidHeight, vidWidth, 3, 'uint8')};
 allTheColorMaps = cell(numberOfFrames,1);
 allTheColorMaps(:) = {zeros(256, 3)};
 % Now combine these to make the array of structures.
-myMovie = struct('cdata', allTheFrames, 'colormap', allTheColorMaps);
+% myMovie = struct('colormap', allTheColorMaps);
 % Create a VideoWriter object to write the video out to a new, different file.
 % writerObj = VideoWriter('problem_3.avi');
 % open(writerObj);
@@ -45,23 +51,34 @@ vv = -cos(xx/Vsize*pi).*sin(yy/Vsize*pi);
 
 %%
 frameCount = 1;
-for k = 450 : 5 : nsteps
+for k = 1 : nskip : nsteps
  if imovie; cla reset; end;
 
  % kT = 2*k-1;
- kT = k;
- xvecT = [vesx(:,:,kT);vesx(1,:,kT)] ;
- yvecT = [vesy(:,:,kT);vesy(1,:,kT)];
-  
+ kT = k+1;
+ xvecT = [vesxT(:,:,kT);vesxT(1,:,kT)] ;
+ yvecT = [vesyT(:,:,kT);vesyT(1,:,kT)];
+ colorT = [0 0 0 1]; %black
+ 
+ xvec = [vesx(:,:,k);vesx(1,:,k)] ;
+ yvec = [vesy(:,:,k);vesy(1,:,k)];
+
+ % color = [26/255 150/255 65/255 1]; %green
+ color = [202/255 0 32/255 1]; % red
+ 
 
  figure(1); clf; 
- h = plot(xvecT, yvecT, 'Color',[26/255 150/255 65/255 1],'linewidth',2);
+ h = plot(xvecT, yvecT, 'Color',colorT,'linewidth',2);
+ hold on
+ hFill = fill(xvecT, yvecT,colorT(1:3));
+ set(hFill,'EdgeColor',colorT(1:3));
 
+ h = plot(xvec, yvec, 'Color',color,'linewidth',2);
+ hold on
+ hFill = fill(xvec, yvec,color(1:3));
+ set(hFill,'EdgeColor',color(1:3));
  
- 
- % h = plot(xvecT, yvecT, 'Color',[202/255 0 32/255 1],'linewidth',2);
- 
- % h = plot(xvecT, yvecT, 'Color',[0 0 0 1],'linewidth',2);
+
  hold on
  l = streamslice(xx,yy,uu,vv);
  set(l,'Color',[12/255,44/255,132/255, 0.75])
@@ -86,18 +103,13 @@ for k = 450 : 5 : nsteps
  % box on
  % set(gca,'visible','off')
 
- figure(2);clf;
- plot(xvecT(:,[47;48]),yvecT(:,[47;48]),'r','linewidth',2)
- axis equal
- 
- set(gca,'xtick',[]);
- set(gca,'ytick',[]);
- set(gca,'ztick',[]);
-
- 
-
- 
- 
+ % figure(2);clf;
+ % plot(xvecT(:,:),yvecT(:,:),'r','linewidth',2)
+ % axis equal
+ % 
+ % set(gca,'xtick',[]);
+ % set(gca,'ytick',[]);
+ % set(gca,'ztick',[]);
 
  if imovie
  drawnow;

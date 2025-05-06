@@ -135,6 +135,35 @@ vesicle.uprate = max(uprates);
 end % setUpRate
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function f = tracJump_upsample(o,f,sigma,uprate)
+% tracJump(f,sigma) computes the traction jump where the derivatives
+% are taken with respect to a linear combiation of previous time steps
+% which is stored in object o Xm is 2*N x nv and sigma is N x nv
+
+oc = curve;
+[x,y] = oc.getXY(o.X);
+[fx,fy] = oc.getXY(f);
+Nup = uprate*o.N;
+xup = interpft(x,Nup); yup = interpft(y,Nup);
+fxup = interpft(fx,Nup); fyup = interpft(fy,Nup);
+sigma = interpft(sigma,Nup);
+
+% compute upsampled vesicle
+vesicleUp = capsules([xup;yup],[],[],o.kappa,1,0);
+
+fup = vesicleUp.bendingTerm([fxup;fyup]) + ...
+  vesicleUp.tensionTerm(sigma);
+
+% Get low frequencies of forces
+[fupx,fupy] = oc.getXY(fup); 
+fxh = fft(fupx)/uprate;
+fyh = fft(fupy)/uprate;
+fx = real(ifft([fxh(1:o.N/2,:);fxh(Nup - o.N/2+1:Nup,:)]));
+fy = real(ifft([fyh(1:o.N/2,:);fyh(Nup - o.N/2+1:Nup,:)]));
+f = oc.setXY(fx,fy);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function f = tracJump(o,f,sigma)
 % tracJump(f,sigma) computes the traction jump where the derivatives
 % are taken with respect to a linear combiation of previous time steps

@@ -1915,13 +1915,13 @@ while k <= nv
    % create capsule with the potential vesicle
    vesicle = capsules([xpotLarge;ypotLarge],[],[],[],[],true);
     
-   [~,NearV2W] = vesicle.getZone(walls,3);
-   [~,icollisionWall] = vesicle.collision(walls,[],NearV2W,fmm,op);
+   % [~,NearV2W] = vesicle.getZone(walls,3);
+   % [~,icollisionWall] = vesicle.collision(walls,[],NearV2W,fmm,op);
    % at least one of the vesicles's points is outside of one
    % of the solid wall components
-   if icollisionWall
-     accept = false;
-   end
+   % if icollisionWall
+     % accept = false;
+   % end
   
    % reject vesicle if it is outside the domain
    if 1.1*sqrt(mean(xpot)^2 + mean(ypot)^2)>=max(xwalls(:,1)) || ...
@@ -3838,7 +3838,7 @@ tolg = 1e-3;
 if isempty(dX)
   [~,~,len] = o.geomProp(X);    
   dX = len/N;
-  toly = 1e-5*dX;
+  toly = 1e-3*dX;
 else
   normDx = sqrt(dX(1:end/2,:).^2+dX(end/2+1:end,:).^2);
   toly = 1e-3*min(normDx(:));  

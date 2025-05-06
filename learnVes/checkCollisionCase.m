@@ -28,7 +28,7 @@ pe = pyenv('Version', '/Users/gokberk/opt/anaconda3/envs/mattorch/bin/python');
 
 %% 
 oc = curve;
-dt = 1E-4;
+dt = 1E-5;
 Th = 250*dt;
 N = 32; nv = 48;
 prams.nv = 48;
@@ -68,11 +68,27 @@ dnn.torchTenAdvOutNorm = out_param;
 opNfmm = dnn.opNfmm;
 tt = dnn.tt;
 op = tt.op;
+uprate = ceil(sqrt(N));
+
 %% Now take time steps
 tenOld = zeros(N,nv);
 X = [vesx(:,:,1);vesy(:,:,1)];
 [~,area0,len0] = oc.geomProp(X);
+cmap = colorcube(48);
+
 for it = 1 : 50
+
+  xnear = zeros(N,2,nv); ynear = zeros(N,2,nv);
+  for k = 1 : nv
+    [~,tang] = oc.diffProp(X(:,k));
+    nx = tang(N+1:2*N);
+    ny = -tang(1:N);
+    xnear(:,1,k) = X(1:end/2,k) - nx*len0(k)/N;
+    xnear(:,2,k) = X(1:end/2,k) + nx*len0(k)/N;
+    ynear(:,1,k) = X(end/2+1:end,k) - ny*len0(k)/N;
+    ynear(:,2,k) = X(end/2+1:end,k) + ny*len0(k)/N;
+  end
+
   % X = [vesx_coll(:,:,it);vesy_coll(:,:,it)];  
   vback = dnn.vinf(X); %+ vInfs(:,:,it);
 
@@ -82,33 +98,84 @@ for it = 1 : 50
   N = vesicle.N;
 
   % Compute bending forces + old tension forces
-  fBend = vesicle.tracJump(X,zeros(N,nv));
-  fTen = vesicle.tracJump(zeros(2*N,nv),tenOld);
+  fBend = vesicle.tracJump_upsample(X,zeros(N,nv),uprate);
+  fTen = vesicle.tracJump_upsample(zeros(2*N,nv),tenOld,uprate);
+  
   tracJump = fBend+fTen;
   
   % Near-field velocity
-  G = op.stokesSLmatrix(vesicle);
-  
-  [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear] = dnn.predictNearLayersOnce32modes(vesicle.X);
+  % G = op.stokesSLmatrix(vesicle);
+  % 
+  % [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+  %   rotCentNear, scalingNear, sortIdxNear] = dnn.predictNear5LayersOnce32modes(vesicle.X);
+  % 
+  % farFieldtracJump = dnn.computeStokesInteractionsNet_5Layers(vesicle, tracJump, opNfmm, oc, ...
+  %   velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+  %   rotCentNear, scalingNear, sortIdxNear);
 
-  farFieldtracJump = dnn.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
-    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear);
-  
-  figure(3);clf;
-  plot(X(1:end/2,:),X(end/2+1:end,:),'k','linewidth',2)
+  SLPnoCorr = []; % it would SLPdiag if fmm is on
+  G = op.stokesSLmatrix(vesicle);
+
+  % Get the near structure (this will be done using NN in Python)
+  NearV2V = vesicle.getZone([],1);    
+
+  kernel = @op.exactStokesSL;
+  kernelDirect = @op.exactStokesSL;
+
+  SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
+  farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
+      kernel,kernelDirect,vesicle,true,false);
+
+  figure(4);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
   hold on
-  quiver(X(1:end/2,:),X(end/2+1:end,:),farFieldtracJump(1:end/2,:),farFieldtracJump(end/2+1:end,:),0.5,'r')
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),farFieldtracJump(1:end/2,k),farFieldtracJump(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
   axis equal
   title('FarField for Tension Solve')
+
+  figure(5);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
+  hold on
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),fTen(1:end/2,k),fTen(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
+  axis equal
+  title('tension force for Tension Solve')
+
+  figure(6);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
+  hold on
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),fBend(1:end/2,k),fBend(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
+  axis equal
+  title('bending force for Tension Solve')
+
   pause 
 
   % tension solves
-  vBackSolve = dnn.invTenMatOnVback32modes(X, vback + farFieldtracJump);
-
-  selfBendSolve = dnn.invTenMatOnSelfBend(X);
-  tenNew = -(vBackSolve + selfBendSolve);
+  tenNew = zeros(N,nv);
+  G = op.stokesSLmatrix(vesicle);
+  [~,Ten,Div] = vesicle.computeDerivs;
+  for k = 1 : nv
+    LHS = (Div(:,:,k)*G(:,:,k)*Ten(:,:,k));
+    selfBend = G(:,:,k)*fBend(:,k);
+    RHS = -Div(:,:,k)*(vback(:,k)+farFieldtracJump(:,k)+selfBend);
+    tenNew(:,k) = LHS\RHS;
+  end % k = 1 : nv
+  
+  % vBackSolve = dnn.invTenMatOnVback32modes(X, vback + farFieldtracJump);
+  % 
+  % selfBendSolve = dnn.invTenMatOnSelfBend(X);
+  % tenNew = -(vBackSolve + selfBendSolve);
 
   % tenNewFilt = oc.filterTension(tenNew,32,4);
   % disp('Tension: ')
@@ -124,19 +191,60 @@ for it = 1 : 50
   tenOld = tenNew;
 
   % update the traction jump calculation
-  fTen = vesicle.tracJump(zeros(2*N,nv), tenNew); 
+  fTen = vesicle.tracJump_upsample(zeros(2*N,nv),tenOld,uprate);
   tracJump = fBend + fTen;
 
   % compute velocity again
-  farFieldtracJump = dnn.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
-    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear);
+  % farFieldtracJump = dnn.computeStokesInteractionsNet_5Layers(vesicle, tracJump, opNfmm, oc, ...
+  %   velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+  %   rotCentNear, scalingNear, sortIdxNear);
+
+  SLPnoCorr = []; % it would SLPdiag if fmm is on
+  G = op.stokesSLmatrix(vesicle);
+
+  % Get the near structure (this will be done using NN in Python)
+  NearV2V = vesicle.getZone([],1);    
+
+  kernel = @op.exactStokesSL;
+  kernelDirect = @op.exactStokesSL;
+
+  SLP = @(X) op.exactStokesSLdiag(vesicle,G,X);
+  farFieldtracJump = op.nearSingInt(vesicle,tracJump,SLP,SLPnoCorr,NearV2V,...
+      kernel,kernelDirect,vesicle,true,false);
   
-  figure(3);
-  quiver(X(1:end/2,:),X(end/2+1:end,:),farFieldtracJump(1:end/2,:),farFieldtracJump(end/2+1:end,:),0.5,'b')
+  figure(4);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
+  hold on
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),farFieldtracJump(1:end/2,k),farFieldtracJump(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
   axis equal
-  legend('Vesicle','Vesicle','FarField for tension','FarField for Xsolve')
   title('FarField for X Solve')
+
+  figure(5);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
+  hold on
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),fTen(1:end/2,k),fTen(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
+  axis equal
+  title('tension force for X Solve')
+
+  figure(6);clf;
+  for k = 1 : nv
+  plot(X(1:end/2,k),X(end/2+1:end,k),'Color',cmap(k,:),'linewidth',2)
+  hold on
+  plot(xnear(:,:,k),ynear(:,:,k),'--','Color',cmap(k,:),'linewidth',2)
+  quiver(X(1:end/2,k),X(end/2+1:end,k),fBend(1:end/2,k),fBend(end/2+1:end,k),0.5,'Color',cmap(k,:))
+  end
+  hold on
+  axis equal
+  title('bending force for X Solve')
+
   pause 
 
 
@@ -144,16 +252,37 @@ for it = 1 : 50
   vbackTotal = vback + farFieldtracJump;
 
   % advection solve
-  Xadv = dnn.translateVinfwTorch32modes(X, vbackTotal);
+  % Xadv = dnn.translateVinfwTorch32modes(X, vbackTotal);
   
-  figure(4);clf;
+  Xadv = zeros(2*N,nv);
+  G = op.stokesSLmatrix(vesicle);
+  [Ben,Ten,Div] = vesicle.computeDerivs;
+  for k = 1 : nv
+    M = G(:,:,k)*Ten(:,:,k)*((Div(:,:,k)*G(:,:,k)*Ten(:,:,k))\eye(vesicle.N))*Div(:,:,k);
+    Xadv(:,k) = X(:,k) + dt*(eye(2*vesicle.N)-M)*vbackTotal(:,k);
+  end
+  % Xadv = oc.upsThenFilterShape(Xadv,N,8);
+
+  figure(5);clf;
   plot(Xadv(1:end/2,:),Xadv(end/2+1:end,:),'k','linewidth',2)
   axis equal
   title('Advection solve')
   hold on
-  pause
+  % pause
   % relaxation
   Xnew = dnn.relaxWTorchNet(Xadv);    
+
+  % Xnew = zeros(2*N,nv);
+  % vesicle = capsules(Xadv,[],[],1,1,0); 
+  % G = op.stokesSLmatrix(vesicle);
+  % % Bending, tension and surface divergence
+  % [Ben,Ten,Div] = vesicle.computeDerivs;
+  % for k = 1 : nv
+  % M = G(:,:,k)*Ten(:,:,k)*((Div(:,:,k)*G(:,:,k)*Ten(:,:,k))\eye(vesicle.N))*Div(:,:,k);
+  % rhs = Xadv(:,k);
+  % LHS = (eye(2*vesicle.N)-vesicle.kappa*dt*(-G(:,:,k)*Ben(:,:,k)+M*G(:,:,k)*Ben(:,:,k)));
+  % Xnew(:,k) = LHS\rhs;
+  % end
   
   plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r','linewidth',2)
   legend('Advection solve','Advection solve','Relaxation solve','Relaxation solve')
@@ -172,20 +301,20 @@ for it = 1 : 50
   if ifail; disp('Error in AL cannot be corrected!!!'); end;
   
 
-  figure(1);clf;
-  plot(X(1:end/2,:),X(end/2+1:end,:),'k','linewidth',2)
-  hold on
-  plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r','linewidth',2)
-  axis equal
-  title(it)
-
-  figure(2);clf;
-  plot(X(1:end/2,:),X(end/2+1:end,:),'k','linewidth',2)
-  hold on
-  quiver(X(1:end/2,:),X(end/2+1:end,:),vback(1:end/2,:),vback(end/2+1:end,:),0.5,'b')
-  quiver(X(1:end/2,:),X(end/2+1:end,:),farFieldtracJump(1:end/2,:),farFieldtracJump(end/2+1:end,:),0.5,'r')
-  axis equal
-  title(it)
+  % figure(1);clf;
+  % plot(X(1:end/2,:),X(end/2+1:end,:),'k','linewidth',2)
+  % hold on
+  % plot(Xnew(1:end/2,:),Xnew(end/2+1:end,:),'r','linewidth',2)
+  % axis equal
+  % title(it)
+  % 
+  % figure(2);clf;
+  % plot(X(1:end/2,:),X(end/2+1:end,:),'k','linewidth',2)
+  % hold on
+  % quiver(X(1:end/2,:),X(end/2+1:end,:),vback(1:end/2,:),vback(end/2+1:end,:),0.5,'b')
+  % quiver(X(1:end/2,:),X(end/2+1:end,:),farFieldtracJump(1:end/2,:),farFieldtracJump(end/2+1:end,:),0.5,'r')
+  % axis equal
+  % title(it)
     
   X = Xnew;
 
@@ -196,7 +325,7 @@ for it = 1 : 50
   % axis equal
   % title(it)
 
-  pause()
+  % pause()
 
 end
 

@@ -11,8 +11,8 @@ scale = 1/len0;
 H = max(X0(1:end/2))-min(X0(1:end/2));
 W = max(X0(end/2+1:end))-min(X0(end/2+1:end)); 
 
-l = W*125 + 124*0.06;
-h = 0.2 + 0.07 * 7 + 8 * H;
+l = W*125 + 124*0.12;
+h = 0.2 + 0.12 * 7 + 8 * H;
 
 h/2
 
@@ -20,8 +20,11 @@ cy = linspace(-h/2+0.1 + H/2, h/2-0.1-H/2,8)';
 cx = linspace(W/2, l-W/2,125)';
 
 [ccx, ccy] = meshgrid(cx,cy);
-ccx = ccx + (-0.01 + 0.02 * rand(8,125));
-ccy = ccy + (-0.015 + 0.03 * rand(8,125));
+% ccx = ccx + (-0.01 + 0.02 * rand(8,125));
+% ccy = ccy + (-0.015 + 0.03 * rand(8,125));
+randInc = zeros(8,125);
+randInc(1:2:end,:) = 0.05;
+ccy = ccy + randInc;
 
 ccx = ccx(:)';
 ccy = ccy(:)';
@@ -40,6 +43,13 @@ X = oc.initConfig(N,'nv',nv,...
 % save 1000vesShapeEllips X
 
 %%
+addpath ../src/
+oc = curve;
+
+N = 32;
+
+ncol = 125;
+nrow = 16;
 
 t = (0:N-1)'*2*pi/N;
 r = 1 + .7*cos(2*t);
@@ -54,17 +64,20 @@ H = max(X8(1:end/2))-min(X8(1:end/2));
 W = max(X8(end/2+1:end))-min(X8(end/2+1:end)); 
 
 
-l = W*125 + 124*0.06;
-h = 0.2 + 0.07 * 7 + 8 * H;
+l = W*ncol + (ncol-1)*0.15;
+h = 0.2 + 0.15 * (nrow-1) + nrow * H;
 
 h/2 
 
-cy = linspace(-h/2+0.1 + H/2, h/2-0.1-H/2,8)';
-cx = linspace(W/2, l-W/2,125)';
+cy = linspace(-h/2+0.1 + H/2, h/2-0.1-H/2,nrow)';
+cx = linspace(W/2, l-W/2,ncol)';
 
 [ccx, ccy] = meshgrid(cx,cy);
-ccx = ccx + (-0.01 + 0.02 * rand(8,125));
-ccy = ccy + (-0.015 + 0.03 * rand(8,125));
+% ccx = ccx + (-0.01 + 0.02 * rand(8,125));
+% ccy = ccy + (-0.015 + 0.03 * rand(8,125));
+randInc = zeros(nrow,ncol);
+randInc(:,1:2:end) = 0.05;
+ccy = ccy + randInc;
 
 X0 = oc.initConfig(N,'figureEight');
 [~,area0,len0] = oc.geomProp(X0);
@@ -83,8 +96,8 @@ theta = -ones(nv,1)*pi/2;
       cos(theta(k)) * X0(N+1:2*N) + ccy(k);
   end
 
-% figure(1);clf;
-% plot([X(1:end/2,:);X(1,:)],[X(end/2+1:end,:);X(end/2+1,:)],'r','linewidth',2)
-% axis equal
+figure(1);clf;
+plot([X(1:end/2,:);X(1,:)],[X(end/2+1:end,:);X(end/2+1,:)],'r','linewidth',2)
+axis equal
 % 
 % save 1000vesShape8 X

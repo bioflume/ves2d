@@ -9,15 +9,17 @@ set(groot, 'DefaultTextInterpreter','latex')
 addpath ../src/
 addpath ./output/
 
-fileName = '32modes_taylorGreen_IC5_GT50ves_dt1e-05_speed200.bin';
+fileName = 'N128_nv32_TGVF25_dt1E5.bin';
 [vesxT, vesyT, ten, timeT, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
-
+% fileName = 'TG_dilute_auglag_25Feb.bin';
+% [vesxT, vesyT, timeT, NN, nv, xinit, yinit] = loadShanVesFile(fileName);
 
 oc = curve;
 N = 128;
 op = poten(N,4,0);
 
-X = [interpft(vesxT(:,:,1000),128); interpft(vesyT(:,:,1000),128)];
+%%
+X = [interpft(vesxT(:,:,40000),128); interpft(vesyT(:,:,40000),128)];
 
 Vsize = 2.5; speed = 200;
 [xx,yy] = meshgrid(linspace(-1,3.5,50)',linspace(-1,3.5,50)');
@@ -111,7 +113,7 @@ vv = reshape(velyTraNear,size(yy)) + (-speed*cos(xx/Vsize*pi).*sin(yy/Vsize*pi))
 figure(1); clf;
 l = streamslice(xx,yy,uu,vv);
 set(l,'Color',[12/255,44/255,132/255, 1])
-set(l,'linewidth',3)
+set(l,'linewidth',2)
 hold on
 plot(-0.5, -0.5, 'k.','markersize',0.001)
 plot(3, 3, 'k.','markersize',0.001)
@@ -128,6 +130,7 @@ axis equal
 xlim([-0.5 3])
 ylim([-0.5 3])
 
+rectangle('Position',[0 0 Vsize Vsize],'Curvature',0.2,'EdgeColor',[230 97 1]/255,'LineWidth',2)
 
 set(gca,'xtick',[]);
 set(gca,'ytick',[]);
@@ -140,7 +143,7 @@ box on
 set(gca,'visible','off')
 
 ax = gca;
-exportgraphics(ax,'~/Desktop/vesicleAndvbackT1000.png','Resolution',300)
+exportgraphics(ax,'~/Desktop/vesicleAndvbackT40000.png','Resolution',300)
 %%
 % X1 = [interpft(vesxT(:,:,1),128); interpft(vesyT(:,:,1),128)];
 % X1000 = [interpft(vesxT(:,:,1000),128); interpft(vesyT(:,:,1000),128)];

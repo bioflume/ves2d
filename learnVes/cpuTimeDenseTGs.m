@@ -23,8 +23,8 @@ maxDt = dt; % dt = 1.28e-3,1e-3, 1.6e-4, 1e-5, 1e-6
 prams.Th = Th;
 
 % prams.Th = 0.05; % time horizon
-prams.N = 128; % num. points for true solve in DNN scheme
-prams.Nfmm = 128;
+prams.N = 32; % num. points for true solve in DNN scheme
+prams.Nfmm = 32;
 prams.fmm = false; % use FMM for ves2ves
 prams.fmmDLP = false; % use FMM for ves2walls
 prams.kappa = 1;
@@ -38,22 +38,22 @@ Th = prams.Th; N = prams.N; dt = prams.dt;
 oc = curve;
 
 % net parameters
-Nnet = 128; % num. points
+Nnet = 32; % num. points
 
 
 fileNames = {'nv48IC.mat','nv102IC.mat','nv126IC.mat','nv260IC.mat',...
-    'nv504IC.mat','nv846IC.mat','nv1020IC.mat'};
+    'nv504IC.mat','nv846IC.mat','nv1020IC.mat','nv2250IC.mat'};
 cpuTimes = zeros(7,1);
 
-for irun = 1 : 7
+for irun = 8 : 8
 
-load(fileNames{irun})
+load(['./denseTayGreenICs/' fileNames{irun}])
 X = [interpft(X(1:end/2,:),prams.N);interpft(X(end/2+1:end,:),prams.N)];
 
 prams.chanWidth = chanWidth;
 [~,area0,len0] = oc.geomProp(X);
 prams.nv = numel(X(1,:));
-
+prams.repStrength = 0;
 % -------------------------------------------------------------------------
 
 nv = prams.nv; 
@@ -119,9 +119,9 @@ while time(end) < prams.Th
   disp(' ')
 end
 cpuTimes(irun) = toc(tTimeSteps)/2;
-save cpuTimesForOneStepN128 cpuTimes
+% save cpuTimesForOneStepN32 cpuTimes
 % Save data to a mat-file:
-writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
+% writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function writeData(filename,X,sigma,time,ncountNN,ncountExact)
