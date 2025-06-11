@@ -4,7 +4,7 @@ imovie = 1;
 
 
 % fileName = '128modes_taylorGreen_IC5_GT50ves_dt1e-05_speed200.bin';
-fileName = 'N32_nv32_TGVF25.bin';
+fileName = 'N128_implicit_hedgehog.bin';
 [vesx, vesy, ten, time, NN, nv, xinitN, yinitN, ncountNN, ncountExact] = loadSingleVesFile(fileName);
 
 
@@ -39,14 +39,14 @@ set(gcf, 'renderer', 'zbuffer');
 
 end
 
-Vsize = 2.5;
-[xx,yy] = meshgrid(linspace(-1,3.5,50)',linspace(-1,3.5,50)');
+Vsize = 5;
+[xx,yy] = meshgrid(linspace(-1,5.5,50)',linspace(-1,5.5,50)');
 uu = sin(xx/Vsize*pi).*cos(yy/Vsize*pi); 
 vv = -cos(xx/Vsize*pi).*sin(yy/Vsize*pi);
 
 %%
 frameCount = 1;
-for k = 1 : 2 : 6500
+for k = 1 : 1 : nsteps
  if imovie; cla reset; end;
 
  % kT = 2*k-1;
@@ -70,12 +70,12 @@ for k = 1 : 2 : 6500
  set(l,'linewidth',0.5)
  
  plot(-0.5, -0.5, 'k.','markersize',0.001)
- plot(3, 3, 'k.','markersize',0.001)
+ plot(5, 5, 'k.','markersize',0.001)
 
  axis equal
 
- xlim([-0.5 3])
- ylim([-0.5 3])
+ xlim([-0.5 5])
+ ylim([-0.5 5])
 
  set(gca,'xtick',[]);
  set(gca,'ytick',[]);

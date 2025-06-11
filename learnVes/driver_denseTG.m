@@ -1,16 +1,32 @@
 clear; clc;
-dt = 1E-4;
-Th = 20000*dt;
-
-iExactTension = 1;
-iExactNear = 1;
-iExact = 1; % exact relaxation
-iIgnoreNear = 0;
-iAdv = 1; % exact advection
-
+dt = 1E-5;
+Th = 50*dt;
+names{1} = './output/res_N32_implicit_hedgehog.bin';
+names{2} = './output/res_N32_implicit_rbf.bin';
+names{3} = './output/res_N32_implicit_noNear.bin';
+names{4} = './output/res_N32_explicit_hedgehog.bin';
+names{5} = './output/res_N32_explicit_rbf.bin';
+names{6} = './output/res_N32_explicit_noNear.bin';
+flagRBF = [0;1;0;0;1;0];
+flagNoNear = [0; 0; 1; 0; 0; 1];
+flagImp = [1; 1; 1; 0; 0; 0];
 addpath ../src/
 addpath ../examples/
 addpath ./shannets/
+iExactTension = 1;
+iExactNear = 1;
+iExact = 1; % exact relaxation
+iAdv = 1; % exact advection
+for irun = 1 : 6
+
+iIgnoreNear = flagNoNear(irun);
+iImplicit = flagImp(irun); % whether implicit time stepping
+iRBFnear = flagRBF(irun);
+fileName = names{irun};
+disp(fileName)
+% fileName = ['./output/N128_explicit_hedgehog.bin'];
+
+
 % addpath ./shannets/ves_fft_models/
 
 % pathofDocument = fileparts(which('Net_ves_relax_midfat.py'));
@@ -33,8 +49,8 @@ addpath ./shannets/
 % FLAGS
 %-------------------------------------------------------------------------
 prams.bgFlow = 'tayGreen'; % 'shear','tayGreen','relax','parabolic'
-prams.speed = 400; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
-iplot = 0;
+prams.speed = 800; % 500-3000 for shear, 70 for rotation, 100-400 for parabolic 
+iplot = 1;
 % PARAMETERS, TOOLS
 %-------------------------------------------------------------------------
 errTol = 1e-2;
@@ -80,8 +96,11 @@ Nnet = 32; % num. points
 % load ./ShanSims/crashingTGdata.mat
 % X = [vesx(:,:,1);vesy(:,:,1)];
 
-load VF25_TG32Ves.mat
-
+% load tayGreenStep20ic
+% X = Xic;
+% load crashingNV128_IC.mat
+load(['finalConfigRun' num2str(irun) '.mat'])
+X = [interpft(X(1:end/2,:),prams.N); interpft(X(end/2+1:end,:),prams.N)];
 prams.nv = numel(X(1,:));
 % 
 
@@ -95,8 +114,8 @@ prams.nv = numel(X(1,:));
 % load IC4TG_MLARM2
 % X = Xic;
 
-load VF25_TG32Ves.mat
-
+% load VF25_TG32Ves.mat
+chanWidth = 5;
 prams.chanWidth = chanWidth;
 [~,area0,len0] = oc.geomProp(X);
 % 
@@ -135,7 +154,6 @@ solveType = 'DNN';
 % fileName = ['./output/taylorGreen_IC4_ignoreNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/32modes_taylorGreen_IC4_biem_wrongNear_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/resume2_32modes_taylorGreen_IC5_BIEM_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
-fileName = ['./output/N32_nv32_TGVF25.bin'];
 % fileName = ['./output/resume_32modes_taylorGreen_IC5_GT50Ves_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
 % fileName = ['./output/taylorGreen_IC4_exactRelax2_predictNear_diff625kNetJune8_dt' num2str(dt) '_speed' num2str(prams.speed) '.bin'];
@@ -151,6 +169,7 @@ fclose(fid);
 % BUILD DNN CLASS
 % -------------------------------------------------------------------------
 dnn = dnnToolsManyVesFree(X,prams);
+dnn.iRBFnear = iRBFnear;
 
 % LOAD NORMALIZATION PARAMETERS
 % load ./shannets/ves_fft_in_param.mat
@@ -198,8 +217,12 @@ while time(end) < prams.Th
   disp([num2str(it) 'th time step, time: ' num2str(time(it))])
   
   
-  disp('Taking a step with DNNs...');  tStart = tic;    
+  tStart = tic;    
+  if ~iImplicit
   [Xhist,sigStore] = dnn.DNNsolveTorchMany(Xhist,sigStore,area0,len0,iExactTension,iExactNear,iExact,iIgnoreNear,iAdv);
+  else
+  [Xhist, sigStore] = dnn.take_implicit_step(Xhist, sigStore, area0, len0);
+  end
 
 
   [xIntersect,~,~] = oc.selfintersect(Xhist);
@@ -233,8 +256,8 @@ while time(end) < prams.Th
   plot(x,y,'r','linewidth',2)
   hold on
   % plot(Xhist(1,:), Xhist(end/2+1,:),'o','markerfacecolor','r','markersize',8)
-  xlim([0 3])
-  ylim([0 3])
+  % xlim([0 3])
+  % ylim([0 3])
   axis equal
   pause(0.1)
   end
@@ -242,7 +265,7 @@ end
 
 % Save data to a mat-file:
 writeData(fileName,Xhist,sigStore,time(end),ncountCNN,ncountExct);  
-
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function writeData(filename,X,sigma,time,ncountNN,ncountExact)
 x = X(1:end/2,:);

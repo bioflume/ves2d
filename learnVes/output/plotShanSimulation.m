@@ -9,11 +9,18 @@ set(groot, 'DefaultTextInterpreter','latex')
 addpath ../ShanSims/
 
 % filename = 'TG_N32_nv48.bin';
-filename = 'TG_dilute_auglag_25Feb.bin';
-[vesx, vesy, time, N, nv, xinit, yinit] = loadShanVesFile(filename);
+
+filename = 'BIEM_N32_nv128_VF25_TG_4layers.bin';
+[vesxB, vesyB, time, N, nv, xinit, yinit] = loadShanVesFile(filename);
+
+filename = 'ML_N32_nv128_VF25_TG_job232268.bin';
+[vesxM, vesyM, time, N, nv, xinit, yinit] = loadShanVesFile(filename);
+
+filename = 'ML_N32_nv128_VF25_TG_repul_job222818.bin';
+[vesxMR, vesyMR, time, N, nv, xinit, yinit] = loadShanVesFile(filename);
 
 nskip = 5;
-nsteps = numel(time(10000:nskip:20000));
+nsteps = numel(time(1:nskip:32000));
 
 % numberOfFrames = nsteps;
 % hFigure = figure;
@@ -25,40 +32,62 @@ nsteps = numel(time(10000:nskip:20000));
 % allTheColorMaps(:) = {zeros(256, 3)};
 % myMovie = struct('cdata', allTheFrames, 'colormap', allTheColorMaps);
 % set(gcf, 'renderer', 'zbuffer');
-
+%%
 cnt = 1;
-for k = 10000 : nskip : 20000
+for k = 1 : nskip : 32000
+
+
+
+xvecB = [vesxB(:,:,k); vesxB(1,:,k)];
+yvecB = [vesyB(:,:,k); vesyB(1,:,k)];
+
+xvecMR = [vesxMR(:,:,k); vesxMR(1,:,k)];
+yvecMR = [vesyMR(:,:,k); vesyMR(1,:,k)];
+
+xvecM = [vesxM(:,:,k); vesxM(1,:,k)];
+yvecM = [vesyM(:,:,k); vesyM(1,:,k)];
 
 figure(1); clf;
+subplot(1,3,1)
 
-
-xvec = [vesx(:,:,k); vesx(1,:,k)];
-yvec = [vesy(:,:,k); vesy(1,:,k)];
-
-plot(xvec, yvec, 'Color',[202,0,32]/255,'linewidth',2)
+plot(xvecB, yvecB, 'k','linewidth',2)
 hold on
-% hFill = fill(xvec, yvec, [202,0,32]/255);
-% set(hFill,'EdgeColor', [202,0,32]/255);
-
-
-
-% plot(xvec, yvec, 'Color',[5,113,176]/255,'linewidth',2)
-% hold on
-% hFill = fill(xvec, yvec, [5,113,176]/255);
-% hFill.FaceAlpha = 0.5;
-% set(hFill,'EdgeColor', [5,113,176]/255);
-
 box on
 
 axis equal
-xlim([-0.5 3])
-ylim([-0.5 3])
+xlim([-0.5 5.5])
+ylim([-0.5 5.5])
 
 set(gca,'xtick',[]);
 set(gca,'ytick',[]);
 set(gca,'ztick',[]);
 
-title(k)
+subplot(1,3,2)
+plot(xvecM, yvecM, 'Color',[26/255 150/255 65/255],'linewidth',2)
+hold on
+box on
+
+axis equal
+xlim([-0.5 5.5])
+ylim([-0.5 5.5])
+
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+set(gca,'ztick',[]);
+
+subplot(1,3,3)
+plot(xvecMR, yvecMR, 'Color',[202/255 0 32/255],'linewidth',2)
+hold on
+box on
+
+axis equal
+xlim([-0.5 5.5])
+ylim([-0.5 5.5])
+
+set(gca,'xtick',[]);
+set(gca,'ytick',[]);
+set(gca,'ztick',[]);
+
 
 drawnow;
 myMovie(cnt) = getframe(gca);

@@ -129,22 +129,21 @@ end
 % clear;
 
 
-filename = './TG_N32_dilute_last100_nv128.npy';
+filename = './TG_from_shanBIEM_-50.npy';
 [arrayShape, dataType, fortranOrder, littleEndian, totalHeaderLength, npyVersion] = readNPYheader(filename);
 
 f = memmapfile(filename, 'Format', {dataType, arrayShape(end:-1:1), 'd'}, 'Offset', totalHeaderLength);
 
 tmp = f.Data.d;
 
-vesx = zeros(32,128,100);
-vesy = zeros(32,128,100);
-
-for k = 1 : 100
-X = zeros(128,64);
-X(:,:) = tmp(k,:,:);
-X = X';
-vesx(:,:,k) = X(1:end/2,:);
-vesy(:,:,k) = X(end/2+1:end,:);
+vesx = zeros(128,128);
+vesy = zeros(128,128);
+X = zeros(256,128);
+for k = 1 : 128
+X(:,k) = tmp(k,:);
+% X = X';
+% vesx(:,:,k) = X(1:end/2,:);
+% vesy(:,:,k) = X(end/2+1:end,:);
 end
 
 %% 

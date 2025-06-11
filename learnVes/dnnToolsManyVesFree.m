@@ -27,6 +27,8 @@ offset_tenBend
 nTenModes
 tenPredModes
 tenVnets
+iIgnoreNear
+iRBFnear
 muChan_tenV
 sdevChan_tenV
 scale_tenV
@@ -56,6 +58,9 @@ Nfmm
 opNfmm
 repStrength
 repLenScale
+Galpert
+bdiagVes
+NearV2V
 end
 
 methods
@@ -183,20 +188,23 @@ if iIgnoreNear
 disp('Wrong near')
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
-if ~iExactNear
-disp('Network near')
-if N == 128
-[velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnceAllModes(vesicle.X);    
-elseif N == 32
-[velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnce32modes(vesicle.X);
-
-end
-% farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
-    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear);
+if o.iRBFnear
+disp('RBF near')
+farFieldtracJump = o.computeStokesInteractionsGT(vesicle, tracJump, op);
+% if ~iExactNear
+% disp('Network near')
+% if N == 128
+% [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+%     rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnceAllModes(vesicle.X);    
+% elseif N == 32
+% [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+%     rotCentNear, scalingNear, sortIdxNear] = o.predictNearLayersOnce32modes(vesicle.X);
+% 
+% end
+% % farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+% farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
+%     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+%     rotCentNear, scalingNear, sortIdxNear);
 
 % farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
@@ -277,16 +285,20 @@ tracJump = fBend + fTen;
 
 % use neural networks to calculate near-singular integrals
 if iIgnoreNear
+disp('Ignore near')
 farFieldtracJump = o.ignoreNearInteractions(vesicle, tracJump, op, oc);
 else
-if ~iExactNear
-% farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
-farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
-    velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
-    rotCentNear, scalingNear, sortIdxNear);
+if o.iRBFnear
+disp('RBF near')
+farFieldtracJump = o.computeStokesInteractionsGT(vesicle, tracJump, op);
+% if ~iExactNear
+% % farFieldtracJump = o.computeStokesInteractionsNet_FindNear(vesicle, tracJump, opNfmm, oc);
+% farFieldtracJump = o.computeStokesInteractionsNet_Alternative(vesicle, tracJump, opNfmm, oc, ...
+%     velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, transNear, rotateNear, ...
+%     rotCentNear, scalingNear, sortIdxNear);
 % farFieldtracJump = oc.upsThenFilterShape(farFieldtracJump,4*N,16);
 else
-
+disp('Exact near')
 
 kernel = @op.exactStokesSL;
 kernelDirect = @op.exactStokesSL;
@@ -377,6 +389,365 @@ if ifail; disp('Error in AL cannot be corrected!!!'); end;
 
 
 end % DNNsolveTorchMany
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [Xnew,tenNew] = take_implicit_step(o,Xold,tenOld,area0,len0)
+
+
+% build vesicle class at the current step
+vesicle = capsules(Xold,[],[],o.kappa,1,0);
+nv = vesicle.nv;
+N = vesicle.N;
+oc = o.oc;
+
+[Xnew,tenNew,iter] = o.timeStep(Xold,tenOld,vesicle);
+
+if N < 128
+% First reparameterize
+[XnewC,~] = oc.reparametrize(Xnew,[],6,20);
+Xnew = oc.alignCenterAngle(Xnew,XnewC);
+else
+% When there are N = 128 points, just equally distribute
+XnewO = Xnew;
+for it = 1 : 5
+  Xnew = oc.redistributeArcLength(Xnew);
+end
+Xnew = oc.alignCenterAngle(XnewO,Xnew);
+end
+
+% AREA-LENGTH CORRECTION
+disp('Area-Length correction after relaxation step')
+[Xnew,ifail] = oc.correctAreaAndLength2(Xnew,area0,len0);
+if ifail; disp('Error in AL cannot be corrected!!!'); end;
+
+end % take_implicit_step
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [X,sigma,iter] = timeStep(o,Xstore,sigStore,vesicle)
+ts = o.tt;
+op = ts.op;
+
+N = size(Xstore,1)/2; % Number of points per vesicle
+nv = size(Xstore,2); % Number of vesicles
+
+Xwalls = [];
+Nbd = size(Xwalls,1)/2; % Number of points on the solid walls
+% number of solid wall components
+nvbdInt = 0;
+nvbdExt = 0;
+nvbdSme = 0;
+nvbd = nvbdSme + nvbdInt + nvbdExt;
+% constant that appears in front of time derivative in
+% vesicle dynamical equations
+alpha = 1; 
+
+% Form linear combinations of previous time steps needed for Ascher,
+% Ruuth, and Wetton IMEX methods
+Xm = Xstore;
+sigmaM = sigStore;
+Xo = Xstore;
+
+
+% Build single layer potential matrix and put it in current object
+% If we are doing an sdc update, this is already precomputed and 
+% stored from when we formed the provisional solution
+o.Galpert = op.stokesSLmatrix(vesicle);
+
+% Compute double-layer potential matrix due to each vesicle
+% independent of the others.  Matrix is zero if there is no
+% viscosity contrast
+
+% Only form near-singular integration structure if not doing an SDC
+% update.  Otherwise this was formed and saved when forming the
+% provisional solution
+
+% no solid walls, so only need vesicle-vesicle intearactions
+o.NearV2V = vesicle.getZone([],1);
+
+
+% Parts of rhs from previous solution.  The right-hand-side depends on
+% whether we are doing an SDC correction or forming the provisional
+% solution.
+rhs1 = Xo;
+rhs2 = zeros(N,nv);
+rhs3 = [];
+
+  
+% START TO COMPUTE RIGHT-HAND SIDE DUE TO VESICLE TRACTION JUMP
+% vesicle-vesicle and vesicle-wall interactions are handled
+% implicitly in TimeMatVec
+% END TO COMPUTE RIGHT-HAND SIDE DUE TO VESICLE TRACTION JUMP
+
+% START TO COMPUTE RIGHT-HAND SIDE DUE TO VISCOSITY CONTRAST
+  % If no viscosity contrast, there is no velocity induced due to a
+% viscosity contrast  
+FDLPwall = zeros(2*Nbd,nvbdSme);
+
+
+% compute the double-layer potential due to all other vesicles from the
+% appropriate linear combination of previous time steps.  Depends on
+% time stepping order and vesicle-vesicle discretization
+rhs3 = rhs3 + FDLPwall/o.dt;
+
+% START TO COMPUTE RIGHT-HAND SIDE DUE TO SOLID WALLS
+% This is done implicitly in TimeMatVec
+
+% Add in far-field condition (extensional, shear, etc.)
+% background velocity on vesicles
+vInf = o.vinf(Xstore);
+rhs1 = rhs1 + o.dt*vInf*diag(1./alpha);
+
+% END TO COMPUTE RIGHT-HAND SIDE DUE TO SOLID WALLS
+
+
+% START TO COMPUTE THE RIGHT-HAND SIDE FOR THE INEXTENSIBILITY CONDITION
+% rhs2 is the right-hand side for the inextensibility condition 
+rhs2 = rhs2 + vesicle.surfaceDiv(Xo); 
+% END TO COMPUTE THE RIGHT-HAND SIDE FOR THE INEXTENSIBILITY CONDITION
+
+% Stack the right-hand sides in an alternating with respect to the
+% vesicle fashion
+rhs = [rhs1; rhs2];
+rhs = rhs(:);
+rhs = [rhs; rhs3(:)];
+% Add on the no-slip boundary conditions on the solid walls
+% Rotlet and Stokeslet equations
+[Ben,Ten,Div] = vesicle.computeDerivs;
+rhs = [rhs; zeros(3*(nvbd-1),1)];
+bdiagVes.L = zeros(3*N,3*N,nv);
+bdiagVes.U = zeros(3*N,3*N,nv);
+
+    
+    % Build block-diagonal preconditioner of self-vesicle 
+    % intearctions in matrix form
+for k=1:nv
+  [bdiagVes.L(:,:,k),bdiagVes.U(:,:,k)] = lu(...
+    [eye(2*N) + ...
+        o.dt*o.Galpert(:,:,k)*Ben(:,:,k) ...
+    -o.dt*o.Galpert(:,:,k)*Ten(:,:,k); ...
+    Div(:,:,k) zeros(N)]);
+end
+o.bdiagVes = bdiagVes;
+
+
+% any warning is printed to the terminal and the log file so
+% don't need the native matlab version
+initGMRES = [Xm;sigmaM];
+initGMRES = initGMRES(:);
+
+% Use GMRES to solve for new positions, tension, density
+% function defined on the solid walls, and rotlets/stokeslets
+
+[Xn,iflag,~,I,~] = gmres(@(X) o.TimeMatVec(X,vesicle),rhs,[],1E-10,200,...
+      @o.preconditionerBD,[],initGMRES);
+iter = I(2);    
+
+message = ['DONE, it took ' num2str(iter) ' iterations'];
+disp(message)
+% END OF SOLVING THE SYSTEM USING GMRES
+
+% allocate space for positions, tension, and density function
+X = zeros(2*N,nv);
+sigma = zeros(N,nv);
+
+% unstack the positions and tensions
+for k=1:nv
+  X(:,k) = Xn((3*k-3)*N+1:(3*k-1)*N);
+  sigma(:,k) = Xn((3*k-1)*N+1:3*k*N);
+end
+end % timeStep
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function val = TimeMatVec(o,Xn,vesicle)
+% val = TimeMatVec(o,Xn,vesicle,walls,wallsInt,wallsExt) 
+% MATVEC for GMRES in the IMEX scheme.
+% Evaluations vesicle-vesicle and vesicle-boundary interaction formulas
+% to the function Xn which contains both the position, tension, and
+% density
+% 
+% - Xn : all state variables in the following order
+%   ves1:x,y,sigma,  ves2:x,y,sigma, ... vesNv:x,y,sigma, (outer_solidwall1:fx,fy,
+%   inner_solidwall_1:fx,fy; inner_solid_wall2:fx,fy; ...; inner_solid_walln:fx,fy;
+%   stokeslet_rotlet_innerwall1, stokeslet_rolet_innerwall2....
+%
+% - vesicle: class capsules used to evaluate the operators for the GMRES 
+% - walls: same thing as "vesicle" but for the confined walls geometry
+% - wallsInt: inner solid walls for the cases when outer and inner walls
+%   are discretized with different Nbds (e.g. DLD examples)
+% - wallsExt: outer solid wall for the cases mentioned above
+% - either we have walls or wallsInt and wallExt together. Three of them do
+%   not exist at the same time
+
+% counter for the number of matrix-vector multiplications
+% that are required for the entire simulation
+ts = o.tt;
+op = ts.op;
+oc = o.oc;
+N = vesicle.N; % Number of points
+nv = vesicle.nv; % Number of vesicles
+
+Nbd = 0;
+NbdInt = 0;
+NbdExt = 0;
+nvbdSme = 0;
+nvbdInt = 0;
+nvbdExt = 0;
+
+% total number of solid walls
+nvbd = nvbdSme + nvbdInt + nvbdExt;
+
+% right-hand side that corresponds to position equation
+valPos = zeros(2*N,nv);
+% right-hand side that corresponds to inextensibilty equation
+valTen = zeros(N,nv);
+% right-hand side that corresponds to solid wall equation
+
+% Unstack the position and tension from the input
+Xm = zeros(2*N,nv);
+sigmaM = zeros(N,nv);
+for k=1:nv
+  Xm(1:2*N,k) = Xn((3*k-3)*N+1:(3*k-1)*N);
+  sigmaM(:,k) = Xn((3*k-1)*N+1:3*k*N);
+end
+etaM = [];
+etaMext = [];
+etaMint = [];
+otlets = [];
+
+
+% otlets keeps stokeslets and rotlets of each wall. Ordered as
+% [stokeslet1(component 1);stokeslet1(component 2);rotlet1;...
+%  stokeslet2(component 1);stokeslet2(component 2);rotlet2;...];
+
+% f is the traction jump stored as a 2N x nv matrix
+f = vesicle.tracJump(Xm,sigmaM);
+
+% constant that multiplies the time derivative in the 
+% vesicle position equation
+alpha = (1+vesicle.viscCont)/2; 
+
+% Gf is the single-layer potential applied to the traction jump. 
+Gf = op.exactStokesSLdiag(vesicle,o.Galpert,f);
+
+% DXm is the double-layer potential applied to the position
+DXm = zeros(2*N,nv);
+
+
+
+% START COMPUTING REQUIRED SINGLE-LAYER POTENTIALS
+% Evaluate single-layer potential due to all vesicles except itself and
+% the single-layer potential due to all vesicles evaluated on the solid
+% walls.  
+kernel = @op.exactStokesSL;
+kernelDirect = @op.exactStokesSL;
+
+
+% Evaulate single-layer potential due to all other vesicles
+% WITH near-singular integration.  FMM is optional
+SLP = @(X) op.exactStokesSLdiag(vesicle,o.Galpert,X);
+if o.iIgnoreNear
+    Fslp = o.ignoreNearInteractions(vesicle, f, op, oc);
+elseif o.iRBFnear
+  Fslp = o.computeStokesInteractionsGT(vesicle, f, op);
+else
+  Fslp = op.nearSingInt(vesicle,f,SLP,[],...
+    o.NearV2V,kernel,kernelDirect,vesicle,true,false);
+end
+
+FSLPwall = [];
+FSLPwallInt = [];
+FSLPwallExt = [];
+% END COMPUTING REQUIRED SINGLE-LAYER POTENTIALS
+
+Fdlp = [];
+FDLPwall = [];
+FDLPwallInt = [];
+FDLPwallExt = [];
+% END COMPUTING REQUIRED DOUBLE-LAYER POTENTIALS FOR VISCOSITY CONTRAST
+
+Fwall2Ves = zeros(2*N,nv);
+% END OF EVALUATING DOUBLE-LAYER POTENTIALS DUE TO SOLID WALLS
+
+
+
+LetsVes = [];
+LetsWalls = [];
+FDLPwall2wall = [];
+LetsWallsInt = [];
+LetsWallsExt = [];
+FDLPwallInt2wallInt = [];
+FDLPwallExt2wallInt = [];
+FDLPwallInt2wallExt = [];
+% END OF EVALUATING POTENTIAL DUE TO STOKESLETS AND ROTLETS
+
+% START OF EVALUATING VELOCITY ON VESICLES
+
+if ~isempty(Gf)
+  % self-bending and self-tension terms
+  valPos = valPos - o.dt*Gf*diag(1./alpha);
+end
+
+if ~isempty(DXm)
+  % self-viscosity contrast term
+  valPos = valPos - DXm*diag(1./alpha);
+end
+
+if ~isempty(Fslp)
+  % single-layer potential due to all other vesicles
+  valPos = valPos - o.dt*Fslp*diag(1./alpha);
+end
+
+if ~isempty(Fdlp)
+  % double-layer potential due to all other vesicles
+  valPos = valPos - Fdlp*diag(1./alpha);
+end
+% END OF EVALUATING VELOCITY ON VESICLES
+
+
+% START OF EVALUATING INEXTENSIBILITY CONDITION
+ valTen = vesicle.surfaceDiv(Xm);
+% END OF EVALUATING INEXTENSIBILITY CONDITION
+
+% beta times solution coming from time derivative
+valPos = valPos + Xm;
+
+% Initialize output from vesicle and inextensibility equations to zero
+val = zeros(3*N*nv,1);
+
+% Stack val as [x-coordinate;ycoordinate;tension] repeated
+% nv times for each vesicle
+for k=1:nv
+  val((k-1)*3*N+1:3*k*N) = [valPos(:,k);valTen(:,k)];
+end
+  
+end % TimeMatVec
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function val = preconditionerBD(o,z)
+% val = preconditionBD(z) applies the block diagonal preconditioner
+% required by preconditioned-GMRES to the vector z
+
+
+nv = size(o.bdiagVes.L,3); % number of vesicles
+N = size(o.bdiagVes.L,1)/3; % number of points
+
+
+% extract the position and tension part.  Solid walls is
+% handled in the next section of this routine
+zves = z(1:3*N*nv);
+
+valVes = zeros(3*N*nv,1);
+% precondition with the block diagonal preconditioner for the
+  % vesicle position and tension
+
+for k=1:nv
+  valVes((k-1)*3*N+1:3*k*N) = o.bdiagVes.U(:,:,k)\...
+    (o.bdiagVes.L(:,:,k)\zves((k-1)*3*N+1:3*k*N));
+end % k
+
+% stack the two componenets of the preconditioner
+val = valVes;
+
+
+end % preconditionerBD
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xlayers, ylayers, velx, vely] = predictNearLayersWTorchNet(o, X, tracJump)
 Nnet = numel(X(:,1))/2;
@@ -879,6 +1250,120 @@ end
 
 
 end % predictNear5LayersOnce32modes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Fslp = computeStokesInteractionsGT(o,vesicle, tracJump, op);
+X = vesicle.X;
+Nnet = numel(X(:,1))/2;
+N = Nnet;
+nv = numel(X(1,:));
+oc = o.oc;
+Galpert = op.stokesSLmatrix(vesicle); 
+maxLayerDist = 1/Nnet; % length = 1, h = 1/Nnet;
+% Predictions on three layers
+nlayers = 5;
+dlayer = [-1 -1/2 0 1/2 1]*maxLayerDist;
+xvesicle = vesicle.X(1:end/2,:); yvesicle = vesicle.X(end/2+1:end,:);
+
+kernel = @op.exactStokesSL;
+kernelDirect = @op.exactStokesSL;
+for k = 1 : nv
+  xlayers = zeros(Nnet,5);
+  ylayers = zeros(Nnet,5);
+  velx_layers = zeros(Nnet, 5);
+  vely_layers = zeros(Nnet, 5);
+  [~,tang] = oc.diffProp(X(:,k));
+  nx = tang(Nnet+1:2*Nnet);
+  ny = -tang(1:Nnet);
+  tracersX = zeros(2*Nnet,4);
+  cnt = 1;
+  for il = 1 : nlayers 
+    xlayers(:,il) = X(1:end/2,k)+nx*dlayer(il);
+    ylayers(:,il) = X(end/2+1:end,k)+ny*dlayer(il);
+    if il ~= 3
+    tracersX(:,cnt) = [X(1:end/2,k)+nx*dlayer(il); X(end/2+1:end,k)+ny*dlayer(il)];
+    cnt = cnt+1;
+    end
+  end
+  
+  G = Galpert(:,:,k);
+  tracers.N = Nnet;
+  tracers.nv = 4;
+  tracers.X = tracersX;
+  vesLoc = capsules(X(:,k),[],[],1,1,0);
+  [~,NearV2T] = vesLoc.getZone(tracers,2);
+  
+  SLP = @(X) op.exactStokesSLdiag(vesLoc,G,X);
+  velTraNear = op.nearSingInt(vesLoc,tracJump(:,k),SLP,[],NearV2T,kernel,kernelDirect,tracers,false,false); 
+  cnt = 1;
+  for il = 1 : nlayers
+    if il ~= 3
+    velx_layers(:,il) = velTraNear(1:end/2,cnt);
+    vely_layers(:,il) = velTraNear(end/2+1:end,cnt);
+    cnt = cnt + 1;
+    else
+    vSelf = G*tracJump(:,k);
+    velx_layers(:,il) = vSelf(1:end/2);
+    vely_layers(:,il) = vSelf(end/2+1:end);
+    end
+  end
+
+  Xin = [reshape(xlayers,1,5*N); reshape(ylayers,1,5*N)];
+  velXInput = reshape(velx_layers, 1, 5*N); 
+  velYInput = reshape(vely_layers, 1, 5*N); 
+
+  opX{k} = rbfcreate(Xin,velXInput,'RBFFunction','linear');
+  opY{k} = rbfcreate(Xin,velYInput,'RBFFunction','linear');
+end
+
+% First calculate the far-field
+Xup = [interpft(vesicle.X(1:end/2,:),128);interpft(vesicle.X(end/2+1:end,:),128)];
+vesicleUp = capsules(Xup,[],[],o.kappa,1,0);
+tracJumpUp = [interpft(tracJump(1:end/2,:),128);interpft(tracJump(end/2+1:end,:),128)];
+farField = zeros(2*Nnet,nv);
+for k = 1 : nv
+  K = [(1:k-1) (k+1:nv)];
+  [~,farField(:,k)] = op.exactStokesSL(vesicleUp, tracJumpUp, [], vesicle.X(:,k), K);
+end
+
+% Compute near/far hydro interactions
+% with upsampling by 2
+NearV2V = vesicle.getZone([],1); 
+zone = NearV2V.zone;
+
+nearField = zeros(size(farField));
+
+for k1 = 1 : nv
+  K = [(1:k1-1) (k1+1:nv)];
+  for k2 = K
+    % points on vesicle k2 close to k1  
+    J = find(zone{k1}(:,k2) == 1);  
+    if numel(J) ~= 0
+      % need tp subtract off contribution due to vesicle k1 since its layer
+      % potential will be evaulated through interpolation
+      [~,potTar] = op.exactStokesSL(vesicleUp, tracJumpUp, [], [xvesicle(J,k2);yvesicle(J,k2)],k1);
+      nearField(J,k2) = nearField(J,k2) - potTar(1:numel(J));
+      nearField(J+N,k2) = nearField(J+N,k2) - potTar(numel(J)+1:end);
+         
+      % now interpolate
+      for i = 1 : numel(J)
+        pointsIn = [xvesicle(J(i),k2);yvesicle(J(i),k2)];
+        % interpolate for the k2th vesicle's points near to the k1th vesicle
+        rbfVelX = rbfinterp(pointsIn, opX{k1});
+        rbfVelY = rbfinterp(pointsIn, opY{k1});
+        nearField(J(i),k2) = nearField(J(i),k2) + rbfVelX;
+        nearField(J(i)+N,k2) = nearField(J(i)+N,k2) + rbfVelY; 
+      end
+    end % if numel(J)
+
+  end % for k2
+end % for k1
+
+
+
+% finally add the corrected nearfield to the farfield
+Fslp = farField + nearField;
+
+end % computeStokesInteractionsGT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [velx_real, vely_real, velx_imag, vely_imag, xlayers, ylayers, trans, rotate, rotCent, scaling, sortIdx] = predictNearLayersOnceAllModes(o, X)
 Nnet = numel(X(:,1))/2;

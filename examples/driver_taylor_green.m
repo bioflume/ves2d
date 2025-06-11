@@ -1,7 +1,7 @@
 function driver_taylor_green(runName, VC, RA, kappa, Vinf, vortexSize, Xg, IA) 
 
 % Physics parameters
-prams.N = 96;                           % points per vesicle
+prams.N = 128;                           % points per vesicle
 prams.nv = 1;                          % number of vesicles
 prams.T = ceil(2000/Vinf);  % time horizon
 prams.m = 2e4;                         % number of time steps
